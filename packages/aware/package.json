@@ -1,0 +1,51 @@
+{
+  "name": "contextpilot",
+  "version": "0.1.0",
+  "description": "Auto-detect your stack, generate and sync AI context files (CLAUDE.md, .cursorrules, copilot-instructions.md, AGENTS.md)",
+  "type": "module",
+  "bin": {
+    "contextpilot": "./dist/cli.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "dev": "tsx src/cli.ts",
+    "build": "tsup",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "tsc --noEmit",
+    "prepublishOnly": "pnpm build"
+  },
+  "keywords": [
+    "claude",
+    "cursor",
+    "copilot",
+    "ai",
+    "context",
+    "cli"
+  ],
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "chalk": "^5.6.2",
+    "chokidar": "^5.0.0",
+    "commander": "^14.0.3",
+    "dotenv": "^17.4.2",
+    "fast-glob": "^3.3.3",
+    "fast-json-patch": "^3.1.1",
+    "js-yaml": "^4.1.1",
+    "ora": "^9.3.0",
+    "toml": "^4.1.1"
+  },
+  "devDependencies": {
+    "@types/js-yaml": "^4.0.9",
+    "@types/node": "^25.6.0",
+    "tsup": "^8.5.1",
+    "tsx": "^4.21.0",
+    "typescript": "^6.0.2",
+    "vitest": "^4.1.4"
+  }
+}

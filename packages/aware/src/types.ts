@@ -23,9 +23,9 @@ export interface DetectedStack {
   apiStyle: StackItem | null;
 }
 
-// ---- Config types (.contextpilot.json) ----
+// ---- Config types (.aware.json) ----
 
-export interface ContextPilotConfig {
+export interface AwareConfig {
   version: number;
   project: ProjectMeta;
   stack: StackConfig;
@@ -91,7 +91,7 @@ export interface ConfigMeta {
   createdAt: string;
   lastSyncedAt: string | null;
   lastDetectionHash: string;
-  contextpilotVersion: string;
+  awareVersion: string;
 }
 
 // ---- Fragment / Generation types ----
@@ -118,7 +118,7 @@ export type FragmentCategory =
 
 export type FragmentFunction = (
   stack: DetectedStack,
-  config: ContextPilotConfig,
+  config: AwareConfig,
 ) => Fragment | null;
 
 export interface ComposedContext {

@@ -1,0 +1,39 @@
+{
+  "version": 1,
+  "project": {
+    "name": "python-fastapi",
+    "description": "",
+    "architecture": ""
+  },
+  "stack": {
+    "framework": "fastapi",
+    "language": "python@3.12.4",
+    "styling": null,
+    "orm": "sqlalchemy",
+    "database": null,
+    "testing": [],
+    "linting": [
+      "ruff"
+    ],
+    "packageManager": null,
+    "monorepo": null,
+    "deployment": null,
+    "auth": null,
+    "apiStyle": null
+  },
+  "conventions": {},
+  "rules": [],
+  "structure": {},
+  "targets": {
+    "claude": true,
+    "cursor": false,
+    "copilot": false,
+    "agents": false
+  },
+  "_meta": {
+    "createdAt": "2026-04-13T23:56:34.102Z",
+    "lastSyncedAt": null,
+    "lastDetectionHash": "ef1dae43f7a1975415c4ff0bdbc5626d",
+    "contextpilotVersion": "0.1.0"
+  }
+}

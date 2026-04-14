@@ -2,20 +2,20 @@ import * as path from "node:path";
 import * as crypto from "node:crypto";
 import { readFile, writeFile, fileExists } from "./fs.js";
 import { CONFIG_FILE, SCHEMA_VERSION, VERSION } from "../constants.js";
-import type { ContextPilotConfig, StackConfig, TargetsConfig } from "../types.js";
+import type { AwareConfig, StackConfig, TargetsConfig } from "../types.js";
 
-export async function loadConfig(projectRoot: string): Promise<ContextPilotConfig | null> {
+export async function loadConfig(projectRoot: string): Promise<AwareConfig | null> {
   const filePath = path.join(projectRoot, CONFIG_FILE);
   const content = await readFile(filePath);
   if (!content) return null;
   try {
-    return JSON.parse(content) as ContextPilotConfig;
+    return JSON.parse(content) as AwareConfig;
   } catch {
     return null;
   }
 }
 
-export async function saveConfig(projectRoot: string, config: ContextPilotConfig): Promise<void> {
+export async function saveConfig(projectRoot: string, config: AwareConfig): Promise<void> {
   const filePath = path.join(projectRoot, CONFIG_FILE);
   await writeFile(filePath, JSON.stringify(config, null, 2) + "\n");
 }
@@ -28,7 +28,7 @@ export function createDefaultConfig(
   projectName: string,
   stack: StackConfig,
   targets: TargetsConfig,
-): ContextPilotConfig {
+): AwareConfig {
   const hash = crypto.createHash("md5").update(JSON.stringify(stack)).digest("hex");
 
   return {
@@ -47,7 +47,7 @@ export function createDefaultConfig(
       createdAt: new Date().toISOString(),
       lastSyncedAt: null,
       lastDetectionHash: hash,
-      contextpilotVersion: VERSION,
+      awareVersion: VERSION,
     },
   };
 }

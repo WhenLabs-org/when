@@ -1,5 +1,5 @@
 export const VERSION = "0.1.0";
-export const CONFIG_FILE = ".contextpilot.json";
+export const CONFIG_FILE = ".aware.json";
 export const SCHEMA_VERSION = 1;
 
 export const TARGETS = {

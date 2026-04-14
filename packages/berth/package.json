@@ -28,6 +28,17 @@
     "lsof",
     "docker"
   ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/WhenLabs-org/berth.git"
+  },
+  "homepage": "https://github.com/WhenLabs-org/berth",
+  "bugs": "https://github.com/WhenLabs-org/berth/issues",
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
   "license": "MIT",
   "dependencies": {
     "chalk": "^5.3.0",

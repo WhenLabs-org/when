@@ -13,6 +13,12 @@ import { expressFragment } from "./framework/express.js";
 import { fastifyFragment } from "./framework/fastify.js";
 import { rustCliFragment } from "./framework/rust-cli.js";
 import { pythonFastapiFragment } from "./framework/python-fastapi.js";
+import { remixFragment } from "./framework/remix.js";
+import { astroFragment } from "./framework/astro.js";
+import { sveltekitFragment } from "./framework/sveltekit.js";
+import { djangoFragment } from "./framework/django.js";
+import { flaskFragment } from "./framework/flask.js";
+import { honoFragment } from "./framework/hono.js";
 
 // Styling fragments
 import { tailwindcssFragment } from "./styling/tailwindcss.js";
@@ -23,12 +29,15 @@ import { cssModulesFragment } from "./styling/css-modules.js";
 import { drizzleFragment } from "./orm/drizzle.js";
 import { prismaFragment } from "./orm/prisma.js";
 import { sqlalchemyFragment } from "./orm/sqlalchemy.js";
+import { typeormFragment } from "./orm/typeorm.js";
+import { mongooseFragment } from "./orm/mongoose.js";
 
 // Testing fragments
 import { vitestFragment } from "./testing/vitest.js";
 import { jestFragment } from "./testing/jest.js";
 import { playwrightFragment } from "./testing/playwright.js";
 import { pytestFragment } from "./testing/pytest.js";
+import { cypressFragment } from "./testing/cypress.js";
 
 // Linting fragments
 import { eslintFragment } from "./linting/eslint.js";
@@ -39,6 +48,8 @@ import { biomeFragment } from "./linting/biome.js";
 import { vercelFragment } from "./deployment/vercel.js";
 import { dockerFragment } from "./deployment/docker.js";
 import { netlifyFragment } from "./deployment/netlify.js";
+import { flyFragment } from "./deployment/fly.js";
+import { railwayFragment } from "./deployment/railway.js";
 
 // Auth fragments
 import { nextauthFragment } from "./auth/nextauth.js";
@@ -58,6 +69,12 @@ const allFragmentFunctions: FragmentFunction[] = [
   fastifyFragment,
   rustCliFragment,
   pythonFastapiFragment,
+  remixFragment,
+  astroFragment,
+  sveltekitFragment,
+  djangoFragment,
+  flaskFragment,
+  honoFragment,
 
   // Styling (20-29)
   tailwindcssFragment,
@@ -68,6 +85,8 @@ const allFragmentFunctions: FragmentFunction[] = [
   drizzleFragment,
   prismaFragment,
   sqlalchemyFragment,
+  typeormFragment,
+  mongooseFragment,
 
   // API (40-49)
   trpcFragment,
@@ -83,6 +102,7 @@ const allFragmentFunctions: FragmentFunction[] = [
   jestFragment,
   playwrightFragment,
   pytestFragment,
+  cypressFragment,
 
   // Linting (70-79)
   eslintFragment,
@@ -93,6 +113,8 @@ const allFragmentFunctions: FragmentFunction[] = [
   vercelFragment,
   netlifyFragment,
   dockerFragment,
+  flyFragment,
+  railwayFragment,
 ];
 
 export function resolveFragments(

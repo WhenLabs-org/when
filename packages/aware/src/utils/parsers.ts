@@ -46,7 +46,7 @@ export async function parseDotenv(filePath: string): Promise<Record<string, stri
 }
 
 export function cleanVersion(version: string): string {
-  const cleaned = version.replace(/^[^~>=]*/, "").replace(/^[~^>=<\s]+/, "");
+  const cleaned = version.replace(/^[~^>=<\s]+/, "");
   const parts = cleaned.split(".");
   if (parts.length >= 2) {
     return `${parts[0]}.${parts[1]}`;

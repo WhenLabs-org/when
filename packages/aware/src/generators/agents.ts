@@ -36,7 +36,9 @@ export class AgentsGenerator extends BaseGenerator {
     for (const fragment of context.fragmentSections) {
       if (fragment.category === "testing") continue; // testing goes in its own section
       if (fragment.content) {
-        conventionParts.push(`### ${fragment.title}\n${fragment.content}`);
+        // Fragment content already includes its own ## heading — strip it and use ### for nesting
+        const body = fragment.content.replace(/^##\s+.+\n?/, "");
+        conventionParts.push(`### ${fragment.title}\n${body}`);
       }
     }
     if (context.conventionsSection) {

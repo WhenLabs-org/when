@@ -16,7 +16,7 @@ program
 program
   .command("init")
   .description("Detect project stack and generate AI context files")
-  .option("-t, --targets <targets>", "Comma-separated targets: claude,cursor,copilot,agents", "claude,cursor,copilot")
+  .option("-t, --targets <targets>", "Comma-separated targets: claude,cursor,copilot,agents", "claude,cursor,copilot,agents")
   .option("-f, --force", "Overwrite existing files without prompting", false)
   .option("--no-detect", "Skip auto-detection, create empty config")
   .action(initCommand);

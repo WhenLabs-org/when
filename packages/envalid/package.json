@@ -1,0 +1,48 @@
+{
+  "name": "envalid",
+  "version": "0.1.0",
+  "description": "Type safety for .env files",
+  "type": "module",
+  "bin": {
+    "envalid": "./dist/cli.js"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "vitest",
+    "test:run": "vitest run",
+    "lint": "tsc --noEmit",
+    "prepublishOnly": "npm run build"
+  },
+  "files": [
+    "dist"
+  ],
+  "keywords": [
+    "env",
+    "dotenv",
+    "schema",
+    "validator",
+    "cli",
+    "type-safety"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "chalk": "^5.6.2",
+    "commander": "^14.0.3",
+    "cosmiconfig": "^9.0.1",
+    "dotenv": "^17.4.2",
+    "inquirer": "^13.4.1",
+    "ora": "^9.3.0",
+    "yaml": "^2.8.3",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@types/inquirer": "^9.0.9",
+    "@types/node": "^25.6.0",
+    "tsup": "^8.5.1",
+    "typescript": "^6.0.2",
+    "vitest": "^4.1.4"
+  }
+}

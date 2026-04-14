@@ -6,6 +6,7 @@ import { detectFromDotenv } from './configured/dotenv.js';
 import { detectFromPackageJson } from './configured/package-json.js';
 import { detectFromDockerCompose } from './configured/docker-compose.js';
 import { detectFromProcfile } from './configured/procfile.js';
+import { detectFromMakefile } from './configured/makefile.js';
 import { detectFrameworkDefaults } from './configured/framework.js';
 import type { ActivePort, DockerPort, ConfiguredPort } from '../types.js';
 
@@ -54,6 +55,7 @@ export async function detectAllConfigured(dir: string): Promise<ConfiguredDetect
     { name: 'package-json', fn: () => detectFromPackageJson(dir) },
     { name: 'docker-compose', fn: () => detectFromDockerCompose(dir) },
     { name: 'procfile', fn: () => detectFromProcfile(dir) },
+    { name: 'makefile', fn: () => detectFromMakefile(dir) },
   ];
 
   const results = await Promise.allSettled(detectors.map((d) => d.fn()));

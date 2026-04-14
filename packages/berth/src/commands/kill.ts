@@ -12,7 +12,7 @@ interface KillOptions extends GlobalOptions {
   force?: boolean;
 }
 
-export async function killCommand(portArg: string, options: KillOptions): Promise<void> {
+export async function killCommand(portArg: string | null, options: KillOptions): Promise<void> {
   if (options.dev) {
     if (!options.force && !options.json && process.stdin.isTTY) {
       const { ports } = await detectAllActive();
@@ -42,6 +42,12 @@ export async function killCommand(portArg: string, options: KillOptions): Promis
     } else {
       console.log(renderKill(result));
     }
+    return;
+  }
+
+  if (portArg === null) {
+    console.error(chalk.red('Please specify a port number, or use --dev to kill all dev processes.'));
+    process.exitCode = 2;
     return;
   }
 

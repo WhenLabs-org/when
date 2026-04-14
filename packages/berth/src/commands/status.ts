@@ -24,6 +24,24 @@ export async function statusCommand(options: GlobalOptions): Promise<void> {
     }
   }
 
+  // Link active ports to registered projects
+  const portToProject = new Map<number, string>();
+  for (const project of Object.values(registry.projects)) {
+    for (const p of project.ports) {
+      portToProject.set(p.port, project.name);
+    }
+  }
+  for (const port of active) {
+    if (!port.project && portToProject.has(port.port)) {
+      port.project = portToProject.get(port.port);
+    }
+  }
+  for (const port of docker) {
+    if (!port.project && portToProject.has(port.port)) {
+      port.project = portToProject.get(port.port);
+    }
+  }
+
   const conflicts = detectConflicts(active, docker, allConfigured);
 
   const output: StatusOutput = {

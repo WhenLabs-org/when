@@ -39,13 +39,13 @@ program
   });
 
 program
-  .command('kill <port>')
-  .description('Kill processes on a port')
+  .command('kill [port]')
+  .description('Kill processes on a port, or all dev processes with --dev')
   .option('--dev', 'Kill all dev processes')
   .option('-f, --force', 'Skip confirmation')
   .action(async (port, opts, cmd) => {
     const { killCommand } = await import('./commands/kill.js');
-    await killCommand(port, { ...getGlobalOptions(cmd), dev: opts.dev, force: opts.force });
+    await killCommand(port ?? null, { ...getGlobalOptions(cmd), dev: opts.dev, force: opts.force });
   });
 
 program
@@ -60,9 +60,10 @@ program
   .command('register')
   .description('Register current directory\'s port requirements')
   .option('-d, --dir <path>', 'Directory to register (default: current)')
+  .option('-y, --yes', 'Skip confirmation prompt')
   .action(async (opts, cmd) => {
     const { registerCommand } = await import('./commands/register.js');
-    await registerCommand({ ...getGlobalOptions(cmd), dir: opts.dir });
+    await registerCommand({ ...getGlobalOptions(cmd), dir: opts.dir, yes: opts.yes });
   });
 
 program
@@ -89,6 +90,16 @@ program
   .action(async (project, opts, cmd) => {
     const { startCommand } = await import('./commands/start.js');
     await startCommand(project, { ...getGlobalOptions(cmd), dryRun: opts.dryRun });
+  });
+
+program
+  .command('watch')
+  .description('Monitor for port conflicts in real-time')
+  .option('-i, --interval <seconds>', 'Polling interval in seconds', '5')
+  .option('-n, --notify', 'Send desktop notifications on new conflicts')
+  .action(async (opts, cmd) => {
+    const { watchCommand } = await import('./commands/watch.js');
+    await watchCommand({ ...getGlobalOptions(cmd), interval: parseInt(opts.interval, 10), notify: opts.notify });
   });
 
 async function main() {

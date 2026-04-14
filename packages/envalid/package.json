@@ -27,6 +27,18 @@
     "cli",
     "type-safety"
   ],
+  "author": "WhenLabs",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/WhenLabs-org/envalid.git"
+  },
+  "homepage": "https://github.com/WhenLabs-org/envalid",
+  "bugs": {
+    "url": "https://github.com/WhenLabs-org/envalid/issues"
+  },
+  "engines": {
+    "node": ">=20"
+  },
   "license": "MIT",
   "dependencies": {
     "chalk": "^5.6.2",

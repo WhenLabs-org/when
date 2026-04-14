@@ -1,0 +1,60 @@
+name: "Envalid"
+description: "Validate .env files against a schema — type safety for environment variables"
+branding:
+  icon: "shield"
+  color: "green"
+
+inputs:
+  schema:
+    description: "Path to .env.schema file"
+    required: false
+    default: ".env.schema"
+  env-file:
+    description: "Path to .env file to validate"
+    required: false
+    default: ".env"
+  environment:
+    description: "Target environment (e.g. production, staging)"
+    required: false
+  format:
+    description: "Output format: terminal, json, markdown"
+    required: false
+    default: "terminal"
+  fail-on-warning:
+    description: "Treat warnings as errors"
+    required: false
+    default: "false"
+  node-version:
+    description: "Node.js version to use"
+    required: false
+    default: "20"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ inputs.node-version }}
+
+    - name: Install Envalid
+      shell: bash
+      run: npm install -g envalid
+
+    - name: Validate environment
+      shell: bash
+      run: |
+        ARGS="validate"
+        ARGS="$ARGS --schema ${{ inputs.schema }}"
+        ARGS="$ARGS --env ${{ inputs.env-file }}"
+        ARGS="$ARGS --format ${{ inputs.format }}"
+
+        if [ -n "${{ inputs.environment }}" ]; then
+          ARGS="$ARGS --environment ${{ inputs.environment }}"
+        fi
+
+        if [ "${{ inputs.fail-on-warning }}" = "true" ]; then
+          ARGS="$ARGS --ci"
+        fi
+
+        envalid $ARGS

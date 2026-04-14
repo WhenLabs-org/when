@@ -48,11 +48,11 @@ All implement the `Analyzer` interface (`analyze(ctx: AnalyzerContext): Promise<
 - `src/commands/watch.ts` — fs.watch with 300ms debounce, re-runs scan on changes
 
 ### Phase 5: AI Analyzers (3) — COMPLETE
-- `src/analyzers/ai/client.ts` — Anthropic SDK wrapper with retry/backoff, context builder that assembles doc sections + codebase facts for prompts
-- `src/analyzers/ai/semantic.ts` — sends doc sections + code facts to Claude, asks for inaccuracies. Parses structured JSON responses into DriftIssues.
-- `src/analyzers/ai/completeness.ts` — asks Claude what's in the codebase but missing from docs
+- `src/analyzers/ai/client.ts` — AI SDK wrapper with retry/backoff, context builder that assembles doc sections + codebase facts for prompts
+- `src/analyzers/ai/semantic.ts` — sends doc sections + code facts to AI, asks for inaccuracies. Parses structured JSON responses into DriftIssues.
+- `src/analyzers/ai/completeness.ts` — asks AI what's in the codebase but missing from docs
 - `src/analyzers/ai/examples.ts` — checks if code examples in docs use current patterns
-- All wired into the registry and activated with `--deep` flag (requires ANTHROPIC_API_KEY)
+- All wired into the registry and activated with `--deep` flag (requires STALE_AI_KEY)
 
 ### Phase 6: Tests — COMPLETE
 - `tests/fixtures/sample-project/` — a fake project with intentional drift: wrong scripts, dead paths, stale env vars, old Node version, Travis badge, wrong endpoints
@@ -127,12 +127,12 @@ npx tsx src/cli.ts init
 # JSON output
 npx tsx src/cli.ts scan --path tests/fixtures/sample-project --format json
 
-# AI mode (needs ANTHROPIC_API_KEY env var)
+# AI mode (needs STALE_AI_KEY env var)
 npx tsx src/cli.ts scan --path tests/fixtures/sample-project --deep
 ```
 
 ## Tech Stack
-TypeScript (strict), Commander.js, remark/unified, Anthropic Claude API, fast-glob, simple-git, chalk + boxen, Vitest
+TypeScript (strict), Commander.js, remark/unified, AI API, fast-glob, simple-git, chalk + boxen, Vitest
 
 ## File Count
 27 source files, 5 test files, 8 fixture files

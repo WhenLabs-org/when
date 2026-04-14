@@ -6,9 +6,9 @@ let client: Anthropic | null = null;
 
 function getClient(): Anthropic {
   if (!client) {
-    const apiKey = process.env.ANTHROPIC_API_KEY;
+    const apiKey = process.env.STALE_AI_KEY;
     if (!apiKey) {
-      throw new ApiError('ANTHROPIC_API_KEY environment variable is required for AI analysis');
+      throw new ApiError('STALE_AI_KEY environment variable is required for AI analysis');
     }
     client = new Anthropic({ apiKey });
   }
@@ -20,18 +20,18 @@ const MODEL_MAP = {
   opus: 'claude-opus-4-20250514',
 } as const;
 
-export async function askClaude(
+export async function askAI(
   prompt: string,
   model: 'sonnet' | 'opus',
   systemPrompt: string,
   maxRetries = 3,
 ): Promise<string> {
-  const anthropic = getClient();
+  const ai = getClient();
   let lastError: Error | undefined;
 
   for (let attempt = 0; attempt < maxRetries; attempt++) {
     try {
-      const response = await anthropic.messages.create({
+      const response = await ai.messages.create({
         model: MODEL_MAP[model],
         max_tokens: 4096,
         system: systemPrompt,
@@ -47,11 +47,11 @@ export async function askClaude(
         await new Promise((r) => setTimeout(r, Math.pow(2, attempt) * 1000));
         continue;
       }
-      throw new ApiError(`Claude API error: ${(err as Error).message}`);
+      throw new ApiError(`AI API error: ${(err as Error).message}`);
     }
   }
 
-  throw new ApiError(`Claude API failed after ${maxRetries} retries: ${lastError?.message}`);
+  throw new ApiError(`AI API failed after ${maxRetries} retries: ${lastError?.message}`);
 }
 
 export function buildContext(

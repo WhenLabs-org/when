@@ -95,7 +95,7 @@ export class TerminalReporter implements Reporter {
     }
 
     if (hasAiIssues) {
-      lines.push(chalk.bold.underline('── AI Analysis (powered by Claude) ───────────────────────'));
+      lines.push(chalk.bold.underline('── AI Analysis ───────────────────────────────────────────'));
       lines.push('');
 
       for (const [category, issues] of grouped) {

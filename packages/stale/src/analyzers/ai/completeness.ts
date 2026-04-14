@@ -1,5 +1,5 @@
 import type { AiAnalyzer, AnalyzerContext, DriftIssue } from '../../types.js';
-import { askClaude, buildContext } from './client.js';
+import { askAI, buildContext } from './client.js';
 import { issueId } from '../../utils/id.js';
 
 const SYSTEM_PROMPT = `You are a documentation completeness checker. You identify important setup steps, configuration options, or features that exist in the codebase but are missing from the documentation.
@@ -30,7 +30,7 @@ export class CompletenessAnalyzer implements AiAnalyzer {
       const prompt = `Review this documentation for completeness. What important information is present in the codebase but missing from the docs?\n\n${context}`;
 
       try {
-        const response = await askClaude(prompt, ctx.config.ai.model, SYSTEM_PROMPT);
+        const response = await askAI(prompt, ctx.config.ai.model, SYSTEM_PROMPT);
         const parsed = JSON.parse(response) as AiIssue[];
 
         for (const ai of parsed) {

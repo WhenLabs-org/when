@@ -6,7 +6,7 @@ branding:
 
 inputs:
   deep:
-    description: 'Enable AI-powered deep analysis (requires ANTHROPIC_API_KEY secret)'
+    description: 'Enable AI-powered deep analysis (requires STALE_AI_KEY secret)'
     required: false
     default: 'false'
   fail-on:

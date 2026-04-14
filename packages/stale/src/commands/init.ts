@@ -28,7 +28,7 @@ checks:
   dependencies: true
   apiRoutes: true
 
-# AI-powered analysis (requires ANTHROPIC_API_KEY)
+# AI-powered analysis (requires STALE_AI_KEY)
 ai:
   enabled: false
   model: sonnet  # sonnet or opus

@@ -61,8 +61,8 @@ export async function scanCommand(options: CliFlags): Promise<DriftReport> {
 
   // Run AI analyzers if enabled
   if (config.ai.enabled) {
-    if (!process.env.ANTHROPIC_API_KEY) {
-      console.error('Error: --deep requires ANTHROPIC_API_KEY environment variable');
+    if (!process.env.STALE_AI_KEY) {
+      console.error('Error: --deep requires STALE_AI_KEY environment variable');
       process.exit(1);
     }
     const aiAnalyzers = getAiAnalyzers(config);

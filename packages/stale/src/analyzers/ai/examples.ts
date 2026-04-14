@@ -1,5 +1,5 @@
 import type { AiAnalyzer, AnalyzerContext, DriftIssue } from '../../types.js';
-import { askClaude, buildContext } from './client.js';
+import { askAI, buildContext } from './client.js';
 import { issueId } from '../../utils/id.js';
 
 const SYSTEM_PROMPT = `You are a code example freshness checker. You compare code examples in documentation against the actual codebase patterns to identify outdated examples.
@@ -46,7 +46,7 @@ export class ExamplesAnalyzer implements AiAnalyzer {
       const prompt = `Check if these code examples from the documentation are up-to-date with the codebase patterns.\n\n${context}\n\n## Code Examples:\n${examplesText}`;
 
       try {
-        const response = await askClaude(prompt, ctx.config.ai.model, SYSTEM_PROMPT);
+        const response = await askAI(prompt, ctx.config.ai.model, SYSTEM_PROMPT);
         const parsed = JSON.parse(response) as AiIssue[];
 
         for (const ai of parsed) {

@@ -16,7 +16,7 @@ program
 program
   .command('scan')
   .description('Scan for documentation drift')
-  .option('-d, --deep', 'Enable AI-powered deep analysis (requires ANTHROPIC_API_KEY)')
+  .option('-d, --deep', 'Enable AI-powered deep analysis (requires STALE_AI_KEY)')
   .option('-f, --format <format>', 'Output format: terminal, json, markdown, sarif', 'terminal')
   .option('-c, --config <path>', 'Path to config file')
   .option('-p, --path <path>', 'Project path (default: current directory)')

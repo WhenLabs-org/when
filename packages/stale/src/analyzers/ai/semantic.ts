@@ -1,5 +1,5 @@
 import type { AiAnalyzer, AnalyzerContext, DriftIssue } from '../../types.js';
-import { askClaude, buildContext } from './client.js';
+import { askAI, buildContext } from './client.js';
 import { issueId } from '../../utils/id.js';
 
 const SYSTEM_PROMPT = `You are a documentation drift detector. You analyze documentation sections against actual codebase facts to find inaccuracies.
@@ -36,7 +36,7 @@ export class SemanticAnalyzer implements AiAnalyzer {
         const prompt = `Analyze this documentation section for inaccuracies compared to the actual codebase facts.\n\n${context}`;
 
         try {
-          const response = await askClaude(prompt, ctx.config.ai.model, SYSTEM_PROMPT);
+          const response = await askAI(prompt, ctx.config.ai.model, SYSTEM_PROMPT);
           const parsed = JSON.parse(response) as AiIssue[];
 
           for (const ai of parsed) {

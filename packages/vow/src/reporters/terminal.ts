@@ -1,0 +1,160 @@
+import chalk from 'chalk';
+import Table from 'cli-table3';
+import type { ScanResult } from '../types.js';
+import type { CheckResult, PackageCheckResult } from '../policy/types.js';
+
+export interface FixSuggestion {
+  packageName: string;
+  packageVersion: string;
+  license: string;
+  alternatives: Array<{
+    name: string;
+    version: string;
+    license: string;
+    weeklyDownloads: number;
+    description: string;
+  }>;
+}
+
+export function reportScanSummary(result: ScanResult): string {
+  const lines: string[] = [];
+
+  lines.push('');
+  lines.push(chalk.bold(`── License Summary ${'─'.repeat(42)}`));
+  lines.push('');
+
+  // Sort licenses by count descending
+  const sorted = [...result.summary.byLicense.entries()]
+    .sort((a, b) => b[1] - a[1]);
+
+  const table = new Table({
+    head: ['License', 'Count', '%'],
+    colAligns: ['left', 'right', 'right'],
+    style: { head: ['cyan'], border: ['gray'] },
+  });
+
+  for (const [license, count] of sorted) {
+    const pct = ((count / result.summary.total) * 100).toFixed(1);
+    table.push([license, count.toString(), `${pct}%`]);
+  }
+
+  lines.push(table.toString());
+  lines.push('');
+  lines.push(`  Total: ${chalk.bold(result.summary.total.toString())} packages across ${result.ecosystems.join(', ')}`);
+
+  // Attention section
+  const attention: string[] = [];
+  const copyleftCount = (result.summary.byCategory.get('strongly-copyleft') ?? 0)
+    + (result.summary.byCategory.get('network-copyleft') ?? 0);
+
+  if (copyleftCount > 0) {
+    attention.push(`  ${chalk.red('✗')} ${copyleftCount} packages with copyleft licenses`);
+  }
+  if (result.summary.unknown > 0) {
+    attention.push(`  ${chalk.yellow('⚠')} ${result.summary.unknown} packages with unknown license`);
+  }
+  if (result.summary.custom > 0) {
+    attention.push(`  ${chalk.yellow('⚠')} ${result.summary.custom} packages with custom/non-SPDX license`);
+  }
+
+  if (attention.length > 0) {
+    lines.push('');
+    lines.push(chalk.bold(`── Attention Required ${'─'.repeat(39)}`));
+    lines.push(...attention);
+  }
+
+  lines.push('');
+  return lines.join('\n');
+}
+
+export function reportCheckResult(result: CheckResult): string {
+  const lines: string[] = [];
+
+  lines.push('');
+  lines.push(`Policy: ${chalk.bold(result.policy.rules.length.toString())} rules`);
+  lines.push('');
+
+  if (result.blocked.length > 0) {
+    lines.push(chalk.bold.red(`── Policy Violations ${'─'.repeat(40)}`));
+    lines.push('');
+    lines.push(chalk.bold.red('BLOCKED:'));
+
+    for (const item of result.blocked) {
+      lines.push(formatViolation(item, 'block'));
+    }
+    lines.push('');
+  }
+
+  if (result.warnings.length > 0) {
+    lines.push(chalk.bold.yellow('WARNINGS:'));
+
+    for (const item of result.warnings) {
+      lines.push(formatViolation(item, 'warn'));
+    }
+    lines.push('');
+  }
+
+  lines.push(chalk.bold(`── Result ${'─'.repeat(51)}`));
+  if (result.blocked.length > 0) {
+    lines.push(`  ${chalk.red.bold(result.blocked.length.toString())} blocked ${result.blocked.length === 1 ? '(build will fail in CI)' : '(build will fail in CI)'}`);
+  }
+  if (result.warnings.length > 0) {
+    lines.push(`  ${chalk.yellow.bold(result.warnings.length.toString())} warnings (manual review needed)`);
+  }
+  lines.push(`  ${chalk.green.bold(result.allowed.length.toString())} passed`);
+  lines.push('');
+
+  return lines.join('\n');
+}
+
+function formatViolation(item: PackageCheckResult, level: 'block' | 'warn'): string {
+  const icon = level === 'block' ? chalk.red('✗') : chalk.yellow('⚠');
+  const licenseStr = item.pkg.license.spdxExpression ?? 'UNKNOWN';
+  const lines: string[] = [];
+
+  lines.push(`  ${icon} ${chalk.bold(item.pkg.name)}@${item.pkg.version} (${licenseStr})`);
+
+  if (item.dependencyPath.length > 0) {
+    lines.push(`    └── Required by: ${item.dependencyPath.join(' → ')}`);
+  }
+
+  if (item.matchedRule) {
+    lines.push(`    Rule: "${item.matchedRule.originalText}"`);
+  }
+
+  lines.push(`    Impact: ${item.pkg.dependencyType === 'production' ? 'Direct' : 'Transitive'} dependency`);
+
+  return lines.join('\n');
+}
+
+export function reportFixSuggestions(suggestions: FixSuggestion[]): string {
+  const lines: string[] = [];
+
+  for (const suggestion of suggestions) {
+    lines.push(`For ${chalk.bold(suggestion.packageName)}@${suggestion.packageVersion} (${chalk.red(suggestion.license)}):`);
+
+    if (suggestion.alternatives.length === 0) {
+      lines.push(`  No alternatives found`);
+    } else {
+      lines.push(`  Alternative packages:`);
+      for (const alt of suggestion.alternatives) {
+        const downloads = formatDownloads(alt.weeklyDownloads);
+        lines.push(`  → ${chalk.green(alt.name)} (${alt.license}) — ${downloads} weekly downloads`);
+        if (alt.description) {
+          lines.push(`    ${chalk.gray(alt.description.slice(0, 80))}`);
+        }
+      }
+    }
+    lines.push('');
+  }
+
+  lines.push(chalk.gray('Note: Suggested packages may not be drop-in replacements. Please review before switching.'));
+
+  return lines.join('\n');
+}
+
+function formatDownloads(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
+  return n.toString();
+}

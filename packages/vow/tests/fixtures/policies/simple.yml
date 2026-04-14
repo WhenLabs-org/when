@@ -1,0 +1,4 @@
+policy: |
+  Allow MIT, Apache-2.0, ISC, BSD-2-Clause, and BSD-3-Clause.
+  Block GPL and AGPL licenses.
+  Warn on any license not explicitly mentioned above.

@@ -1,0 +1,50 @@
+{
+  "name": "stale-cli",
+  "version": "0.1.0",
+  "description": "Detect documentation drift in your codebase",
+  "type": "module",
+  "bin": {
+    "stale": "./dist/cli.js"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx src/cli.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint src/"
+  },
+  "keywords": [
+    "documentation",
+    "drift",
+    "stale",
+    "lint",
+    "cli"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.88.0",
+    "chalk": "^5.4.1",
+    "boxen": "^8.0.1",
+    "commander": "^14.0.0",
+    "fast-glob": "^3.3.3",
+    "fastest-levenshtein": "^1.0.16",
+    "handlebars": "^4.7.8",
+    "mdast-util-to-string": "^4.0.0",
+    "remark-parse": "^11.0.0",
+    "semver": "^7.7.1",
+    "simple-git": "^3.27.0",
+    "unified": "^11.0.5",
+    "unist-util-visit": "^5.0.0",
+    "yaml": "^2.7.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.17.0",
+    "@types/semver": "^7.5.8",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0",
+    "vitest": "^3.1.0"
+  }
+}

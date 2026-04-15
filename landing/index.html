@@ -436,7 +436,7 @@ footer a:hover{color:var(--accent)}
   <!-- Warm glow that follows cursor -->
   <div class="hero-glow" aria-hidden="true"></div>
 
-  <div class="hero-badge"><span class="dot"></span> v0.9.2 &middot; Free &amp; open source &middot; MIT</div>
+  <div class="hero-badge"><span class="dot"></span> v0.10.0 &middot; Free &amp; open source &middot; MIT</div>
   <h1>Six tools.<br><em>One install.</em></h1>
   <p class="hero-sub">A unified developer toolkit for AI-assisted workflows. Task timing, doc drift detection, env validation, secret scanning, port conflict resolution, AI context generation, and license auditing — one MCP server, one install.</p>
   <div class="hero-install" onclick="copyInstall(this)" role="button" tabindex="0" onkeydown="if(event.key==='Enter')copyInstall(this)">
@@ -478,7 +478,7 @@ footer a:hover{color:var(--accent)}
           <span class="tool-badge mcp">MCP</span>
           <span class="tool-badge cli">CLI</span>
         </div>
-        <div class="tool-desc">Detect and auto-fix documentation drift. Catches wrong file paths, dead links, phantom env vars, and outdated scripts &mdash; then generates fixes you can apply with one command.</div>
+        <div class="tool-desc">Detect and auto-fix documentation drift. Catches wrong file paths, dead links, phantom env vars, and outdated scripts. One-shot <em>stale_auto_fix</em> scans and applies fixes in a single call.</div>
         <div class="tool-cmd"><span class="prompt">$</span> when stale scan</div>
       </div>
 
@@ -498,7 +498,7 @@ footer a:hover{color:var(--accent)}
           <span class="tool-badge mcp">MCP</span>
           <span class="tool-badge cli">CLI</span>
         </div>
-        <div class="tool-desc">Detect, predict, and auto-resolve port conflicts. Scans .env, docker-compose, and package.json to find collisions &mdash; then kills or reassigns ports automatically.</div>
+        <div class="tool-desc">Detect, predict, and auto-resolve port conflicts. Scans .env, docker-compose, and package.json to find collisions. One-shot <em>berth_auto_resolve</em> detects and fixes in a single call.</div>
         <div class="tool-cmd"><span class="prompt">$</span> when berth status</div>
       </div>
 
@@ -618,6 +618,13 @@ footer a:hover{color:var(--accent)}
 <span class="result">  <span class="info">Stack:</span>    Node.js + TypeScript + React</span>
 <span class="result">  <span class="info">Package:</span>  npm (347 deps)</span>
 <span class="result"></span>
+<span class="result"><span class="dim">  Bootstrap</span></span>
+<span class="result">  <span class="ok">+</span> Created .env.schema</span>
+<span class="result">  <span class="ok">+</span> Created .vow.json <span class="dim">(opensource)</span></span>
+<span class="result">  <span class="ok">+</span> Created .stale.yml</span>
+<span class="result">  <span class="ok">+</span> Generated .whenlabs.yml</span>
+<span class="result"></span>
+<span class="result"><span class="dim">  Scan</span></span>
 <span class="result">  <span class="ok">&#10003;</span> stale     <span class="dim">No doc drift</span></span>
 <span class="result">  <span class="warn">!</span> envalid   <span class="warn">2 undocumented env vars</span></span>
 <span class="result">  <span class="ok">&#10003;</span> berth     <span class="dim">No port conflicts</span></span>

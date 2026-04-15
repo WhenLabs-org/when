@@ -51,19 +51,27 @@ These tools are available to Claude in every session after install:
 | `velocity_history` | Show task history |
 | `stale_scan` | Detect documentation drift |
 | `stale_fix` | Auto-fix documentation drift (wrong paths, dead links, phantom env vars) |
+| `stale_auto_fix` | Scan + auto-fix drift in one call |
 | `envalid_validate` | Validate .env files against schemas |
 | `envalid_detect` | Find undocumented env vars in codebase |
 | `envalid_generate_schema` | Generate .env.schema from code analysis |
+| `envalid_auto_fix` | Detect undocumented vars + auto-generate schema entries |
 | `berth_status` | Show active ports and conflicts |
 | `berth_check` | Scan project for port conflicts |
 | `berth_resolve` | Auto-resolve port conflicts (kill or reassign) |
+| `berth_auto_resolve` | Check + auto-resolve conflicts in one call |
 | `aware_init` | Auto-detect stack, generate AI context files |
 | `aware_doctor` | Diagnose project health and config issues |
+| `aware_auto_sync` | Diagnose + auto-sync stale AI context files |
 | `vow_scan` | Scan and summarize dependency licenses |
 | `vow_check` | Validate licenses against policy |
 | `vow_hook_install` | Install pre-commit license check hook |
 
 > This table shows a highlights subset. Run `when <tool> --help` for all available commands per tool.
+
+### Cross-tool Intelligence
+
+Tools automatically suggest follow-up actions when they detect issues relevant to other tools. For example, `aware_init` triggers a `stale_scan` when it generates new files, and `envalid_detect` suggests `berth_register` when it finds service URL env vars. These cascading suggestions surface as "Tip:" lines in tool output.
 
 ## Multi-Editor Support
 
@@ -83,7 +91,10 @@ Without flags, `install` targets Claude Code only.
 You can also run tools directly from the command line:
 
 ```bash
-when init            # Onboard a project — detect stack, run all tools
+when init            # Onboard a project — bootstrap configs, run all tools, auto-fix
+when config          # Show unified .whenlabs.yml config
+when config init     # Generate .whenlabs.yml from existing tool configs
+when config validate # Validate config structure
 when stale scan
 when stale fix       # Auto-fix documentation drift
 when envalid validate
@@ -102,7 +113,15 @@ when ci              # Run checks for CI (exits 1 on issues)
 
 ### `when init`
 
-One command to onboard any project. Auto-detects your stack, runs all 5 CLI tools in parallel, generates AI context files if missing, and shows a summary with next steps.
+One command to fully onboard any project:
+1. **Bootstrap** — creates `.env.schema`, `.vow.json`, `.stale.yml`, and registers berth ports based on your project
+2. **Scan** — runs all 5 CLI tools in parallel
+3. **Auto-fix** — automatically fixes stale drift if detected
+4. **Config** — generates a unified `.whenlabs.yml` from the bootstrapped configs
+
+### `when config`
+
+Manage the unified `.whenlabs.yml` project config. All six tools read their settings from this single file instead of separate config files. Subcommands: `init` (generate from existing configs), `validate` (check structure).
 
 ### `when doctor`
 

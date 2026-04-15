@@ -152,4 +152,27 @@ export function registerEnvalidTools(server: McpServer): void {
       return { content: [{ type: 'text' as const, text: output }] };
     },
   );
+
+  server.tool(
+    'envalid_auto_fix',
+    'Detect undocumented env vars and auto-generate schema entries',
+    {
+      path: z.string().optional().describe('Project directory (defaults to cwd)'),
+    },
+    async ({ path }) => {
+      const detectResult = await runCli('envalid', ['detect'], path);
+      const detectOutput = formatOutput(detectResult);
+      writeCache('envalid_detect', deriveProject(path), detectOutput, detectResult.code);
+
+      const hasUndocumented = /undocumented|missing from schema/i.test(detectOutput);
+      if (hasUndocumented) {
+        const generateResult = await runCli('envalid', ['detect', '--generate'], path);
+        const generateOutput = formatOutput(generateResult);
+        const combined = `${detectOutput}\n--- Auto-generated schema entries ---\n${generateOutput}`;
+        return { content: [{ type: 'text' as const, text: combined }] };
+      }
+
+      return { content: [{ type: 'text' as const, text: detectOutput }] };
+    },
+  );
 }

@@ -6,6 +6,16 @@ Detect documentation drift in your codebase. Stale cross-references what your RE
 
 Documentation rots silently. README says `npm run dev` but the script was renamed months ago. Docs reference `src/config/database.js` but the file was moved to TypeScript. Setup instructions say "requires Node 16+" but `package.json` has `engines: ">=20"`. Stale catches all of this automatically.
 
+## Why stale?
+
+| | stale | Manual checking | Generic linters |
+|---|---|---|---|
+| Detects semantic drift | Compares code behavior vs docs | Hope someone notices | Checks formatting, not accuracy |
+| Cross-references code | Validates commands, paths, env vars, versions against source | Requires reading every file | No codebase awareness |
+| AI-powered deep analysis | Claude finds subtle meaning mismatches | Not scalable | Not available |
+| MCP / Claude Code native | Works as an MCP tool in your editor | N/A | N/A |
+| Zero config | Works out of the box, optional `.stale.yml` | N/A | Requires rule configuration |
+
 ## Features
 
 ### Static Analysis (free, no API key)

@@ -1,6 +1,7 @@
 import { join } from 'node:path';
 import { homedir } from 'node:os';
 import { existsSync, readFileSync, writeFileSync, mkdirSync, chmodSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import { registerMcpServer } from '../utils/mcp-config.js';
 import { injectBlock } from '../utils/claude-md.js';
 import { installForEditor, ALL_EDITORS, type EditorName } from '../utils/editor-config.js';
@@ -308,6 +309,24 @@ def run_scans(cwd):
             run_bg(tool, args, cwd)
             break
 
+    # Auto-sync aware when staleness detected
+    aware_cached = read_cache("aware", cwd)
+    if aware_cached:
+        out = aware_cached.get("output", "")
+        code = aware_cached.get("code", 0)
+        if code != 0 or "stale" in out.lower() or "outdated" in out.lower() or "drift" in out.lower() or "never synced" in out.lower():
+            sync_cache = cache_path("aware_sync", cwd)
+            sync_age = 0
+            if sync_cache.exists():
+                try:
+                    sync_age = time.time() - json.loads(sync_cache.read_text()).get("timestamp", 0)
+                except Exception:
+                    sync_age = 99999
+            else:
+                sync_age = 99999
+            if sync_age > 3600:  # Only auto-sync once per hour
+                run_bg("aware_sync", ["npx", "--yes", "@whenlabs/aware", "sync"], cwd)
+
     results = []
     for tool, (_, parser) in scans.items():
         cached = read_cache(tool, cwd)
@@ -453,7 +472,27 @@ export async function install(options: InstallOptions = {}): Promise<void> {
     const slResult = installStatusLine();
     console.log(slResult.installed ? `  ✓ ${slResult.message}` : `  ✗ ${slResult.message}`);
 
-    // 4. Migrate old velocity-mcp standalone markers if present
+    // 4. Run aware init + sync to generate up-to-date AI context files
+    try {
+      const cwd = process.cwd();
+      execFileSync('npx', ['--yes', '@whenlabs/aware', 'init', '--force'], {
+        cwd,
+        stdio: 'pipe',
+        env: { ...process.env, FORCE_COLOR: '0', NO_COLOR: '1' },
+        timeout: 30_000,
+      });
+      execFileSync('npx', ['--yes', '@whenlabs/aware', 'sync'], {
+        cwd,
+        stdio: 'pipe',
+        env: { ...process.env, FORCE_COLOR: '0', NO_COLOR: '1' },
+        timeout: 30_000,
+      });
+      console.log('  ✓ AI context files generated and synced (aware init + sync)');
+    } catch {
+      console.log('  - Skipped aware init (run `when aware init` in a project directory)');
+    }
+
+    // 5. Migrate old velocity-mcp standalone markers if present
     if (hasOldBlock(CLAUDE_MD_PATH)) {
       removeOldBlock(CLAUDE_MD_PATH);
       console.log('  ✓ Removed legacy velocity-mcp markers (migrated to whenlabs block)');

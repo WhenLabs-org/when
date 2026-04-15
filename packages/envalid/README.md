@@ -213,6 +213,37 @@ envalid detect --exclude vendor,tmp     # exclude directories
 
 Supports: `process.env.X` (Node.js), `import.meta.env.X` (Vite), `os.environ` / `os.getenv` (Python), `ENV[]` (Ruby), `os.Getenv` (Go), `env::var` (Rust), `getenv` / `$_ENV` (PHP).
 
+**file:line references** -- `envalid detect` now shows exactly where each undocumented variable is used:
+
+```
+  REDIS_URL (missing from schema)
+    src/cache.ts:14
+    src/workers/queue.ts:7
+```
+
+### `envalid secrets`
+
+Scan your codebase for hardcoded API keys, tokens, and passwords. Reports `file:line` locations but redacts actual values to keep output safe for logs.
+
+```bash
+envalid secrets                       # scan current directory
+envalid secrets -d src                # scan specific directory
+```
+
+```
+  src/config.ts:23    STRIPE_KEY = "sk_live_••••••••"
+  src/email.ts:5      SENDGRID_TOKEN = "SG.••••••••"
+```
+
+### Smart Type Inference
+
+`envalid init` now infers richer types from `.env` values:
+
+- Empty or missing values are marked `required: false` (optional)
+- `PORT`, `*_PORT` variables get `type: port` with range `[1, 65535]`
+- `"true"` / `"false"` values are inferred as `type: boolean`
+- URL-shaped values are inferred as `type: url`
+
 ### `envalid hook`
 
 Manage git pre-commit hooks for automatic validation. The hook runs `envalid validate --ci` before each commit and blocks the commit on failure.

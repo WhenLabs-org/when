@@ -4,6 +4,8 @@
 
 A single installable toolkit that brings six WhenLabs developer tools into your Claude Code / AI coding agent workflow. Once installed, all tools are available as MCP tools in every session — Claude uses them automatically when relevant.
 
+Five tools (stale, envalid, berth, aware, vow) have CLI scan modes and run on a schedule. Velocity is the sixth tool — it is always-on and embedded (SQLite-backed), so it does not have a CLI scan mode and does not appear in `doctor`/`watch`/`init`/`ci` output.
+
 ## Install
 
 ```bash
@@ -61,6 +63,8 @@ These tools are available to Claude in every session after install:
 | `vow_check` | Validate licenses against policy |
 | `vow_hook_install` | Install pre-commit license check hook |
 
+> This table shows a highlights subset. Run `when <tool> --help` for all available commands per tool.
+
 ## Multi-Editor Support
 
 Install MCP servers into other editors alongside Claude Code:
@@ -98,7 +102,7 @@ when ci              # Run checks for CI (exits 1 on issues)
 
 ### `when init`
 
-One command to onboard any project. Auto-detects your stack, runs all 5 tools in parallel, generates AI context files if missing, and shows a summary with next steps.
+One command to onboard any project. Auto-detects your stack, runs all 5 CLI tools in parallel, generates AI context files if missing, and shows a summary with next steps.
 
 ### `when doctor`
 
@@ -106,7 +110,7 @@ Runs all 5 CLI tools against the current project and displays a unified health r
 
 ### `when watch`
 
-Background daemon that runs all 5 tools on intervals and writes results to `~/.whenlabs/status.json`. Powers the Claude Code status line integration. Use `--once` for a single scan or `--interval <seconds>` to customize the schedule.
+Background daemon that runs all 5 CLI tools on intervals and writes results to `~/.whenlabs/status.json`. Powers the Claude Code status line integration. Use `--once` for a single scan or `--interval <seconds>` to customize the schedule.
 
 ### `when ci`
 

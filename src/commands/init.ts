@@ -178,7 +178,7 @@ export function createInitCommand(): Command {
     console.log('');
     process.stdout.write(colorize('  Scanning project…', c.dim) + '\n');
 
-    // Run all tools in parallel
+    // Run all 5 CLI tools in parallel (velocity is embedded/always-on, not scanned here)
     const results = await Promise.all([
       scanStale(cwd),
       scanEnvalid(cwd),

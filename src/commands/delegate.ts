@@ -1,20 +1,6 @@
 import { Command } from 'commander';
 import { spawn } from 'node:child_process';
-import { resolve, dirname } from 'node:path';
-import { existsSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
-
-const __dirname = dirname(fileURLToPath(import.meta.url));
-
-function findBin(name: string): string | null {
-  // __dirname is dist/, go up one level to package root
-  const pkgRoot = resolve(__dirname, '..');
-  const localBin = resolve(pkgRoot, 'node_modules', '.bin', name);
-  if (existsSync(localBin)) return localBin;
-
-  // Fallback: try to resolve from PATH
-  return name;
-}
+import { findBin } from '../utils/find-bin.js';
 
 export function createDelegateCommand(
   name: string,

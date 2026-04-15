@@ -193,6 +193,8 @@ export async function checkAware(): Promise<ToolResult> {
   };
 }
 
+// Runs all 5 CLI tools in parallel. Velocity is the 6th tool but is embedded
+// (SQLite, always-on) and has no CLI scan mode, so it is excluded here.
 export async function runAllChecks(cwd: string): Promise<ToolResult[]> {
   return Promise.all([
     checkStale(cwd),

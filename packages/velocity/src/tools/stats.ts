@@ -3,6 +3,7 @@ import { z } from 'zod';
 import type { TaskQueries } from '../db/queries.js';
 import { CATEGORIES, GROUP_BY_OPTIONS, formatDuration, parseTask, median } from '../types.js';
 import type { Task, StatsBreakdownItem } from '../types.js';
+import { generateInsights } from '../matching/insights.js';
 
 export function registerStats(server: McpServer, queries: TaskQueries): void {
   server.tool(
@@ -95,7 +96,9 @@ export function registerStats(server: McpServer, queries: TaskQueries): void {
       const totalMinutes = totalTime / 60;
       const overallLpm = totalMinutes > 0 && totalLines > 0 ? Math.round((totalLines / totalMinutes) * 10) / 10 : null;
 
-      const result = {
+      const insights = generateInsights(tasks, { lastNDays: days });
+
+      const result: Record<string, unknown> = {
         period: `last ${days} days`,
         total_tasks: tasks.length,
         total_time: formatDuration(totalTime),
@@ -103,6 +106,10 @@ export function registerStats(server: McpServer, queries: TaskQueries): void {
         lines_per_minute: overallLpm,
         breakdown,
       };
+
+      if (insights.length > 0) {
+        result.insights = insights;
+      }
 
       return { content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }] };
     },

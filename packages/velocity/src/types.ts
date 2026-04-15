@@ -94,6 +94,14 @@ export interface SimilarTask {
   weight: number; // similarity * recency multiplier
 }
 
+export type InsightType = 'comparison' | 'trend' | 'pattern';
+
+export interface Insight {
+  type: InsightType;
+  message: string;
+  confidence: 'high' | 'medium' | 'low';
+}
+
 // --- Utility functions ---
 
 export function formatDuration(seconds: number): string {

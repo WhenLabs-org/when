@@ -1,11 +1,18 @@
 import { readFileSync, readdirSync, statSync } from "node:fs";
-import { join, extname } from "node:path";
+import { join, extname, relative } from "node:path";
 import type { EnvSchema } from "../schema/types.js";
+
+export interface FileLocation {
+  file: string;
+  line: number;
+}
 
 export interface DetectionResult {
   usedInCode: string[];
   inSchemaNotUsed: string[];
   usedNotInSchema: string[];
+  /** Map from var name to all file:line locations where it appears */
+  locations: Record<string, FileLocation[]>;
 }
 
 // Patterns that reference env vars across languages/frameworks
@@ -96,7 +103,6 @@ function collectFiles(
 function extractEnvVars(content: string): Set<string> {
   const vars = new Set<string>();
   for (const pattern of ENV_PATTERNS) {
-    // Reset lastIndex for each file
     pattern.lastIndex = 0;
     let match: RegExpExecArray | null;
     while ((match = pattern.exec(content)) !== null) {
@@ -104,6 +110,32 @@ function extractEnvVars(content: string): Set<string> {
     }
   }
   return vars;
+}
+
+function extractEnvVarsWithLocations(
+  content: string,
+  filePath: string,
+  rootDir: string,
+): Map<string, FileLocation[]> {
+  const result = new Map<string, FileLocation[]>();
+  const lines = content.split("\n");
+  const relPath = relative(rootDir, filePath);
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    for (const pattern of ENV_PATTERNS) {
+      pattern.lastIndex = 0;
+      let match: RegExpExecArray | null;
+      while ((match = pattern.exec(line)) !== null) {
+        const varName = match[1];
+        const locations = result.get(varName) ?? [];
+        locations.push({ file: relPath, line: i + 1 });
+        result.set(varName, locations);
+      }
+    }
+  }
+
+  return result;
 }
 
 export function detectEnvUsage(
@@ -114,12 +146,17 @@ export function detectEnvUsage(
   const exclude = options?.exclude ?? DEFAULT_EXCLUDE;
   const files = collectFiles(rootDir, exclude);
   const usedInCode = new Set<string>();
+  const allLocations: Record<string, FileLocation[]> = {};
 
   for (const file of files) {
     const content = readFileSync(file, "utf-8");
-    const vars = extractEnvVars(content);
-    for (const v of vars) {
-      usedInCode.add(v);
+    const fileLocations = extractEnvVarsWithLocations(content, file, rootDir);
+    for (const [varName, locations] of fileLocations) {
+      usedInCode.add(varName);
+      if (!allLocations[varName]) {
+        allLocations[varName] = [];
+      }
+      allLocations[varName].push(...locations);
     }
   }
 
@@ -132,5 +169,6 @@ export function detectEnvUsage(
     usedInCode: [...usedInCode].sort(),
     inSchemaNotUsed: inSchemaNotUsed.sort(),
     usedNotInSchema: usedNotInSchema.sort(),
+    locations: allLocations,
   };
 }

@@ -5,13 +5,25 @@ describe("inferType", () => {
   it("infers boolean", () => {
     expect(inferType("DEBUG", "true").type).toBe("boolean");
     expect(inferType("FLAG", "false").type).toBe("boolean");
-    expect(inferType("TOGGLE", "1").type).toBe("boolean");
-    expect(inferType("OFF", "0").type).toBe("boolean");
+    // "1" and "0" are inferred as integers, not booleans
+    expect(inferType("TOGGLE", "1").type).toBe("integer");
+    expect(inferType("OFF", "0").type).toBe("integer");
   });
 
   it("infers integer", () => {
     expect(inferType("PORT", "3000").type).toBe("integer");
     expect(inferType("COUNT", "-5").type).toBe("integer");
+  });
+
+  it("infers port with range constraint", () => {
+    const result = inferType("SERVER_PORT", "8080");
+    expect(result.type).toBe("integer");
+    expect(result.range).toEqual([1, 65535]);
+  });
+
+  it("marks empty values as not required", () => {
+    const result = inferType("OPTIONAL_VAR", "");
+    expect(result.required).toBe(false);
   });
 
   it("infers float", () => {

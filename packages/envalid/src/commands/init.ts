@@ -6,18 +6,33 @@ import { writeFileSync } from "node:fs";
 
 const SENSITIVE_PATTERN = /secret|key|token|password|api_key|private/i;
 
+const PORT_PATTERN = /port/i;
+
 export function inferType(
   key: string,
   value: string,
 ): Partial<VariableSchema> & { type: SchemaValueType } {
+  // Empty value means optional
+  if (value === "") {
+    const sensitive = SENSITIVE_PATTERN.test(key);
+    // Even with empty value, check if the key name suggests a type
+    if (PORT_PATTERN.test(key)) {
+      return { type: "integer", required: false, range: [1, 65535], ...(sensitive ? { sensitive: true } : {}) };
+    }
+    return { type: "string", required: false, ...(sensitive ? { sensitive: true } : {}) };
+  }
+
   // Check specific patterns first (order matters)
   if (
     value.toLowerCase() === "true" ||
-    value.toLowerCase() === "false" ||
-    value === "1" ||
-    value === "0"
+    value.toLowerCase() === "false"
   ) {
     return { type: "boolean", required: true };
+  }
+
+  // PORT in key name with numeric value -> integer with port range
+  if (PORT_PATTERN.test(key) && /^\d+$/.test(value)) {
+    return { type: "integer", required: true, range: [1, 65535] };
   }
 
   if (/^-?\d+$/.test(value) && Number.isInteger(Number(value))) {

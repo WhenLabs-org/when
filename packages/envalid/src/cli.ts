@@ -15,6 +15,7 @@ import {
   runHookStatus,
 } from "./commands/hook.js";
 import { detectEnvUsage } from "./env/detector.js";
+import { scanSecrets } from "./commands/secrets.js";
 import { EnvalidError } from "./errors.js";
 
 const program = new Command();
@@ -176,6 +177,11 @@ program
   .option("-s, --schema <path>", "Path to .env.schema", ".env.schema")
   .option("-d, --dir <path>", "Root directory to scan", ".")
   .option("--exclude <dirs>", "Comma-separated directories to exclude")
+  .option(
+    "-f, --format <format>",
+    "Output format: terminal, json",
+    "terminal",
+  )
   .action((options) => {
     const schema = parseSchemaFile(options.schema);
     const exclude = options.exclude
@@ -185,6 +191,11 @@ program
       exclude,
     });
 
+    if (options.format === "json") {
+      console.log(JSON.stringify(result, null, 2));
+      return;
+    }
+
     console.log("");
     if (result.usedNotInSchema.length > 0) {
       console.log(
@@ -193,7 +204,13 @@ program
         ),
       );
       for (const v of result.usedNotInSchema) {
-        console.log(`    ${chalk.yellow("+")} ${v}`);
+        const locs = result.locations[v];
+        const locStr = locs
+          ? locs.map((l) => `${l.file}:${l.line}`).join(", ")
+          : "";
+        console.log(
+          `    ${chalk.yellow("+")} ${v}${locStr ? chalk.dim(`  used at ${locStr}`) : ""}`,
+        );
       }
       console.log("");
     }
@@ -224,6 +241,52 @@ program
         `  Found ${result.usedInCode.length} env vars referenced in code`,
       ),
     );
+  });
+
+// --- secrets ---
+program
+  .command("secrets")
+  .description("Scan committed files for leaked secrets")
+  .option("-d, --dir <path>", "Root directory to scan", ".")
+  .option("--exclude <dirs>", "Comma-separated directories to exclude")
+  .option(
+    "-f, --format <format>",
+    "Output format: terminal, json",
+    "terminal",
+  )
+  .action((options) => {
+    const exclude = options.exclude
+      ? (options.exclude as string).split(",").map((s: string) => s.trim())
+      : undefined;
+    const result = scanSecrets(options.dir, { exclude });
+
+    if (options.format === "json") {
+      console.log(JSON.stringify(result, null, 2));
+      return;
+    }
+
+    console.log("");
+    if (result.findings.length > 0) {
+      console.log(
+        chalk.red(
+          `  ⚠ Found ${result.findings.length} potential secret(s):`,
+        ),
+      );
+      console.log("");
+      for (const f of result.findings) {
+        console.log(
+          `    ${chalk.red("!")} ${chalk.bold(f.variable)} at ${chalk.dim(`${f.file}:${f.line}`)} ${chalk.dim(`[${f.pattern}]`)}`,
+        );
+      }
+      console.log("");
+    } else {
+      console.log(chalk.green("  ✓ No secrets detected"));
+    }
+
+    console.log(
+      chalk.dim(`  Scanned ${result.filesScanned} files`),
+    );
+    if (result.findings.length > 0) process.exit(1);
   });
 
 // Global error handling

@@ -443,9 +443,9 @@ footer a:hover{color:var(--accent)}
   <!-- Warm glow that follows cursor -->
   <div class="hero-glow" aria-hidden="true"></div>
 
-  <div class="hero-badge"><span class="dot"></span> Free &amp; open source &middot; MIT</div>
+  <div class="hero-badge"><span class="dot"></span> v0.7.2 &middot; Free &amp; open source &middot; MIT</div>
   <h1>Six tools.<br><em>One install.</em></h1>
-  <p class="hero-sub">A unified developer toolkit for AI-assisted workflows. Time your tasks, validate your configs, scan your ports, audit your licenses — all from a single CLI.</p>
+  <p class="hero-sub">A unified developer toolkit for AI-assisted workflows. Task timing, doc drift detection, env validation, secret scanning, port conflict resolution, AI context generation, and license auditing — two MCP servers, one install.</p>
   <div class="hero-install" onclick="copyInstall(this)" role="button" tabindex="0" onkeydown="if(event.key==='Enter')copyInstall(this)">
     <span><span class="prompt">$</span> npx @whenlabs/when install</span>
     <span class="copy-hint">Click to copy</span>
@@ -472,54 +472,59 @@ footer a:hover{color:var(--accent)}
       <div class="tool-card">
         <div class="tool-header">
           <div class="tool-name">velocity</div>
-          <span class="tool-badge mcp">MCP Server</span>
+          <span class="tool-badge mcp">MCP</span>
         </div>
-        <div class="tool-desc">Task timing and estimation for coding agents. Builds a local history so your agent knows its own speed.</div>
-        <div class="tool-cmd"><span class="prompt">$</span> when velocity stats</div>
+        <div class="tool-desc">Task timing and estimation for coding agents. Builds a local SQLite history so your agent learns its own speed and gives data-backed ETAs.</div>
+        <div class="tool-cmd"><span class="prompt">$</span> velocity_start_task &middot; velocity_estimate</div>
       </div>
 
       <div class="tool-card">
         <div class="tool-header">
           <div class="tool-name">stale</div>
+          <span class="tool-badge mcp">MCP</span>
           <span class="tool-badge cli">CLI</span>
         </div>
-        <div class="tool-desc">Detect documentation drift in your codebase. Flags docs that haven't kept up with code changes.</div>
-        <div class="tool-cmd"><span class="prompt">$</span> when stale check</div>
+        <div class="tool-desc">Detect documentation drift. Catches wrong file paths, dead links, phantom env vars, outdated npm scripts, and port mismatches in your docs.</div>
+        <div class="tool-cmd"><span class="prompt">$</span> when stale scan</div>
       </div>
 
       <div class="tool-card">
         <div class="tool-header">
           <div class="tool-name">envalid</div>
+          <span class="tool-badge mcp">MCP</span>
           <span class="tool-badge cli">CLI</span>
         </div>
-        <div class="tool-desc">Validate .env files against a type-safe schema. Catch missing or malformed environment variables before they hit prod.</div>
-        <div class="tool-cmd"><span class="prompt">$</span> when envalid check</div>
+        <div class="tool-desc">Validate .env files against a typed schema. Cross-env sync checks, secret leak scanning, and detection of undocumented env vars in code.</div>
+        <div class="tool-cmd"><span class="prompt">$</span> when envalid validate</div>
       </div>
 
       <div class="tool-card">
         <div class="tool-header">
           <div class="tool-name">berth</div>
+          <span class="tool-badge mcp">MCP</span>
           <span class="tool-badge cli">CLI</span>
         </div>
-        <div class="tool-desc">Detect and resolve port conflicts. Find what's running on a port and free it up — no more EADDRINUSE surprises.</div>
-        <div class="tool-cmd"><span class="prompt">$</span> when berth scan</div>
+        <div class="tool-desc">Detect and resolve port conflicts. Scans .env, docker-compose, and package.json to find collisions before you hit EADDRINUSE.</div>
+        <div class="tool-cmd"><span class="prompt">$</span> when berth status</div>
       </div>
 
       <div class="tool-card">
         <div class="tool-header">
           <div class="tool-name">aware</div>
+          <span class="tool-badge mcp">MCP</span>
           <span class="tool-badge cli">CLI</span>
         </div>
-        <div class="tool-desc">Auto-detect your stack and generate AI context files. Gives your coding agent a map of your project from day one.</div>
-        <div class="tool-cmd"><span class="prompt">$</span> when aware scan</div>
+        <div class="tool-desc">Auto-detect your stack and generate AI context files for Claude Code, Cursor, GitHub Copilot, and AGENTS.md — all from one config.</div>
+        <div class="tool-cmd"><span class="prompt">$</span> when aware init --targets all</div>
       </div>
 
       <div class="tool-card">
         <div class="tool-header">
           <div class="tool-name">vow</div>
+          <span class="tool-badge mcp">MCP</span>
           <span class="tool-badge cli">CLI</span>
         </div>
-        <div class="tool-desc">Scan dependency licenses and validate against policies. Enforce allowlists before a non-compliant dep sneaks into prod.</div>
+        <div class="tool-desc">Scan dependency licenses and validate against plain-English or JSON policies. Generate attribution files and find compliant replacements.</div>
         <div class="tool-cmd"><span class="prompt">$</span> when vow scan</div>
       </div>
 
@@ -533,28 +538,28 @@ footer a:hover{color:var(--accent)}
     <div class="section-label">How it works</div>
     <div class="section-title">Install once. Use everywhere.</div>
     <p style="color:var(--text-dim);font-size:0.85rem;max-width:550px;line-height:1.7;margin-bottom:0">
-      One package installs six tools. Each tool works standalone from the CLI. <em>velocity</em> also wires up as an MCP server so your coding agent gets real-time task timing and historical estimates.
+      One package registers two MCP servers and gives your agent 30+ tools. Works with Claude Code, Cursor, VS Code, and Windsurf. Also installs a standalone CLI.
     </p>
     <div class="steps">
       <div class="step">
         <div class="step-num">1</div>
         <div>
           <h3>Install</h3>
-          <p>Run one command to install the full toolkit. All six tools are available immediately as <code style="color:var(--accent);background:var(--surface-2);border:1px solid var(--border);border-radius:4px;padding:0.15rem 0.4rem;font-size:0.8rem">when &lt;tool&gt;</code> subcommands.</p>
+          <p>One command registers two MCP servers (<em>velocity-mcp</em> and <em>whenlabs</em>) and writes CLAUDE.md instructions. All six tools are available immediately as <code style="color:var(--accent);background:var(--surface-2);border:1px solid var(--border);border-radius:4px;padding:0.15rem 0.4rem;font-size:0.8rem">when &lt;tool&gt;</code> subcommands and as MCP tools your agent calls automatically.</p>
         </div>
       </div>
       <div class="step">
         <div class="step-num">2</div>
         <div>
           <h3>Use</h3>
-          <p>Run tools from your terminal or let your coding agent call them. <em>velocity</em> hooks into Claude Code or any MCP-compatible client to time every discrete task your agent performs.</p>
+          <p>Your agent calls the right tool at the right time. After a refactor, it runs <em>stale scan</em> to catch doc drift. Before a release, <em>vow check</em> validates licenses. Before starting dev, <em>berth check</em> finds port conflicts. Run <code style="color:var(--accent);background:var(--surface-2);border:1px solid var(--border);border-radius:4px;padding:0.15rem 0.4rem;font-size:0.8rem">when doctor</code> for a unified health report.</p>
         </div>
       </div>
       <div class="step">
         <div class="step-num">3</div>
         <div>
           <h3>Improve</h3>
-          <p>Every timed task builds your velocity profile in a local SQLite database. Your agent uses this history to give data-backed ETAs on future plans — the flywheel compounds over sessions.</p>
+          <p>Background scans run on a schedule and surface issues in your status line. Every timed task builds your velocity profile so your agent can estimate future plans. The whole toolkit compounds over sessions — zero maintenance.</p>
         </div>
       </div>
     </div>
@@ -661,6 +666,11 @@ footer a:hover{color:var(--accent)}
         <div class="proactive-detail">4 packages with unknown licenses. Claude runs a deep scan.</div>
         <div class="proactive-interval">Every 60 min</div>
       </div>
+      <div class="proactive-card">
+        <div class="proactive-indicator"><span style="color:#eab308">aware:stale</span></div>
+        <div class="proactive-detail">AI context files are outdated. Claude regenerates them from current stack.</div>
+        <div class="proactive-interval">Every 60 min</div>
+      </div>
     </div>
   </div>
 </section>
@@ -698,6 +708,16 @@ footer a:hover{color:var(--accent)}
         <pre><span class="cmd">npm install -g @whenlabs/when</span>
 
 <span class="dim"># All six tools available globally as: when stale / when berth / when vow / ...</span></pre>
+      </div>
+
+      <div class="setup-option">
+        <h3>CI/CD <span class="badge">GitHub Actions</span></h3>
+        <pre><span class="dim"># .github/workflows/ci.yml</span>
+<span class="key">- name:</span> <span class="str">WhenLabs checks</span>
+  <span class="key">uses:</span> <span class="str">WhenLabs-org/when@main</span>
+
+<span class="dim"># Or run directly: exits 1 on issues</span>
+<span class="cmd">npx @whenlabs/when ci</span></pre>
       </div>
 
     </div>

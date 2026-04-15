@@ -1,6 +1,6 @@
 # Berth
 
-Port & Process Conflict Resolver for Developers.
+Port & Process Conflict Resolver for Developers. Part of the [WhenLabs](https://whenlabs.org) toolkit.
 
 See every port your dev environment is using, detect conflicts before they happen, and resolve them with one command. Berth scans your running processes, Docker containers, and project config files to give you a unified view of port usage across your entire local development stack.
 

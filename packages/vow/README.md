@@ -4,6 +4,16 @@ Scan your project's entire dependency tree, resolve the license for every packag
 
 Part of the [WhenLabs](https://whenlabs.org) umbrella.
 
+## Why vow?
+
+| | vow | license-checker | Manually checking |
+|---|---|---|---|
+| Plain-English policies | Write rules in natural language, Claude parses them | JSON config with SPDX IDs | No policy enforcement |
+| Scans transitive deps | Full dependency tree via `package-lock.json` | Direct deps only by default | Impractical at scale |
+| CI-ready with SARIF | Exit codes, JSON/CSV/Markdown/SARIF output | JSON/CSV output | Custom scripting |
+| Fix suggestions | Queries npm for permissively-licensed alternatives | No suggestions | Manual research |
+| Dependency graph | Cycle detection, depth calculation, path-to-root tracing | Flat list | No visibility |
+
 ## Features
 
 - **Full dependency tree scanning** -- Parses `package-lock.json` (v1/v2/v3), handles scoped packages, workspaces, bundled deps, and dev/prod/peer/optional classification

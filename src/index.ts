@@ -1,6 +1,7 @@
 import { Command } from 'commander';
 import { createDelegateCommand } from './commands/delegate.js';
 import { createDoctorCommand } from './commands/doctor.js';
+import { createInitCommand } from './commands/init.js';
 
 const program = new Command();
 
@@ -52,6 +53,7 @@ program
     await ci(options);
   });
 
+program.addCommand(createInitCommand());
 program.addCommand(createDoctorCommand());
 
 // Delegate commands for each tool

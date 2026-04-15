@@ -306,6 +306,48 @@ section{padding:6rem 2rem}
 .output-body .warn{color:#f7a44a}
 .output-body .sub{color:#777780;padding-left:1.5rem}
 
+/* --- TERMINAL TABS --- */
+.terminal-tabs{
+  display:flex;gap:0;margin-top:3rem;margin-bottom:-1px;position:relative;z-index:2;
+}
+.terminal-tab{
+  padding:0.5rem 1.25rem;
+  font-family:var(--mono);font-size:0.72rem;
+  color:var(--text-dim);background:transparent;
+  border:1px solid transparent;border-bottom:none;
+  border-radius:6px 6px 0 0;
+  cursor:pointer;transition:all .2s;
+}
+.terminal-tab:hover{color:var(--text)}
+.terminal-tab.active{
+  background:#111114;color:#e8943a;
+  border-color:var(--border);
+}
+.tab-panel{display:none}
+.tab-panel.active{display:block}
+
+/* --- PROACTIVE --- */
+.proactive{border-top:1px solid var(--border)}
+.proactive-grid{
+  display:grid;grid-template-columns:1fr 1fr;gap:1rem;
+}
+.proactive-card{
+  padding:1.25rem 1.5rem;
+  background:var(--surface);border:1px solid var(--border);border-radius:10px;
+  transition:border-color .2s;
+}
+.proactive-card:hover{border-color:var(--accent)}
+.proactive-indicator{
+  font-family:var(--mono);font-size:0.85rem;font-weight:700;
+  margin-bottom:0.5rem;
+}
+.proactive-detail{font-size:0.78rem;color:var(--text-dim);line-height:1.6;margin-bottom:0.5rem}
+.proactive-interval{font-size:0.65rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.08em}
+
+/* --- SCROLL ANIMATIONS --- */
+.fade-in{opacity:0;transform:translateY(24px);transition:opacity 0.6s ease,transform 0.6s ease}
+.fade-in.visible{opacity:1;transform:translateY(0)}
+
 /* --- SETUP --- */
 .setup .setup-options{
   margin-top:3rem;
@@ -348,6 +390,7 @@ footer a:hover{color:var(--accent)}
 }
 @media(max-width:560px){
   .tools-grid{grid-template-columns:1fr;gap:0.85rem}
+  .proactive-grid{grid-template-columns:1fr}
   .step{grid-template-columns:40px 1fr;gap:1rem}
   nav{padding:0.75rem 1rem}
   .nav-links{gap:1rem}
@@ -373,6 +416,7 @@ footer a:hover{color:var(--accent)}
     <a href="#tools">Tools</a>
     <a href="#how">How</a>
     <a href="#terminal">Preview</a>
+    <a href="#proactive">Proactive</a>
     <a href="#setup">Setup</a>
     <a href="https://github.com/WhenLabs-org/when">GitHub</a>
   </div>
@@ -521,7 +565,15 @@ footer a:hover{color:var(--accent)}
 <section class="terminal-section" id="terminal">
   <div class="container">
     <div class="section-label">Terminal preview</div>
-    <div class="section-title">What <em>when install</em> looks like</div>
+    <div class="section-title">See it in action</div>
+
+    <!-- Tab switcher -->
+    <div class="terminal-tabs">
+      <button class="terminal-tab active" data-tab="tab-install">install</button>
+      <button class="terminal-tab" data-tab="tab-doctor">doctor</button>
+      <button class="terminal-tab" data-tab="tab-init">init</button>
+    </div>
+
     <div class="output-terminal">
       <div class="output-titlebar">
         <div class="output-dot r"></div>
@@ -529,32 +581,85 @@ footer a:hover{color:var(--accent)}
         <div class="output-dot g"></div>
         <span class="output-titlebar-label">zsh</span>
       </div>
-      <div class="output-body">
+
+      <!-- Tab: install -->
+      <div class="output-body tab-panel active" id="tab-install">
 <span class="prompt-line"><span class="prompt-char">$</span> npx @whenlabs/when install</span>
 <br>
-<span class="result"><span class="ok">when</span>  Bootstrapping WhenLabs toolkit...</span>
+<span class="result"><span class="ok">when</span>  WhenLabs toolkit installer</span>
 <span class="result"></span>
-<span class="result"><span class="ok">+</span> velocity   <span class="dim">MCP server registered (npx @whenlabs/velocity)</span></span>
-<span class="result"><span class="ok">+</span> stale      <span class="dim">CLI ready  &rarr;  when stale check</span></span>
-<span class="result"><span class="ok">+</span> envalid    <span class="dim">CLI ready  &rarr;  when envalid check</span></span>
-<span class="result"><span class="ok">+</span> berth      <span class="dim">CLI ready  &rarr;  when berth scan</span></span>
-<span class="result"><span class="ok">+</span> aware      <span class="dim">CLI ready  &rarr;  when aware scan</span></span>
-<span class="result"><span class="ok">+</span> vow        <span class="dim">CLI ready  &rarr;  when vow scan</span></span>
-<br>
-<span class="result"><span class="info">i</span> Appending velocity rules to CLAUDE.md...</span>
-<span class="result"><span class="ok">&#10003;</span> CLAUDE.md updated</span>
-<br>
-<span class="result"><span class="ok">All done.</span> <span class="dim">Run</span> when --help <span class="dim">to get started.</span></span>
-<br><br>
-<span class="prompt-line"><span class="prompt-char">$</span> when berth scan</span>
-<br>
-<span class="result"><span class="info">Scanning active ports...</span></span>
+<span class="result">  <span class="ok">&#10003;</span> MCP server registered: velocity-mcp</span>
+<span class="result">  <span class="ok">&#10003;</span> MCP server registered: whenlabs</span>
+<span class="result">  <span class="ok">&#10003;</span> CLAUDE.md instructions written</span>
 <span class="result"></span>
-<span class="result"><span class="warn">!</span> Port 3000  <span class="dim">node (pid 81234)  &rarr;  your-app</span></span>
-<span class="result"><span class="warn">!</span> Port 5432  <span class="dim">postgres (pid 512)</span></span>
-<span class="result"><span class="ok">+</span> Port 8080  <span class="dim">free</span></span>
+<span class="result"><span class="dim">Installation complete. Run</span> when status <span class="dim">to verify.</span></span>
+      </div>
+
+      <!-- Tab: doctor -->
+      <div class="output-body tab-panel" id="tab-doctor">
+<span class="prompt-line"><span class="prompt-char">$</span> when doctor</span>
+<br>
+<span class="result" style="font-weight:700">  WhenLabs Health Report</span>
+<span class="result"><span class="dim">  ─────────────────────────────────────────</span></span>
+<span class="result">  <span class="ok">&#10003;</span>  stale scan           <span class="ok">No documentation drift detected</span></span>
+<span class="result">  <span class="ok">&#10003;</span>  envalid validate     <span class="ok">.env is valid</span></span>
+<span class="result">  <span style="color:#ef4444">&#10007;</span>  berth check          <span style="color:#ef4444">2 port conflict(s)</span></span>
+<span class="result">  <span class="ok">&#10003;</span>  vow scan             <span class="ok">147 packages, all permissive</span></span>
+<span class="result">  <span class="dim">-</span>  aware doctor         <span class="dim">No .aware.json found — run aware init</span></span>
+<span class="result"><span class="dim">  ─────────────────────────────────────────</span></span>
+<span class="result" style="color:#ef4444;font-weight:700">  2 issue(s), 0 warning(s) found</span>
+      </div>
+
+      <!-- Tab: init -->
+      <div class="output-body tab-panel" id="tab-init">
+<span class="prompt-line"><span class="prompt-char">$</span> when init</span>
+<br>
+<span class="result"><span class="ok">when</span>  Project onboarding</span>
 <span class="result"></span>
-<span class="result"><span class="dim">2 ports in use, 1 available</span></span>
+<span class="result">  <span class="info">Project:</span>  my-saas-app</span>
+<span class="result">  <span class="info">Stack:</span>    Node.js + TypeScript + React</span>
+<span class="result">  <span class="info">Package:</span>  npm (347 deps)</span>
+<span class="result"></span>
+<span class="result">  <span class="ok">&#10003;</span> stale     <span class="dim">No doc drift</span></span>
+<span class="result">  <span class="warn">!</span> envalid   <span class="warn">2 undocumented env vars</span></span>
+<span class="result">  <span class="ok">&#10003;</span> berth     <span class="dim">No port conflicts</span></span>
+<span class="result">  <span class="ok">&#10003;</span> vow       <span class="dim">All licenses permissive</span></span>
+<span class="result">  <span class="ok">&#10003;</span> aware     <span class="dim">Generated CLAUDE.md, .cursorrules</span></span>
+<span class="result"></span>
+<span class="result"><span class="dim">Run</span> when install <span class="dim">to connect MCP tools to your editor.</span></span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PROACTIVE SCANS -->
+<section class="proactive" id="proactive">
+  <div class="container">
+    <div class="section-label">Always watching</div>
+    <div class="section-title">Background scans, zero noise</div>
+    <p style="color:var(--text-dim);font-size:0.85rem;max-width:560px;line-height:1.7;margin-bottom:2.5rem">
+      Once installed, tools run silently in the background and report findings in your editor's status line. Only problems surface — if everything is clean, you see nothing.
+    </p>
+    <div class="proactive-grid">
+      <div class="proactive-card">
+        <div class="proactive-indicator"><span style="color:var(--red)">stale:3</span></div>
+        <div class="proactive-detail">3 docs have drifted from code. Claude offers to fix them.</div>
+        <div class="proactive-interval">Every 30 min</div>
+      </div>
+      <div class="proactive-card">
+        <div class="proactive-indicator"><span style="color:var(--red)">env:1</span></div>
+        <div class="proactive-detail">Missing API_KEY in .env. Claude flags it before you hit a runtime crash.</div>
+        <div class="proactive-interval">Every 30 min</div>
+      </div>
+      <div class="proactive-card">
+        <div class="proactive-indicator"><span style="color:var(--red)">ports:2</span></div>
+        <div class="proactive-detail">Two port conflicts found. Claude suggests which process to kill.</div>
+        <div class="proactive-interval">Every 15 min</div>
+      </div>
+      <div class="proactive-card">
+        <div class="proactive-indicator"><span style="color:#eab308">lic:4?</span></div>
+        <div class="proactive-detail">4 packages with unknown licenses. Claude runs a deep scan.</div>
+        <div class="proactive-interval">Every 60 min</div>
       </div>
     </div>
   </div>
@@ -575,22 +680,17 @@ footer a:hover{color:var(--accent)}
       </div>
 
       <div class="setup-option">
-        <h3>Cursor / VS Code</h3>
-        <pre>{
-  <span class="key">"mcpServers"</span>: {
-    <span class="key">"velocity"</span>: {
-      <span class="key">"command"</span>: <span class="str">"npx"</span>,
-      <span class="key">"args"</span>: [<span class="str">"@whenlabs/velocity"</span>]
-    }
-  }
-}</pre>
+        <h3>Cursor</h3>
+        <pre><span class="cmd">npx @whenlabs/when install --cursor</span>
+
+<span class="dim"># Writes MCP config to ~/.cursor/mcp.json</span></pre>
       </div>
 
       <div class="setup-option">
-        <h3>Any MCP client</h3>
-        <pre><span class="cmd">npx @whenlabs/velocity</span>
-
-<span class="dim"># Runs the velocity MCP server on stdio — compatible with any MCP host.</span></pre>
+        <h3>VS Code / Windsurf</h3>
+        <pre><span class="cmd">npx @whenlabs/when install --vscode</span>
+<span class="cmd">npx @whenlabs/when install --windsurf</span>
+<span class="cmd">npx @whenlabs/when install --all</span>      <span class="dim"># All editors at once</span></pre>
       </div>
 
       <div class="setup-option">
@@ -622,6 +722,28 @@ function copyInstall(el){
   hint.classList.add('copied');
   setTimeout(function(){hint.textContent='Click to copy';hint.classList.remove('copied')},2000);
 }
+
+// Terminal tab switching
+document.querySelectorAll('.terminal-tab').forEach(function(tab){
+  tab.addEventListener('click',function(){
+    document.querySelectorAll('.terminal-tab').forEach(function(t){t.classList.remove('active')});
+    document.querySelectorAll('.tab-panel').forEach(function(p){p.classList.remove('active')});
+    tab.classList.add('active');
+    document.getElementById(tab.dataset.tab).classList.add('active');
+  });
+});
+
+// Scroll-triggered fade-in
+(function(){
+  var els=document.querySelectorAll('.tool-card,.step,.setup-option,.proactive-card');
+  els.forEach(function(el){el.classList.add('fade-in')});
+  var observer=new IntersectionObserver(function(entries){
+    entries.forEach(function(e){
+      if(e.isIntersecting){e.target.classList.add('visible');observer.unobserve(e.target)}
+    });
+  },{threshold:0.15,rootMargin:'0px 0px -40px 0px'});
+  els.forEach(function(el){observer.observe(el)});
+})();
 
 // Flowing blob cursor reveal + scroll fade
 (function(){

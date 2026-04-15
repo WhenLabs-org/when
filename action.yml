@@ -1,0 +1,17 @@
+name: 'WhenLabs CI Check'
+description: 'Run documentation drift, env validation, and license checks'
+inputs:
+  tools:
+    description: 'Comma-separated tools to run'
+    default: 'stale,envalid,vow'
+  fail_on:
+    description: 'Fail on: error, warning, or none'
+    default: 'error'
+runs:
+  using: 'composite'
+  steps:
+    - uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+    - run: npx @whenlabs/when ci --ci
+      shell: bash

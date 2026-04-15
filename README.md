@@ -76,6 +76,7 @@ Without flags, `install` targets Claude Code only.
 You can also run tools directly from the command line:
 
 ```bash
+when init            # Onboard a project — detect stack, run all tools
 when stale scan
 when envalid validate
 when berth status
@@ -85,6 +86,10 @@ when status          # Show installation status
 when doctor          # Run all tools, show unified health report
 when ci              # Run checks for CI (exits 1 on issues)
 ```
+
+### `when init`
+
+One command to onboard any project. Auto-detects your stack, runs all 5 tools in parallel, generates AI context files if missing, and shows a summary with next steps.
 
 ### `when doctor`
 

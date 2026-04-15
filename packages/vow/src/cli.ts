@@ -7,6 +7,7 @@ import { registerExportCommand } from './commands/export.js';
 import { registerCheckCommand } from './commands/check.js';
 import { registerFixCommand } from './commands/fix.js';
 import { registerInitCommand } from './commands/init.js';
+import { registerAttributionCommand } from './commands/attribution.js';
 
 const program = new Command();
 
@@ -20,6 +21,7 @@ registerCheckCommand(program);
 registerTreeCommand(program);
 registerFixCommand(program);
 registerInitCommand(program);
+registerAttributionCommand(program);
 registerExportCommand(program);
 
 program.parseAsync().catch((err: Error) => {

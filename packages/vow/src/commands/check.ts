@@ -6,7 +6,9 @@ import chalk from 'chalk';
 import { executeScan } from './scan.js';
 import { parsePolicy } from '../policy/parser.js';
 import { evaluatePolicy } from '../policy/evaluator.js';
+import { loadJsonPolicy } from '../policy/json-policy.js';
 import type { PolicyConfig } from '../policy/types.js';
+import type { ParsedPolicy, PolicyOverride } from '../policy/types.js';
 import { reportCheckResult } from '../reporters/terminal.js';
 import { toJSON } from '../reporters/json.js';
 import { toMarkdownCheckResult } from '../reporters/markdown.js';
@@ -25,9 +27,9 @@ interface CheckOptions {
 export function registerCheckCommand(program: Command): void {
   program
     .command('check')
-    .description('Validate licenses against a plain-English policy')
+    .description('Validate licenses against a policy (supports .vow.json and .vow.yml)')
     .option('-p, --path <dir>', 'Project directory', '.')
-    .option('--policy <file>', 'Policy file', '.vow.yml')
+    .option('--policy <file>', 'Policy file (default: auto-detect .vow.json then .vow.yml)')
     .option('--ci', 'CI mode: exit code 1 on violations', false)
     .option('--fail-on <level>', 'Fail on: block or warn', 'block')
     .option('--api-key <key>', 'Anthropic API key')
@@ -36,34 +38,42 @@ export function registerCheckCommand(program: Command): void {
     .option('-o, --output <file>', 'Write output to file')
     .action(async (opts: CheckOptions) => {
       const projectPath = path.resolve(opts.path);
-      const policyPath = path.resolve(projectPath, opts.policy);
 
-      // Read policy file
-      let policyConfig: PolicyConfig;
-      try {
-        const content = await readFile(policyPath, 'utf-8');
-        policyConfig = YAML.parse(content) as PolicyConfig;
-      } catch (err) {
-        console.error(chalk.red(`Error: Could not read policy file: ${policyPath}`));
-        console.error(chalk.gray('Run `vow init` to create one.'));
-        process.exit(2);
-      }
+      let parsedPolicy: ParsedPolicy;
+      let overrides: PolicyOverride[] = [];
 
-      if (!policyConfig.policy || typeof policyConfig.policy !== 'string') {
-        console.error(chalk.red('Error: Policy file must contain a "policy" field with text.'));
-        process.exit(2);
-      }
-
-      // Parse policy
-      let parsedPolicy;
-      try {
-        parsedPolicy = await parsePolicy(policyConfig.policy, {
-          apiKey: opts.apiKey,
-        });
-        console.log(chalk.gray(`Policy parsed: ${parsedPolicy.rules.length} rules`));
-      } catch (err) {
-        console.error(chalk.red('Error parsing policy:'), (err as Error).message);
-        process.exit(2);
+      // Try to load policy - auto-detect .vow.json first, then .vow.yml
+      if (opts.policy) {
+        // Explicit policy file specified
+        const policyPath = path.resolve(projectPath, opts.policy);
+        if (opts.policy.endsWith('.json')) {
+          const result = await loadJsonPolicyFromPath(policyPath);
+          parsedPolicy = result.policy;
+        } else {
+          const result = await loadYamlPolicy(policyPath, opts.apiKey);
+          parsedPolicy = result.policy;
+          overrides = result.overrides;
+        }
+      } else {
+        // Auto-detect: try .vow.json first
+        const jsonResult = await loadJsonPolicy(projectPath);
+        if (jsonResult) {
+          parsedPolicy = jsonResult.policy;
+          console.log(chalk.gray('Using policy from .vow.json'));
+        } else {
+          // Fall back to .vow.yml
+          const yamlPath = path.resolve(projectPath, '.vow.yml');
+          try {
+            const result = await loadYamlPolicy(yamlPath, opts.apiKey);
+            parsedPolicy = result.policy;
+            overrides = result.overrides;
+            console.log(chalk.gray('Using policy from .vow.yml'));
+          } catch {
+            console.error(chalk.red('Error: No policy file found (.vow.json or .vow.yml)'));
+            console.error(chalk.gray('Run `vow init` to create one.'));
+            process.exit(2);
+          }
+        }
       }
 
       // Scan
@@ -77,7 +87,7 @@ export function registerCheckCommand(program: Command): void {
       const checkResult = evaluatePolicy(
         scanResult,
         parsedPolicy,
-        policyConfig.overrides ?? [],
+        overrides,
       );
 
       // Output
@@ -104,17 +114,55 @@ export function registerCheckCommand(program: Command): void {
         console.log(output);
       }
 
-      // Exit code
-      if (opts.ci) {
-        const shouldFail = opts.failOn === 'warn'
-          ? checkResult.blocked.length > 0 || checkResult.warnings.length > 0
-          : checkResult.blocked.length > 0;
+      // Exit code — always exit 1 on violations (CI gate behavior)
+      const shouldFail = opts.failOn === 'warn'
+        ? checkResult.blocked.length > 0 || checkResult.warnings.length > 0
+        : checkResult.blocked.length > 0;
 
-        if (shouldFail) {
-          process.exit(1);
-        }
+      if (shouldFail) {
+        process.exit(1);
       }
     });
+}
+
+async function loadJsonPolicyFromPath(filePath: string): Promise<{ policy: ParsedPolicy }> {
+  let content: string;
+  try {
+    content = await readFile(filePath, 'utf-8');
+  } catch {
+    console.error(chalk.red(`Error: Could not read policy file: ${filePath}`));
+    process.exit(2);
+  }
+
+  const { jsonPolicyToParsedPolicy } = await import('../policy/json-policy.js');
+  const raw = JSON.parse(content) as import('../policy/json-policy.js').JsonPolicyFile;
+  return { policy: jsonPolicyToParsedPolicy(raw) };
+}
+
+async function loadYamlPolicy(
+  policyPath: string,
+  apiKey?: string,
+): Promise<{ policy: ParsedPolicy; overrides: PolicyOverride[] }> {
+  let policyConfig: PolicyConfig;
+  try {
+    const content = await readFile(policyPath, 'utf-8');
+    policyConfig = YAML.parse(content) as PolicyConfig;
+  } catch {
+    throw new Error(`Could not read policy file: ${policyPath}`);
+  }
+
+  if (!policyConfig.policy || typeof policyConfig.policy !== 'string') {
+    console.error(chalk.red('Error: Policy file must contain a "policy" field with text.'));
+    process.exit(2);
+  }
+
+  const parsedPolicy = await parsePolicy(policyConfig.policy, { apiKey });
+  console.log(chalk.gray(`Policy parsed: ${parsedPolicy.rules.length} rules`));
+
+  return {
+    policy: parsedPolicy,
+    overrides: policyConfig.overrides ?? [],
+  };
 }
 
 function formatGitHubAnnotations(result: import('../policy/types.js').CheckResult): string {

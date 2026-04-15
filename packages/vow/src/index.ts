@@ -12,6 +12,7 @@ export { executeScan } from './commands/scan.js';
 export { parsePolicy } from './policy/parser.js';
 export { evaluatePolicy } from './policy/evaluator.js';
 export { createPolicyCache, hashPolicyText } from './policy/cache.js';
+export { loadJsonPolicy, jsonPolicyToParsedPolicy } from './policy/json-policy.js';
 export { reportScanSummary, reportCheckResult, reportFixSuggestions } from './reporters/terminal.js';
 export { toJSON } from './reporters/json.js';
 export { toCSV } from './reporters/csv.js';
@@ -43,3 +44,4 @@ export type {
 } from './policy/types.js';
 
 export type { ResolverOptions, ResolvedPackage } from './resolvers/base.js';
+export type { JsonPolicyFile } from './policy/json-policy.js';

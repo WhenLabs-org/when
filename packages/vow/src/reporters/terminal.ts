@@ -109,7 +109,7 @@ export function reportCheckResult(result: CheckResult): string {
 
 function formatViolation(item: PackageCheckResult, level: 'block' | 'warn'): string {
   const icon = level === 'block' ? chalk.red('✗') : chalk.yellow('⚠');
-  const licenseStr = item.pkg.license.spdxExpression ?? 'UNKNOWN';
+  const licenseStr = formatLicenseWithSource(item.pkg);
   const lines: string[] = [];
 
   lines.push(`  ${icon} ${chalk.bold(item.pkg.name)}@${item.pkg.version} (${licenseStr})`);
@@ -125,6 +125,17 @@ function formatViolation(item: PackageCheckResult, level: 'block' | 'warn'): str
   lines.push(`    Impact: ${item.pkg.dependencyType === 'production' ? 'Direct' : 'Transitive'} dependency`);
 
   return lines.join('\n');
+}
+
+function formatLicenseWithSource(pkg: import('../types.js').PackageInfo): string {
+  const expr = pkg.license.spdxExpression;
+  if (!expr) {
+    return pkg.license.source === 'none' ? 'UNKNOWN (no license found)' : 'UNKNOWN';
+  }
+  if (pkg.license.source === 'license-file') {
+    return `${expr} (resolved from LICENSE file)`;
+  }
+  return expr;
 }
 
 export function reportFixSuggestions(suggestions: FixSuggestion[]): string {

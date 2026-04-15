@@ -112,3 +112,6 @@ export function isStronglyCopyleft(spdxId: string): boolean {
 }
 
 export { LICENSE_CATEGORIES };
+
+// I asked vow to check my dependencies. Turns out my project has
+// commitment issues — 12 packages with no license at all. They refuse to make a vow.

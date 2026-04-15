@@ -67,7 +67,7 @@ async function checkTriggers(toolName: string, result: { stdout: string; stderr:
     // Only trigger if aware_init made actual changes (look for "wrote" / "created" / "updated" in output)
     const madeChanges = /wrote|created|updated|generated/i.test(output);
     if (madeChanges) {
-      const staleResult = await runCli('stale', ['scan', '--no-color'], path);
+      const staleResult = await runCli('stale', ['scan'], path);
       const staleOutput = staleResult.stdout || staleResult.stderr || '';
       writeCache('stale', deriveProject(path), staleOutput, staleResult.code);
       if (staleOutput.trim()) {
@@ -109,7 +109,7 @@ server.tool(
   'Scan for documentation drift — detect when docs say one thing and code says another',
   { path: z.string().optional().describe('Project directory to scan (defaults to cwd)') },
   async ({ path }) => {
-    const args = ['scan', '--no-color'];
+    const args = ['scan'];
     const result = await runCli('stale', args, path);
     const output = result.stdout || result.stderr || 'No output';
     writeCache('stale', deriveProject(path), output, result.code);

@@ -8,6 +8,7 @@ import { registerCheckCommand } from './commands/check.js';
 import { registerFixCommand } from './commands/fix.js';
 import { registerInitCommand } from './commands/init.js';
 import { registerAttributionCommand } from './commands/attribution.js';
+import { registerHookCommand } from './commands/hook.js';
 
 const program = new Command();
 
@@ -23,6 +24,7 @@ registerFixCommand(program);
 registerInitCommand(program);
 registerAttributionCommand(program);
 registerExportCommand(program);
+registerHookCommand(program);
 
 program.parseAsync().catch((err: Error) => {
   console.error(chalk.red('Error:'), err.message);

@@ -1,10 +1,20 @@
 {
   "name": "@whenlabs/velocity-mcp",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "description": "MCP server that gives coding agents self-awareness of their execution speed",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./lib": {
+      "import": "./dist/lib.js",
+      "types": "./dist/lib.d.ts"
+    }
+  },
   "bin": {
     "velocity-mcp": "dist/index.js"
   },
@@ -16,7 +26,12 @@
     "test:watch": "vitest",
     "prepublishOnly": "npm run build"
   },
-  "keywords": ["mcp", "velocity", "telemetry", "coding-agent"],
+  "keywords": [
+    "mcp",
+    "velocity",
+    "telemetry",
+    "coding-agent"
+  ],
   "license": "MIT",
   "engines": {
     "node": ">=18"
@@ -34,5 +49,7 @@
     "typescript": "^5.7.0",
     "vitest": "^3.0.0"
   },
-  "files": ["dist"]
+  "files": [
+    "dist"
+  ]
 }

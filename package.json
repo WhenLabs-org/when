@@ -1,6 +1,6 @@
 {
   "name": "@whenlabs/when",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "The WhenLabs developer toolkit — 6 tools, one install",
   "type": "module",
   "main": "dist/index.js",
@@ -45,6 +45,7 @@
     "vitest": "^3.0.0"
   },
   "files": [
-    "dist"
+    "dist",
+    "action.yml"
   ]
 }

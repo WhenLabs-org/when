@@ -2,13 +2,26 @@
 
 Port & Process Conflict Resolver for Developers.
 
-See every port your dev environment is using, detect conflicts before they happen, and resolve them with one command.
+See every port your dev environment is using, detect conflicts before they happen, and resolve them with one command. Berth scans your running processes, Docker containers, and project config files to give you a unified view of port usage across your entire local development stack.
+
+## Features
+
+- **Unified port dashboard** -- view active system processes, Docker containers, and configured project ports in one place
+- **Conflict detection** -- automatically find port collisions between running processes, containers, and project configs
+- **Smart resolution** -- kill dev processes, reassign ports, and update config files automatically
+- **Project registry** -- register projects and their port requirements in `~/.berth/registry.json` for persistent tracking
+- **Real-time monitoring** -- watch for port conflicts as they happen with optional desktop notifications
+- **Multi-source scanning** -- detects ports from `package.json`, `.env`, `docker-compose.yml`, `Procfile`, `Makefile`, and framework defaults
+- **Cross-platform** -- uses `lsof` on macOS/Linux and `netstat` on Windows
+- **CI-friendly** -- `berth check` exits with code 1 on conflicts; `--json` flag for machine-readable output
 
 ## Install
 
 ```bash
 npm install -g berth
 ```
+
+Requires Node.js >= 18.
 
 ## Usage
 
@@ -18,7 +31,7 @@ npm install -g berth
 berth status
 ```
 
-Shows all active ports (system processes, dev servers), Docker containers, and configured-but-not-running ports from registered projects.
+Shows all active ports (system processes, dev servers), Docker containers, and configured-but-not-running ports from registered projects. Displays a summary with conflict count.
 
 ### Check a project for conflicts
 
@@ -26,7 +39,7 @@ Shows all active ports (system processes, dev servers), Docker containers, and c
 berth check ~/projects/my-app
 ```
 
-Scans `package.json`, `.env`, `docker-compose.yml`, and `Procfile` for port requirements and cross-references against what's currently running. Exit code 1 if conflicts found (CI-friendly).
+Scans the project directory for port requirements and cross-references against what is currently running. Exit code 1 if conflicts are found (CI-friendly). Includes suggested fixes.
 
 ### Kill processes on a port
 
@@ -34,18 +47,26 @@ Scans `package.json`, `.env`, `docker-compose.yml`, and `Procfile` for port requ
 # Kill whatever is on port 3000
 berth kill 3000
 
-# Kill all dev processes (node, deno, bun, etc.)
-berth kill 0 --dev
+# Kill all dev processes (node, deno, bun, python, ruby, etc.)
+berth kill --dev
 
 # Skip confirmation
 berth kill 3000 --force
 ```
+
+Dev processes (node, vite, next, webpack, etc.) are distinguished from system services (postgres, redis, nginx) and handled accordingly.
 
 ### Register a project
 
 ```bash
 cd ~/projects/my-app
 berth register
+
+# Or specify a directory
+berth register --dir ~/projects/my-app
+
+# Skip confirmation
+berth register --yes
 ```
 
 Scans the directory and records port requirements in `~/.berth/registry.json`.
@@ -56,13 +77,15 @@ Scans the directory and records port requirements in `~/.berth/registry.json`.
 berth list
 ```
 
+Shows all registered projects with their ports and running status (running, partial, stopped).
+
 ### Free ports for a project
 
 ```bash
 berth free my-app
 ```
 
-Kills all active processes on ports registered to `my-app`.
+Kills all active processes on ports registered to the given project.
 
 ### Reassign a port
 
@@ -70,7 +93,7 @@ Kills all active processes on ports registered to `my-app`.
 berth reassign 3000 3001 --project my-app
 ```
 
-Updates `.env`, `docker-compose.yml`, and `package.json` with the new port.
+Updates `.env`, `docker-compose.yml`, and `package.json` with the new port number. Handles `PORT=`, `--port`, `-p`, and URL patterns contextually.
 
 ### Auto-resolve conflicts
 
@@ -79,7 +102,17 @@ berth start my-app
 berth start my-app --dry-run
 ```
 
-Automatically resolves conflicts: kills dev processes, remaps ports, updates config files.
+Automatically resolves conflicts for a registered project: kills dev processes, remaps ports, and updates config files. Use `--dry-run` to preview changes without applying them.
+
+### Watch for conflicts
+
+```bash
+berth watch
+berth watch --interval 10
+berth watch --notify
+```
+
+Monitors for port conflicts in real-time with configurable polling interval. The `--notify` flag sends desktop notifications (via `node-notifier`) when new conflicts are detected.
 
 ## Global Options
 
@@ -91,7 +124,7 @@ Automatically resolves conflicts: kills dev processes, remaps ports, updates con
 
 ## Port Detection Sources
 
-**Active** (what's running now):
+**Active** (what is running now):
 - OS processes via `lsof` (macOS/Linux) or `netstat` (Windows)
 - Docker containers via `docker ps`
 
@@ -100,7 +133,76 @@ Automatically resolves conflicts: kills dev processes, remaps ports, updates con
 - `.env` / `.env.local` / `.env.development` files
 - `docker-compose.yml` / `compose.yml` port mappings
 - `Procfile` commands
-- Framework defaults (Next.js 3000, Vite 5173, Angular 4200, etc.)
+- `Makefile` recipe commands
+- Framework defaults (Next.js 3000, Vite 5173, Angular 4200, Astro 4321, Storybook 6006, Django 8000, and more)
+
+### Supported Framework Defaults
+
+Berth automatically detects default ports for the following frameworks by inspecting dependencies and config files:
+
+Next.js, Vite, Create React App, Angular, Vue CLI, Storybook, Remix, Astro, Nuxt, Gatsby, SvelteKit, Webpack Dev Server, Parcel, Django, Flask, FastAPI, Rails
+
+## Project Structure
+
+```
+berth-tool/
+  src/
+    cli.ts                          # CLI entry point (commander setup)
+    types.ts                        # TypeScript type definitions
+    errors.ts                       # Custom error classes
+    commands/
+      status.ts                     # berth status
+      check.ts                      # berth check
+      kill.ts                       # berth kill
+      free.ts                       # berth free
+      register.ts                   # berth register
+      list.ts                       # berth list
+      reassign.ts                   # berth reassign
+      start.ts                      # berth start
+      watch.ts                      # berth watch
+    detectors/
+      index.ts                      # Detector orchestrator
+      active/
+        lsof.ts                     # macOS/Linux port detection via lsof
+        netstat.ts                  # Windows port detection via netstat
+        docker.ts                   # Docker container port detection
+      configured/
+        dotenv.ts                   # .env file scanner
+        package-json.ts             # package.json script scanner
+        docker-compose.ts           # docker-compose.yml scanner
+        procfile.ts                 # Procfile scanner
+        makefile.ts                 # Makefile scanner
+        framework.ts               # Framework default port detection
+    registry/
+      store.ts                      # Registry file I/O (~/.berth/registry.json)
+      project.ts                    # Project lookup helpers
+    resolver/
+      conflicts.ts                  # Conflict detection algorithm
+      suggestions.ts                # Resolution suggestion engine
+      actions.ts                    # Kill, reassign, and free port actions
+    reporters/
+      terminal.ts                   # Colored terminal output (chalk + cli-table3)
+      json.ts                       # JSON output formatter
+    utils/
+      platform.ts                   # Platform detection, shell exec, Docker availability
+      ports.ts                      # Port validation, free port finder, framework defaults
+      process.ts                    # Process classification, graceful kill
+  tests/
+    commands/                       # Command integration tests
+    detectors/                      # Detector unit tests
+    registry/                       # Registry store tests
+    resolver/                       # Conflict and action tests
+```
+
+## Tech Stack
+
+- **Language**: TypeScript (ES2022, ESM)
+- **CLI Framework**: [Commander.js](https://github.com/tj/commander.js)
+- **Build**: [tsup](https://github.com/egoist/tsup) (single ESM bundle with Node 18 target)
+- **Test**: [Vitest](https://vitest.dev/)
+- **Output**: [chalk](https://github.com/chalk/chalk) + [cli-table3](https://github.com/cli-table/cli-table3)
+- **Config Parsing**: [dotenv](https://github.com/motdotla/dotenv), [yaml](https://github.com/eemeli/yaml), [jsonc-parser](https://github.com/microsoft/node-jsonc-parser)
+- **Notifications**: [node-notifier](https://github.com/mikaelbr/node-notifier) (optional, for `berth watch --notify`)
 
 ## Development
 
@@ -108,8 +210,10 @@ Automatically resolves conflicts: kills dev processes, remaps ports, updates con
 npm install
 npm run dev -- status        # Run in development
 npm test                     # Run tests
+npm run test:watch           # Run tests in watch mode
+npm run test:coverage        # Run tests with coverage
 npm run build                # Build for production
-npm run typecheck             # Type check
+npm run typecheck            # Type check
 ```
 
 ## License

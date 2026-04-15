@@ -8,6 +8,8 @@ const CATEGORY_PREFIX: Record<DriftCategory, string> = {
   'version': 'ver',
   'dependency': 'dep',
   'api-route': 'api',
+  'git-staleness': 'git',
+  'comment-staleness': 'cmt',
   'semantic': 'sem',
   'completeness': 'cmp',
   'example': 'ex',

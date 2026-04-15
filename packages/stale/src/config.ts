@@ -15,6 +15,8 @@ export const DEFAULT_CONFIG: StaleConfig = {
     versions: true,
     dependencies: true,
     apiRoutes: true,
+    gitStaleness: false,
+    commentStaleness: false,
   },
   ai: {
     enabled: false,
@@ -34,6 +36,9 @@ export const DEFAULT_CONFIG: StaleConfig = {
     versionMismatch: 'error',
     missingDependency: 'warning',
     routeMismatch: 'error',
+    portMismatch: 'warning',
+    staleDoc: 'warning',
+    staleComment: 'info',
   },
   output: {
     format: 'terminal',
@@ -86,6 +91,9 @@ export function mergeWithCliFlags(config: StaleConfig, flags: CliFlags): StaleCo
 
   if (flags.deep) {
     result.ai = { ...result.ai, enabled: true };
+  }
+  if (flags.git) {
+    result.checks = { ...result.checks, gitStaleness: true };
   }
   if (flags.format) {
     result.output = { ...result.output, format: flags.format };

@@ -3,9 +3,12 @@ import { CommandsAnalyzer } from './static/commands.js';
 import { FilePathsAnalyzer } from './static/file-paths.js';
 import { EnvVarsAnalyzer } from './static/env-vars.js';
 import { UrlsAnalyzer } from './static/urls.js';
+import { PortsAnalyzer } from './static/ports.js';
 import { VersionsAnalyzer } from './static/versions.js';
 import { DependenciesAnalyzer } from './static/dependencies.js';
 import { ApiRoutesAnalyzer } from './static/api-routes.js';
+import { GitStalenessAnalyzer } from './static/git-staleness.js';
+import { CommentStalenessAnalyzer } from './static/comment-staleness.js';
 import { SemanticAnalyzer } from './ai/semantic.js';
 import { CompletenessAnalyzer } from './ai/completeness.js';
 import { ExamplesAnalyzer } from './ai/examples.js';
@@ -16,10 +19,15 @@ export function getStaticAnalyzers(config: StaleConfig): Analyzer[] {
   if (config.checks.commands) analyzers.push(new CommandsAnalyzer());
   if (config.checks.filePaths) analyzers.push(new FilePathsAnalyzer());
   if (config.checks.envVars) analyzers.push(new EnvVarsAnalyzer());
-  if (config.checks.urls) analyzers.push(new UrlsAnalyzer());
+  if (config.checks.urls) {
+    analyzers.push(new UrlsAnalyzer());
+    analyzers.push(new PortsAnalyzer());
+  }
   if (config.checks.versions) analyzers.push(new VersionsAnalyzer());
   if (config.checks.dependencies) analyzers.push(new DependenciesAnalyzer());
   if (config.checks.apiRoutes) analyzers.push(new ApiRoutesAnalyzer());
+  if (config.checks.gitStaleness) analyzers.push(new GitStalenessAnalyzer());
+  if (config.checks.commentStaleness) analyzers.push(new CommentStalenessAnalyzer());
 
   return analyzers;
 }

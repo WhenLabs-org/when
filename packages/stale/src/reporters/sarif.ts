@@ -8,6 +8,8 @@ const RULE_MAP: Record<DriftCategory, { id: string; shortDescription: string }> 
   'version': { id: 'stale/version', shortDescription: 'Runtime version drift' },
   'dependency': { id: 'stale/dependency', shortDescription: 'Dependency drift' },
   'api-route': { id: 'stale/api-route', shortDescription: 'API route drift' },
+  'git-staleness': { id: 'stale/git-staleness', shortDescription: 'Documentation git staleness' },
+  'comment-staleness': { id: 'stale/comment-staleness', shortDescription: 'Stale code comments' },
   'semantic': { id: 'stale/semantic', shortDescription: 'Semantic drift' },
   'completeness': { id: 'stale/completeness', shortDescription: 'Documentation completeness' },
   'example': { id: 'stale/example', shortDescription: 'Outdated code examples' },

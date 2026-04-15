@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import fg from 'fast-glob';
-import type { CodebaseFacts, CodeEnvVar, CodeRoute } from '../types.js';
+import type { CodebaseFacts, CodeEnvVar, CodeRoute, ConfigPort } from '../types.js';
 import type { StaleConfig } from '../types.js';
 import { parsePackageJson, parseDockerCompose, parseVersionFiles } from './config.js';
 
@@ -140,6 +140,112 @@ async function extractMakeTargets(projectPath: string): Promise<string[]> {
   }
 }
 
+async function extractConfigPorts(projectPath: string): Promise<ConfigPort[]> {
+  const ports: ConfigPort[] = [];
+  const seen = new Set<number>();
+
+  // Check .env files
+  const envFiles = ['.env', '.env.local', '.env.development', '.env.production', '.env.example', '.env.sample'];
+  for (const envFile of envFiles) {
+    try {
+      const content = await readFile(join(projectPath, envFile), 'utf-8');
+      const portMatch = content.match(/^PORT\s*=\s*(\d+)/m);
+      if (portMatch) {
+        const port = parseInt(portMatch[1], 10);
+        if (!seen.has(port)) {
+          seen.add(port);
+          ports.push({ port, source: envFile });
+        }
+      }
+      // Also check for specific port vars like API_PORT, SERVER_PORT
+      for (const match of content.matchAll(/^([A-Z_]*PORT[A-Z_]*)\s*=\s*(\d+)/gm)) {
+        const port = parseInt(match[2], 10);
+        if (!seen.has(port)) {
+          seen.add(port);
+          ports.push({ port, source: `${envFile} (${match[1]})` });
+        }
+      }
+    } catch {
+      continue;
+    }
+  }
+
+  // Check package.json scripts for port flags
+  try {
+    const content = await readFile(join(projectPath, 'package.json'), 'utf-8');
+    const pkg = JSON.parse(content);
+    if (pkg.scripts) {
+      for (const [name, script] of Object.entries(pkg.scripts)) {
+        const portMatch = (script as string).match(/--port\s+(\d+)|--port=(\d+)|-p\s+(\d+)/);
+        if (portMatch) {
+          const port = parseInt(portMatch[1] ?? portMatch[2] ?? portMatch[3], 10);
+          if (!seen.has(port)) {
+            seen.add(port);
+            ports.push({ port, source: `package.json script "${name}"` });
+          }
+        }
+      }
+    }
+  } catch {}
+
+  // Check docker-compose for port mappings
+  const composeFiles = ['docker-compose.yml', 'docker-compose.yaml', 'compose.yml', 'compose.yaml'];
+  for (const composeFile of composeFiles) {
+    try {
+      const content = await readFile(join(projectPath, composeFile), 'utf-8');
+      // Match port mappings like "3001:3000" or "- 8080:80"
+      for (const match of content.matchAll(/['"]?(\d{3,5}):(\d{3,5})['"]?/g)) {
+        const hostPort = parseInt(match[1], 10);
+        if (!seen.has(hostPort)) {
+          seen.add(hostPort);
+          ports.push({ port: hostPort, source: composeFile });
+        }
+      }
+    } catch {
+      continue;
+    }
+  }
+
+  return ports;
+}
+
+const SYMBOL_REGEX = /(?:function|const|let|var|class|type|interface|enum|export\s+(?:default\s+)?(?:function|const|let|var|class|type|interface|enum))\s+([a-zA-Z_$][\w$]*)/g;
+const METHOD_REGEX = /^\s*(?:async\s+)?([a-zA-Z_$][\w$]*)\s*\(/gm;
+
+async function extractSourceSymbols(projectPath: string): Promise<Set<string>> {
+  const symbols = new Set<string>();
+
+  const sourceFiles = await fg(
+    ['**/*.{ts,tsx,js,jsx,mjs,cjs}'],
+    { cwd: projectPath, ignore: ['node_modules/**', 'dist/**', '.git/**', 'coverage/**'] },
+  );
+
+  for (const file of sourceFiles) {
+    try {
+      const content = await readFile(join(projectPath, file), 'utf-8');
+
+      SYMBOL_REGEX.lastIndex = 0;
+      let match;
+      while ((match = SYMBOL_REGEX.exec(content)) !== null) {
+        symbols.add(match[1]);
+      }
+
+      METHOD_REGEX.lastIndex = 0;
+      while ((match = METHOD_REGEX.exec(content)) !== null) {
+        const name = match[1];
+        // Skip common keywords that look like methods
+        if (!['if', 'for', 'while', 'switch', 'catch', 'return', 'throw', 'new', 'delete', 'typeof', 'void', 'import', 'export', 'require'].includes(name)) {
+          symbols.add(name);
+        }
+      }
+    } catch {
+      continue;
+    }
+  }
+
+  return symbols;
+}
+
 export async function parseCodebase(projectPath: string, config: StaleConfig): Promise<CodebaseFacts> {
   const allFiles = await fg(['**/*'], {
     cwd: projectPath,
@@ -154,6 +260,9 @@ export async function parseCodebase(projectPath: string, config: StaleConfig): P
   const envVarsUsed = await extractEnvVars(projectPath);
   const routes = await extractRoutes(projectPath);
   const makeTargets = await extractMakeTargets(projectPath);
+  const configPorts = await extractConfigPorts(projectPath);
+  const needSymbols = config.checks.commentStaleness;
+  const sourceSymbols = needSymbols ? await extractSourceSymbols(projectPath) : new Set<string>();
 
   const nodeVersion = { ...versionFiles };
   if (packageJson?.engines?.node) {
@@ -171,5 +280,7 @@ export async function parseCodebase(projectPath: string, config: StaleConfig): P
     nodeVersion,
     dependencies: packageJson?.dependencies ?? {},
     devDependencies: packageJson?.devDependencies ?? {},
+    configPorts,
+    sourceSymbols,
   };
 }

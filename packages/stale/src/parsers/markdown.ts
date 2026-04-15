@@ -17,6 +17,7 @@ import type {
   VersionClaim,
   DependencyClaim,
   DocApiEndpoint,
+  DocPortClaim,
   DocSection,
 } from '../types.js';
 
@@ -174,6 +175,29 @@ function extractDependencyClaims(text: string, line: number): DependencyClaim[] 
   return claims;
 }
 
+const PORT_REGEX = /(?:port\s+(\d{3,5})|localhost:(\d{3,5})|127\.0\.0\.1:(\d{3,5})|0\.0\.0\.0:(\d{3,5})|http:\/\/localhost:(\d{3,5}))/gi;
+
+function extractPortClaims(text: string, line: number): DocPortClaim[] {
+  const claims: DocPortClaim[] = [];
+  const seen = new Set<number>();
+
+  for (const match of text.matchAll(PORT_REGEX)) {
+    const portStr = match[1] ?? match[2] ?? match[3] ?? match[4] ?? match[5];
+    const port = parseInt(portStr, 10);
+    if (isNaN(port) || port < 1 || port > 65535) continue;
+    if (seen.has(port)) continue;
+    seen.add(port);
+
+    claims.push({
+      port,
+      line,
+      context: text.slice(Math.max(0, match.index! - 20), match.index! + match[0].length + 20),
+    });
+  }
+
+  return claims;
+}
+
 function extractApiEndpoints(text: string, line: number): DocApiEndpoint[] {
   const endpoints: DocApiEndpoint[] = [];
 
@@ -204,6 +228,7 @@ export async function parseMarkdownFile(filePath: string, projectPath: string): 
     versionClaims: [],
     dependencyClaims: [],
     apiEndpoints: [],
+    portClaims: [],
     sections: [],
   };
 
@@ -226,6 +251,8 @@ export async function parseMarkdownFile(filePath: string, projectPath: string): 
         doc.apiEndpoints.push(...extractApiEndpoints(codeNode.value, line));
         // Extract env vars from code blocks
         doc.envVars.push(...extractEnvVars(codeNode.value, line));
+        // Extract port claims from code blocks
+        doc.portClaims.push(...extractPortClaims(codeNode.value, line));
         break;
       }
 
@@ -240,6 +267,8 @@ export async function parseMarkdownFile(filePath: string, projectPath: string): 
         if (inlineNode.value.includes('/') && !inlineNode.value.startsWith('http')) {
           doc.filePaths.push({ path: inlineNode.value, line, context: inlineNode.value });
         }
+        // Extract port claims from inline code
+        doc.portClaims.push(...extractPortClaims(inlineNode.value, line));
         break;
       }
 
@@ -270,6 +299,7 @@ export async function parseMarkdownFile(filePath: string, projectPath: string): 
         doc.versionClaims.push(...extractVersionClaims(text, line));
         doc.dependencyClaims.push(...extractDependencyClaims(text, line));
         doc.apiEndpoints.push(...extractApiEndpoints(text, line));
+        doc.portClaims.push(...extractPortClaims(text, line));
         break;
       }
     }
@@ -298,6 +328,14 @@ export async function parseMarkdownFile(filePath: string, projectPath: string): 
   doc.envVars = doc.envVars.filter((v) => {
     if (seenEnvVars.has(v.name)) return false;
     seenEnvVars.add(v.name);
+    return true;
+  });
+
+  // Deduplicate port claims
+  const seenPorts = new Set<number>();
+  doc.portClaims = doc.portClaims.filter((p) => {
+    if (seenPorts.has(p.port)) return false;
+    seenPorts.add(p.port);
     return true;
   });
 

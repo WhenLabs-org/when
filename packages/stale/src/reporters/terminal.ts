@@ -10,6 +10,8 @@ const CATEGORY_LABELS: Record<DriftCategory, string> = {
   'version': 'NODE/RUNTIME VERSION',
   'dependency': 'DEPENDENCIES',
   'api-route': 'API ENDPOINTS',
+  'git-staleness': 'GIT STALENESS',
+  'comment-staleness': 'STALE COMMENTS',
   'semantic': 'SEMANTIC DRIFT',
   'completeness': 'COMPLETENESS',
   'example': 'OUTDATED EXAMPLES',
@@ -21,10 +23,12 @@ const CATEGORY_CONTEXT: Record<DriftCategory, string> = {
   'command': 'checking against package.json scripts',
   'file-path': 'checking against filesystem',
   'env-var': 'checking against codebase usage',
-  'url': 'checking links and badges',
+  'url': 'checking links, ports, and badges',
   'version': 'checking against project config',
   'dependency': 'checking against package.json and docker-compose',
   'api-route': 'checking against route definitions',
+  'git-staleness': 'checking doc age vs source activity',
+  'comment-staleness': 'checking comment symbol references',
   'semantic': 'AI-powered analysis',
   'completeness': 'AI-powered analysis',
   'example': 'AI-powered analysis',
@@ -73,8 +77,9 @@ export class TerminalReporter implements Reporter {
     }
 
     // Static checks header
-    const hasStaticIssues = [...grouped.keys()].some((k) => !['semantic', 'completeness', 'example', 'architecture', 'response-shape'].includes(k));
-    const hasAiIssues = [...grouped.keys()].some((k) => ['semantic', 'completeness', 'example', 'architecture', 'response-shape'].includes(k));
+    const AI_CATEGORIES = ['semantic', 'completeness', 'example', 'architecture', 'response-shape'];
+    const hasStaticIssues = [...grouped.keys()].some((k) => !AI_CATEGORIES.includes(k));
+    const hasAiIssues = [...grouped.keys()].some((k) => AI_CATEGORIES.includes(k));
 
     if (hasStaticIssues) {
       lines.push(chalk.bold.underline('── Static Checks ──────────────────────────────────────────'));
@@ -82,7 +87,7 @@ export class TerminalReporter implements Reporter {
     }
 
     for (const [category, issues] of grouped) {
-      if (['semantic', 'completeness', 'example', 'architecture', 'response-shape'].includes(category)) continue;
+      if (AI_CATEGORIES.includes(category)) continue;
 
       const label = CATEGORY_LABELS[category] ?? category.toUpperCase();
       const context = CATEGORY_CONTEXT[category];
@@ -99,7 +104,7 @@ export class TerminalReporter implements Reporter {
       lines.push('');
 
       for (const [category, issues] of grouped) {
-        if (!['semantic', 'completeness', 'example', 'architecture', 'response-shape'].includes(category)) continue;
+        if (!AI_CATEGORIES.includes(category)) continue;
 
         const label = CATEGORY_LABELS[category] ?? category.toUpperCase();
         lines.push(chalk.bold(label));

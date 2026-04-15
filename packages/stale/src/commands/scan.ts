@@ -8,6 +8,7 @@ import { getReporter } from '../reporters/index.js';
 
 const ALL_CATEGORIES: DriftCategory[] = [
   'command', 'file-path', 'env-var', 'url', 'version', 'dependency', 'api-route',
+  'git-staleness', 'comment-staleness',
   'semantic', 'completeness', 'example', 'architecture', 'response-shape',
 ];
 

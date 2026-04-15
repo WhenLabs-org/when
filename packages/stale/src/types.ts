@@ -10,6 +10,8 @@ export type DriftCategory =
   | 'version'
   | 'dependency'
   | 'api-route'
+  | 'git-staleness'
+  | 'comment-staleness'
   | 'semantic'
   | 'completeness'
   | 'example'
@@ -138,6 +140,12 @@ export interface DocApiEndpoint {
   documentedResponse?: string;
 }
 
+export interface DocPortClaim {
+  port: number;
+  line: number;
+  context: string;
+}
+
 export interface DocSection {
   heading: string;
   depth: number;
@@ -156,6 +164,7 @@ export interface ParsedDocument {
   versionClaims: VersionClaim[];
   dependencyClaims: DependencyClaim[];
   apiEndpoints: DocApiEndpoint[];
+  portClaims: DocPortClaim[];
   sections: DocSection[];
 }
 
@@ -193,6 +202,11 @@ export interface VersionFacts {
   fromDockerfile?: string;
 }
 
+export interface ConfigPort {
+  port: number;
+  source: string;
+}
+
 export interface CodebaseFacts {
   packageJson?: PackageJsonFacts;
   scripts: Record<string, string>;
@@ -204,6 +218,8 @@ export interface CodebaseFacts {
   nodeVersion?: VersionFacts;
   dependencies: Record<string, string>;
   devDependencies: Record<string, string>;
+  configPorts: ConfigPort[];
+  sourceSymbols: Set<string>;
 }
 
 // --- Analyzer Interface ---
@@ -245,6 +261,8 @@ export interface StaleConfig {
     versions: boolean;
     dependencies: boolean;
     apiRoutes: boolean;
+    gitStaleness: boolean | { thresholdDays: number };
+    commentStaleness: boolean;
   };
   ai: {
     enabled: boolean;
@@ -264,6 +282,9 @@ export interface StaleConfig {
     versionMismatch: Severity;
     missingDependency: Severity;
     routeMismatch: Severity;
+    portMismatch: Severity;
+    staleDoc: Severity;
+    staleComment: Severity;
   };
   output: {
     format: 'terminal' | 'json' | 'markdown' | 'sarif';
@@ -274,6 +295,7 @@ export interface StaleConfig {
 
 export interface CliFlags {
   deep?: boolean;
+  git?: boolean;
   format?: 'terminal' | 'json' | 'markdown' | 'sarif';
   config?: string;
   path?: string;

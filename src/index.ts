@@ -3,12 +3,18 @@ import { createDelegateCommand } from './commands/delegate.js';
 import { createDoctorCommand } from './commands/doctor.js';
 import { createInitCommand } from './commands/init.js';
 import { createWatchCommand } from './commands/watch.js';
+import { readFileSync } from 'node:fs';
+import { resolve, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const { version } = JSON.parse(readFileSync(resolve(__dirname, '..', 'package.json'), 'utf8'));
 
 const program = new Command();
 
 program
   .name('when')
-  .version('0.1.0')
+  .version(version)
   .description('The WhenLabs developer toolkit — 6 tools, one install');
 
 // Install / uninstall

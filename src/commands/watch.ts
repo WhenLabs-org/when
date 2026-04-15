@@ -58,7 +58,7 @@ function sleep(ms: number): Promise<void> {
 
 export function createWatchCommand(): Command {
   const cmd = new Command('watch');
-  cmd.description('Run all 5 WhenLabs tools on a schedule and write results to ~/.whenlabs/status.json');
+  cmd.description('Run all 5 CLI tools on a schedule and write results to ~/.whenlabs/status.json (velocity is embedded and always-on — it does not participate in scheduled scans)');
   cmd.option('--once', 'Run a single scan and exit');
   cmd.option('--interval <seconds>', 'Override the default scan interval (seconds)', '60');
 

@@ -118,7 +118,7 @@ export async function reassignPort(
 
       // Replace host port in "host:container" patterns
       content = content.replace(
-        new RegExp(`(["']?)${oldStr}(:\\d+)`, 'g'),
+        new RegExp(`(["']?)(?<!\\d)${oldStr}(?!\\d)(:\\d+)`, 'g'),
         `$1${newStr}$2`,
       );
 
@@ -138,18 +138,19 @@ export async function reassignPort(
     const original = content;
 
     // Replace in script values contextually (--port, -p, PORT=)
-    content = content.replace(
-      new RegExp(`(--port[\\s=])${oldStr}(\\b)`, 'g'),
-      `$1${newStr}$2`,
-    );
-    content = content.replace(
-      new RegExp(`(-p[\\s=])${oldStr}(\\b)`, 'g'),
-      `$1${newStr}$2`,
-    );
-    content = content.replace(
-      new RegExp(`(PORT=)${oldStr}(\\b)`, 'g'),
-      `$1${newStr}$2`,
-    );
+    // Only modify lines that look like script commands to avoid matching
+    // port numbers in description fields or other non-script contexts.
+    const scriptLinePattern = /PORT=|--port|-p[\s=]/;
+    content = content
+      .split('\n')
+      .map((line) => {
+        if (!scriptLinePattern.test(line)) return line;
+        return line
+          .replace(new RegExp(`(--port[\\s=])${oldStr}(?!\\d)`, 'g'), `$1${newStr}`)
+          .replace(new RegExp(`(-p[\\s=])${oldStr}(?!\\d)`, 'g'), `$1${newStr}`)
+          .replace(new RegExp(`(PORT=)${oldStr}(?!\\d)`, 'g'), `$1${newStr}`);
+      })
+      .join('\n');
 
     if (content !== original) {
       await fs.writeFile(pkgPath, content, 'utf-8');

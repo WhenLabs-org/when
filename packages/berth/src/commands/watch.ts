@@ -20,7 +20,11 @@ export async function watchCommand(options: WatchOptions): Promise<void> {
     console.log(chalk.dim(`Polling every ${intervalMs / 1000}s. Press Ctrl+C to stop.\n`));
   }
 
+  let polling = false;
+
   const poll = async () => {
+    if (polling) return;
+    polling = true;
     try {
       const [{ ports: active, docker }, registry] = await Promise.all([
         detectAllActive(),
@@ -63,7 +67,7 @@ export async function watchCommand(options: WatchOptions): Promise<void> {
           }
 
           if (options.notify) {
-            sendNotification(newConflicts);
+            await sendNotification(newConflicts);
           }
         }
 
@@ -78,6 +82,8 @@ export async function watchCommand(options: WatchOptions): Promise<void> {
       if (options.verbose) {
         console.error(`Poll error: ${err}`);
       }
+    } finally {
+      polling = false;
     }
   };
 
@@ -104,9 +110,10 @@ function conflictKey(conflict: Conflict): string {
   return `${conflict.port}:${conflict.severity}`;
 }
 
-function sendNotification(conflicts: Conflict[]): void {
+async function sendNotification(conflicts: Conflict[]): Promise<void> {
   try {
-    const notifier = require('node-notifier');
+    const mod = await import('node-notifier');
+    const notifier = mod.default ?? mod;
     const ports = conflicts.map((c) => c.port).join(', ');
     notifier.notify({
       title: 'Berth — Port Conflict',

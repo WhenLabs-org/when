@@ -19,7 +19,7 @@ export interface ActivePort {
   user: string;
   protocol: 'tcp' | 'udp';
   address: string;
-  source: 'lsof' | 'netstat';
+  source: 'lsof' | 'netstat' | 'ss';
   project?: string;
 }
 

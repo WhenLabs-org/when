@@ -53,7 +53,12 @@ export async function killProcess(pid: number, signal: NodeJS.Signals = 'SIGTERM
 export async function gracefulKill(pid: number, timeoutMs = 3000): Promise<boolean> {
   if (!isProcessRunning(pid)) return true;
 
-  process.kill(pid, 'SIGTERM');
+  try {
+    process.kill(pid, 'SIGTERM');
+  } catch (err: unknown) {
+    if ((err as NodeJS.ErrnoException).code === 'ESRCH') return true;
+    throw err;
+  }
 
   const start = Date.now();
   while (Date.now() - start < timeoutMs) {

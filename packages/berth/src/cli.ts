@@ -1,14 +1,17 @@
 import { Command } from 'commander';
+import chalk from 'chalk';
 import type { GlobalOptions } from './types.js';
 
 const VERSION = '0.1.0';
 
 function getGlobalOptions(cmd: Command): GlobalOptions {
   const opts = cmd.optsWithGlobals();
+  const noColor = !opts.color;
+  if (noColor) chalk.level = 0;
   return {
     json: opts.json ?? false,
     verbose: opts.verbose ?? false,
-    noColor: opts.noColor ?? false,
+    noColor,
   };
 }
 

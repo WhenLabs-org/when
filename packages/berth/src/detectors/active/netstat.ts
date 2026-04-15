@@ -5,7 +5,8 @@ export async function detectActivePorts(): Promise<ActivePort[]> {
   const result = await shellExec('netstat', ['-ano', '-p', 'TCP']);
   if (!result.stdout.trim()) return [];
 
-  return parseNetstatOutput(result.stdout);
+  const ports = parseNetstatOutput(result.stdout);
+  return resolveProcessNames(ports);
 }
 
 export function parseNetstatOutput(output: string): ActivePort[] {

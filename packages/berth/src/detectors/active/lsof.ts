@@ -104,7 +104,7 @@ async function detectWithSs(): Promise<ActivePort[]> {
       user: '',
       protocol: 'tcp',
       address: normalizeAddress(address),
-      source: 'lsof',
+      source: 'ss' as 'ss',
     });
   }
 

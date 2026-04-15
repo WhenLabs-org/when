@@ -1,6 +1,8 @@
 # Stale
 
-Detect documentation drift in your codebase. Stale cross-references what your README, CONTRIBUTING.md, and docs say against what your code actually does -- and flags every discrepancy.
+Detect documentation drift in your codebase. Part of the [WhenLabs](https://whenlabs.org) toolkit.
+
+Stale cross-references what your README, CONTRIBUTING.md, and docs say against what your code actually does -- and flags every discrepancy.
 
 ## The Problem
 

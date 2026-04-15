@@ -20,6 +20,7 @@ export function registerEstimate(server: McpServer, queries: TaskQueries): void 
     async (args) => {
       const breakdown: EstimateBreakdown[] = [];
       let totalSeconds = 0;
+      let totalMatchCount = 0;
       const confidenceReasons: string[] = [];
       let minConfidence: Confidence = 'high';
       const confOrder: Confidence[] = ['none', 'low', 'medium', 'high'];
@@ -30,6 +31,7 @@ export function registerEstimate(server: McpServer, queries: TaskQueries): void 
         const est = estimateTask(planItem, historicalTasks);
 
         totalSeconds += est.seconds;
+        totalMatchCount += est.matchCount;
 
         breakdown.push({
           description: planItem.description,
@@ -50,11 +52,6 @@ export function registerEstimate(server: McpServer, queries: TaskQueries): void 
           );
         }
       }
-
-      const totalMatchCount = breakdown.reduce((s, b) => {
-        const n = parseInt(b.based_on) || 0;
-        return s + n;
-      }, 0);
 
       const confidenceReason = confidenceReasons.length > 0
         ? `Based on historical data. ${confidenceReasons.join('. ')}.`

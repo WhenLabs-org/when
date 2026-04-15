@@ -1,7 +1,7 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import type { TaskQueries } from '../db/queries.js';
-import { GROUP_BY_OPTIONS, formatDuration, parseTask, median } from '../types.js';
+import { CATEGORIES, GROUP_BY_OPTIONS, formatDuration, parseTask, median } from '../types.js';
 import type { Task, StatsBreakdownItem } from '../types.js';
 
 export function registerStats(server: McpServer, queries: TaskQueries): void {
@@ -10,7 +10,7 @@ export function registerStats(server: McpServer, queries: TaskQueries): void {
     'Query aggregate performance statistics grouped by category, tag, project, day, or week.',
     {
       group_by: z.enum(GROUP_BY_OPTIONS).describe('How to group results'),
-      filter_category: z.string().optional(),
+      filter_category: z.enum(CATEGORIES).optional(),
       filter_tag: z.string().optional(),
       filter_project: z.string().optional(),
       last_n_days: z.number().int().positive().default(30).optional(),

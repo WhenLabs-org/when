@@ -70,9 +70,10 @@ export function findSimilarTasks(plan: PlanItem, historicalTasks: Task[]): Simil
 }
 
 export function weightedMedian(tasks: SimilarTask[]): number {
-  if (tasks.length === 0) return 0;
+  const valid = tasks.filter(t => t.task.duration_seconds != null);
+  if (valid.length === 0) return 0;
 
-  const sorted = [...tasks].sort(
+  const sorted = [...valid].sort(
     (a, b) => (a.task.duration_seconds ?? 0) - (b.task.duration_seconds ?? 0),
   );
 
@@ -82,11 +83,11 @@ export function weightedMedian(tasks: SimilarTask[]): number {
   for (const st of sorted) {
     cumWeight += st.weight;
     if (cumWeight >= totalWeight / 2) {
-      return st.task.duration_seconds ?? 0;
+      return st.task.duration_seconds!;
     }
   }
 
-  return sorted[sorted.length - 1].task.duration_seconds ?? 0;
+  return sorted[sorted.length - 1].task.duration_seconds!;
 }
 
 export function heuristicEstimate(plan: PlanItem): number {

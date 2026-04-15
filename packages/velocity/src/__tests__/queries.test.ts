@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { initDb } from '../db/schema.js';
 import { TaskQueries } from '../db/queries.js';
 import { tmpdir } from 'node:os';
@@ -13,6 +13,10 @@ beforeEach(() => {
   const dir = mkdtempSync(join(tmpdir(), 'velocity-test-'));
   db = initDb(join(dir, 'test.db'));
   queries = new TaskQueries(db);
+});
+
+afterEach(() => {
+  db.close();
 });
 
 describe('TaskQueries', () => {

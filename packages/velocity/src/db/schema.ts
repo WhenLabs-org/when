@@ -1,12 +1,15 @@
 import Database from 'better-sqlite3';
 import { homedir } from 'node:os';
-import { mkdirSync } from 'node:fs';
+import { mkdirSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 
 const SCHEMA_VERSION = 1;
 
 export function getDbPath(): string {
-  const dir = join(homedir(), '.velocity-mcp');
+  const localDir = join(process.cwd(), '.velocity');
+  const globalDir = join(homedir(), '.velocity-mcp');
+  // Prefer project-local DB if .velocity/ directory exists
+  const dir = existsSync(localDir) ? localDir : globalDir;
   mkdirSync(dir, { recursive: true });
   return join(dir, 'velocity.db');
 }

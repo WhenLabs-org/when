@@ -37,6 +37,7 @@ process.on('SIGTERM', () => {
 async function main(): Promise<void> {
   const transport = new StdioServerTransport();
   await server.connect(transport);
+  // Log to stderr — stdout is reserved for the MCP stdio transport
   console.error('velocity-mcp server running on stdio');
 }
 

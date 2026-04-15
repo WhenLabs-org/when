@@ -94,7 +94,13 @@ export function formatDuration(seconds: number): string {
 }
 
 export function parseTask(row: TaskRow): Task {
-  return { ...row, tags: JSON.parse(row.tags || '[]') as string[] };
+  let tags: string[];
+  try {
+    tags = JSON.parse(row.tags || '[]') as string[];
+  } catch {
+    tags = [];
+  }
+  return { ...row, tags };
 }
 
 export function confidenceFromCount(n: number): Confidence {

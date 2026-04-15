@@ -68,7 +68,7 @@ export function registerEndTask(server: McpServer, queries: TaskQueries): void {
         duration_seconds: Math.round(durationSeconds * 10) / 10,
         duration_human: formatDuration(durationSeconds),
         category: row.category,
-        tags: JSON.parse(row.tags || '[]'),
+        tags: parseTask(row).tags,
         message,
       };
 

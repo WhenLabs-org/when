@@ -4,6 +4,16 @@ Port & Process Conflict Resolver for Developers.
 
 See every port your dev environment is using, detect conflicts before they happen, and resolve them with one command. Berth scans your running processes, Docker containers, and project config files to give you a unified view of port usage across your entire local development stack.
 
+## Why berth?
+
+| | berth | lsof / netstat | kill-port |
+|---|---|---|---|
+| Detects conflicts before starting | Scans configs and running processes together | Only shows what is running now | No conflict detection |
+| Reads project config files | Parses `.env`, `docker-compose.yml`, `package.json`, `Procfile` | No config awareness | No config awareness |
+| Suggests resolution | Recommends kill, reassign, or remap with one command | Raw process list, figure it out | Kills blindly |
+| Unified dashboard | System processes + Docker + project configs in one view | Separate tools for each | Port kill only |
+| Framework-aware | Knows default ports for Next.js, Vite, Django, etc. | No framework knowledge | No framework knowledge |
+
 ## Features
 
 - **Unified port dashboard** -- view active system processes, Docker containers, and configured project ports in one place

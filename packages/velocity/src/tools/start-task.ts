@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { v4 as uuidv4 } from 'uuid';
 import type { TaskQueries } from '../db/queries.js';
 import { CATEGORIES } from '../types.js';
+import { detectProject } from '../cli/detect-project.js';
 
 export function registerStartTask(server: McpServer, queries: TaskQueries): void {
   server.tool(
@@ -35,7 +36,7 @@ export function registerStartTask(server: McpServer, queries: TaskQueries): void
         args.category,
         normalizedTags,
         args.description,
-        args.project ?? null,
+        args.project ?? detectProject(),
         startedAt,
         args.estimated_files ?? null,
       );

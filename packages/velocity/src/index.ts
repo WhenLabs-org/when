@@ -10,6 +10,20 @@ import { registerEstimate } from './tools/estimate.js';
 import { registerStats } from './tools/stats.js';
 import { registerHistory } from './tools/history.js';
 
+const command = process.argv[2];
+
+if (command === 'install') {
+  const { install } = await import('./cli/install.js');
+  await install();
+  process.exit(0);
+}
+
+if (command === 'uninstall') {
+  const { uninstall } = await import('./cli/uninstall.js');
+  await uninstall();
+  process.exit(0);
+}
+
 const server = new McpServer({
   name: 'velocity-mcp',
   version: '0.1.0',

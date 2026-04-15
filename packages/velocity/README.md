@@ -13,7 +13,9 @@ Coding agents (Claude Code, Cursor, Codex, etc.) have no concept of time. They p
 - **Aggregate stats** -- query performance data grouped by category, tag, project, day, or week
 - **Task history** -- review recent task records with full metadata
 - **Confidence tiers** -- estimates report confidence (high/medium/low/none) based on sample size
-- **Local persistence** -- all data stored in SQLite at `~/.velocity-mcp/velocity.db`
+- **Local persistence** -- all data stored in SQLite at `~/.velocity-mcp/velocity.db` (or `.velocity/velocity.db` project-local)
+- **Global install** -- one command to track velocity across every Claude Code session
+- **Auto project detection** -- automatically detects project name from git remote or directory
 
 ## Tech Stack
 
@@ -27,7 +29,22 @@ Coding agents (Claude Code, Cursor, Codex, etc.) have no concept of time. They p
 
 ## Installation
 
-### Claude Code
+### Global Install (recommended)
+
+One command to track velocity across every Claude Code session:
+
+```bash
+npx velocity-mcp install
+```
+
+This will:
+1. Register velocity-mcp as a global MCP server
+2. Add task timing instructions to your `~/.claude/CLAUDE.md`
+3. Auto-detect project names from git remotes
+
+To uninstall: `npx velocity-mcp uninstall`
+
+### Per-Project (Claude Code)
 
 ```bash
 claude mcp add velocity-mcp -- npx velocity-mcp
@@ -77,7 +94,7 @@ Begin timing a coding task.
 | `description` | string | Yes | Short description of the task |
 | `tags` | string[] | No | Free-form tags for matching (e.g. `typescript`, `react`) |
 | `estimated_files` | number | No | Expected number of files to touch |
-| `project` | string | No | Project identifier for cross-project tracking |
+| `project` | string | No | Project identifier (auto-detected from git remote if omitted) |
 
 ### `velocity_end_task`
 
@@ -144,7 +161,7 @@ Tasks with similarity >= 0.3 are included. The duration estimate is the weighted
 
 ## Agent Instructions
 
-For the agent to use velocity-mcp automatically, add this to your `CLAUDE.md` or system prompt:
+If you used `npx velocity-mcp install`, this is already configured globally. Otherwise, add this to your `CLAUDE.md` or system prompt:
 
 ```markdown
 ## Task Timing
@@ -164,6 +181,10 @@ velocity-mcp/
 ├── src/
 │   ├── index.ts              # MCP server entry point (stdio transport)
 │   ├── types.ts              # Shared types, enums, and utility functions
+│   ├── cli/
+│   │   ├── install.ts        # Global install command
+│   │   ├── uninstall.ts      # Global uninstall command
+│   │   └── detect-project.ts # Auto project detection from git/cwd
 │   ├── db/
 │   │   ├── schema.ts         # SQLite schema, migrations, DB initialization
 │   │   └── queries.ts        # Prepared statements for all database operations
@@ -208,7 +229,7 @@ npm start
 
 ## Storage
 
-Data is stored in SQLite at `~/.velocity-mcp/velocity.db`. The database uses WAL journal mode and contains two tables:
+Data is stored in SQLite at `~/.velocity-mcp/velocity.db` (global) or `.velocity/velocity.db` (project-local, if a `.velocity/` directory exists in your project root). The database uses WAL journal mode and contains two tables:
 
 - **`tasks`** -- every recorded task with id, category, tags (JSON), description, project, timestamps, duration, status, file counts, and notes
 - **`meta`** -- schema version and first-run date

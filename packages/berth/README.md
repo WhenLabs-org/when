@@ -24,6 +24,23 @@ See every port your dev environment is using, detect conflicts before they happe
 - **Multi-source scanning** -- detects ports from `package.json`, `.env`, `docker-compose.yml`, `Procfile`, `Makefile`, and framework defaults
 - **Cross-platform** -- uses `lsof` on macOS/Linux and `netstat` on Windows
 - **CI-friendly** -- `berth check` exits with code 1 on conflicts; `--json` flag for machine-readable output
+- **`berth predict`** -- Reads `docker-compose.yml`, `package.json` scripts, `.env`, and framework defaults to show what ports the project wants vs what is currently in use:
+  ```bash
+  berth predict ~/projects/my-app
+  ```
+  ```
+  PORT   WANTED BY              STATUS
+  3000   package.json (next dev) ✗ in use (node, PID 4821)
+  5432   docker-compose (postgres) ✓ available
+  6379   docker-compose (redis)    ✓ available
+  ```
+- **Docker awareness** -- Distinguishes Docker containers from native processes in all output; shows container name, image, and health status (`healthy`, `unhealthy`, `starting`)
+- **Kill suggestions** -- When conflicts are found, berth prints the exact command to resolve them:
+  ```
+  Conflict: port 3000
+    → kill 4821          # node (next-dev)
+    → docker stop redis  # redis:7-alpine (port 6379)
+  ```
 
 ## Install
 

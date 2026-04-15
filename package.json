@@ -1,0 +1,32 @@
+{
+  "name": "@whenlabs/when",
+  "version": "0.1.0",
+  "description": "The WhenLabs developer toolkit — 6 tools, one install",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "when": "dist/index.js"
+  },
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": ["whenlabs", "developer-tools", "cli", "mcp", "velocity", "claude-code"],
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "commander": "^12.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsup": "^8.0.0",
+    "typescript": "^5.7.0",
+    "vitest": "^3.0.0"
+  },
+  "files": ["dist", "landing"]
+}

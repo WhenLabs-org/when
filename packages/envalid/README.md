@@ -2,6 +2,8 @@
 
 Type safety for `.env` files. Define a schema, validate every environment against it. Catch missing vars, wrong types, format mismatches, and drift between environments before they cause runtime failures.
 
+Part of the [WhenLabs](https://whenlabs.org) toolchain.
+
 ## Install
 
 ```bash
@@ -13,6 +15,8 @@ Or use directly with npx:
 ```bash
 npx envalid init
 ```
+
+**Requirements:** Node.js >= 20
 
 ## Quick Start
 
@@ -29,7 +33,7 @@ envalid generate-example
 
 ## Schema Format
 
-Create a `.env.schema` file in your project root:
+Create a `.env.schema` file in your project root (YAML):
 
 ```yaml
 version: 1
@@ -112,11 +116,23 @@ groups:
 | `minLength` | number | Minimum string length |
 | `maxLength` | number | Maximum string length |
 
+### Groups
+
+Groups let you bundle related variables and enforce that all variables in a group are present for specific environments:
+
+```yaml
+groups:
+  payments:
+    variables: [STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET]
+    description: "Payment processing"
+    required_in: [staging, production]
+```
+
 ## Commands
 
 ### `envalid init`
 
-Scan an existing `.env` file and generate a starter `.env.schema` with inferred types.
+Scan an existing `.env` file and generate a starter `.env.schema` with inferred types. Envalid auto-detects booleans, integers, floats, URLs, emails, semver strings, JSON, CSV values, and flags sensitive-looking keys (containing `secret`, `key`, `token`, `password`, etc.).
 
 ```bash
 envalid init                          # reads .env, writes .env.schema
@@ -140,7 +156,7 @@ envalid validate -s custom.schema -e .env.staging   # custom paths
 
 ### `envalid diff`
 
-Compare two `.env` files side by side.
+Compare two `.env` files side by side. When a schema is provided, sensitive values are automatically masked.
 
 ```bash
 envalid diff .env .env.production
@@ -150,7 +166,7 @@ envalid diff .env .env.production --format json
 
 ### `envalid sync`
 
-Validate multiple environments against the schema at once.
+Validate multiple environments against the schema at once. Environment names are inferred from file names (e.g. `.env.production` -> `production`).
 
 ```bash
 envalid sync --environments .env,.env.staging,.env.production
@@ -159,7 +175,7 @@ envalid sync --environments .env,.env.production --ci
 
 ### `envalid generate-example`
 
-Generate an `.env.example` file from the schema with descriptions and defaults.
+Generate an `.env.example` file from the schema with descriptions, defaults, and type-appropriate placeholders.
 
 ```bash
 envalid generate-example                    # writes .env.example
@@ -168,10 +184,11 @@ envalid generate-example -o .env.template   # custom output path
 
 ### `envalid onboard`
 
-Interactive guided setup for new developers. Walks through each required variable, explains what it is, validates input in real-time, and writes a `.env` file.
+Interactive guided setup for new developers. Walks through each required variable, explains what it is, validates input in real-time, and writes a `.env` file. Enum types get a selection list; sensitive values use masked input.
 
 ```bash
 envalid onboard
+envalid onboard -s custom.schema -o .env.local
 ```
 
 ### `envalid detect`
@@ -188,13 +205,15 @@ Supports: `process.env.X` (Node.js), `import.meta.env.X` (Vite), `os.environ` / 
 
 ### `envalid hook`
 
-Manage git pre-commit hooks for automatic validation.
+Manage git pre-commit hooks for automatic validation. The hook runs `envalid validate --ci` before each commit and blocks the commit on failure.
 
 ```bash
 envalid hook install      # install pre-commit hook
 envalid hook uninstall    # remove pre-commit hook
 envalid hook status       # check if hook is installed
 ```
+
+Works with custom `core.hooksPath` configurations (e.g. Husky).
 
 ## CI Integration
 
@@ -212,7 +231,19 @@ jobs:
         with:
           schema: .env.schema
           environment: production
+          fail-on-warning: true
 ```
+
+#### Action Inputs
+
+| Input | Default | Description |
+|-------|---------|-------------|
+| `schema` | `.env.schema` | Path to schema file |
+| `env-file` | `.env` | Path to .env file to validate |
+| `environment` | | Target environment (e.g. production) |
+| `format` | `terminal` | Output format: terminal, json, markdown |
+| `fail-on-warning` | `false` | Treat warnings as errors |
+| `node-version` | `20` | Node.js version to use |
 
 ### Generic CI
 
@@ -226,9 +257,9 @@ The `--ci` flag makes warnings into errors and returns exit code `1` on any issu
 
 Use `--format` to control output:
 
-- **terminal** (default) — colored, human-readable
-- **json** — machine-readable for CI pipelines
-- **markdown** — tables for PR comments
+- **terminal** (default) -- colored, human-readable with icons
+- **json** -- machine-readable for CI pipelines
+- **markdown** -- tables for PR comments
 
 ## Configuration
 
@@ -258,6 +289,106 @@ const result = validate(schema, envFile, { environment: "production" });
 console.log(result.valid);    // true/false
 console.log(result.issues);   // ValidationIssue[]
 console.log(result.stats);    // { total, valid, errors, warnings, missing }
+```
+
+All CLI functionality is available as importable functions:
+
+```typescript
+import {
+  // Schema
+  parseSchemaFile, parseSchemaString, validateValue,
+  // Validation
+  validate, diffEnvFiles, syncCheck,
+  // Env files
+  readEnvFile, parseEnvString, detectEnvUsage,
+  // Generation
+  generateExample, inferType, generateSchema,
+  // Reporting
+  createReporter,
+  // Git hooks
+  installHook, uninstallHook, isHookInstalled, getGitRoot,
+  // Config
+  loadConfig, mergeOptions,
+  // Utilities
+  maskValue,
+} from "envalid";
+```
+
+Full TypeScript types are exported for `EnvSchema`, `VariableSchema`, `ValidationResult`, `ValidationIssue`, `DiffResult`, `Reporter`, `EnvFile`, `DetectionResult`, and more.
+
+## Project Structure
+
+```
+envalid/
+├── src/
+│   ├── cli.ts                # Commander.js entry point
+│   ├── index.ts              # Public API exports
+│   ├── config.ts             # cosmiconfig-based config loading
+│   ├── errors.ts             # Custom error classes
+│   ├── commands/
+│   │   ├── validate.ts       # Core validation logic
+│   │   ├── init.ts           # Schema generation from .env
+│   │   ├── diff.ts           # Cross-environment comparison
+│   │   ├── sync.ts           # Multi-environment sync check
+│   │   ├── generate.ts       # .env.example generation
+│   │   ├── onboard.ts        # Interactive developer setup
+│   │   └── hook.ts           # Git hook management
+│   ├── schema/
+│   │   ├── types.ts          # TypeScript type definitions
+│   │   ├── parser.ts         # YAML schema parser (Zod-validated)
+│   │   └── validators.ts     # Per-type validation functions
+│   ├── env/
+│   │   ├── reader.ts         # .env file reader (dotenv)
+│   │   ├── writer.ts         # .env file writer (with quoting)
+│   │   └── detector.ts       # Codebase env var usage scanner
+│   ├── reporters/
+│   │   ├── index.ts          # Reporter factory
+│   │   ├── terminal.ts       # Colored terminal output
+│   │   ├── json.ts           # JSON output for CI
+│   │   └── markdown.ts       # Markdown tables for PRs
+│   └── utils/
+│       ├── git.ts            # Git hook install/uninstall
+│       └── crypto.ts         # Sensitive value masking
+├── tests/                    # Vitest test suite
+├── action.yml                # GitHub Action definition
+├── tsconfig.json
+├── tsup.config.ts            # Build config (ESM, Node 20)
+└── vitest.config.ts
+```
+
+## Tech Stack
+
+- **TypeScript** (ESM, targeting ES2022)
+- **Commander.js** -- CLI framework
+- **Zod v4** -- schema-of-schema validation
+- **yaml** + **dotenv** -- file parsing
+- **Chalk** -- colored terminal output
+- **Inquirer** -- interactive prompts
+- **Ora** -- spinners
+- **cosmiconfig** -- config file discovery
+- **tsup** -- build tooling
+- **Vitest** -- test framework
+
+## Development
+
+```bash
+# Install dependencies
+npm install
+
+# Build
+npm run build
+
+# Watch mode (rebuild on changes)
+npm run dev
+
+# Run tests
+npm test
+
+# Run tests once
+npm run test:run
+
+# Type check
+npm run lint
 ```
 
 ## License

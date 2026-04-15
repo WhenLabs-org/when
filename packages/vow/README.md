@@ -155,6 +155,26 @@ vow fix                    # Suggest alternatives for all violations
 vow fix -l 5               # Show up to 5 alternatives per package
 ```
 
+### `vow hook`
+
+Manage a git pre-commit hook that runs `vow check` before each commit. If any dependency has a denied license, the commit is blocked.
+
+```bash
+# Install the pre-commit hook
+vow hook install
+
+# Install for a specific project
+vow hook install -p ~/projects/my-app
+
+# Remove the pre-commit hook
+vow hook uninstall
+
+# Check if the hook is currently installed
+vow hook status
+```
+
+The hook is idempotent — running `install` when already installed is a no-op. It appends to existing pre-commit hooks (compatible with Husky and custom `core.hooksPath` setups) rather than replacing them. If no `.vow.json` or `.vow.yml` policy file exists, the hook will skip checks until one is created.
+
 ### `vow export`
 
 Export a full license report to a file.
@@ -232,7 +252,8 @@ vow-tool/
 │   │   ├── tree.ts            # vow tree
 │   │   ├── fix.ts             # vow fix
 │   │   ├── init.ts            # vow init
-│   │   └── export.ts          # vow export
+│   │   ├── export.ts          # vow export
+│   │   └── hook.ts            # vow hook install/uninstall/status
 │   ├── resolvers/
 │   │   ├── base.ts            # Abstract resolver with 6-step license resolution
 │   │   └── npm.ts             # npm resolver (package-lock.json v1/v2/v3)

@@ -18,6 +18,9 @@ const HEURISTIC_SECONDS_PER_FILE: Record<string, number> = {
 };
 const HEURISTIC_BASE_SECONDS = 180;
 
+// Fun fact: this agent finally has a sense of time. Bad news — it now knows it
+// spent 47 minutes on a task you estimated at "quick fix." The real bug was your optimism.
+
 export function jaccardSimilarity(a: string[], b: string[]): number {
   if (a.length === 0 && b.length === 0) return 1;
   const setA = new Set(a);

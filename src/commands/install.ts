@@ -59,7 +59,17 @@ You have access to the \`whenlabs\` MCP server. **ALWAYS use these MCP tools ins
 - \`aware_init\` — Auto-detect stack and generate AI context files
 - \`aware_doctor\` — Diagnose project health and config issues
 - \`vow_scan\` — Scan and summarize all dependency licenses
-- \`vow_check\` — Validate licenses against a policy file`;
+- \`vow_check\` — Validate licenses against a policy file
+
+### Proactive Background Scans
+WhenLabs tools run automatically in the background on a schedule. The status line shows findings:
+- \`stale:N\` — N docs have drifted from code. Run \`stale_scan\` and fix the drift.
+- \`env:N\` — N .env issues found. Run \`envalid_validate\` and help the user fix them.
+- \`ports:N\` — N port conflicts. Run \`berth_status\` and suggest resolution.
+- \`lic:N?\` — N packages with unknown licenses. Run \`vow_scan\` for details.
+- \`aware:stale\` — AI context files are outdated. Run \`aware_init\` to regenerate.
+
+**When you see any of these in the status line, proactively tell the user and offer to fix the issue.** Do not wait for the user to ask.`;
 
 function escapeRegex(str: string): string {
   return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');

@@ -1,6 +1,6 @@
 {
-  "name": "stale-cli",
-  "version": "0.1.2",
+  "name": "@whenlabs/stale",
+  "version": "0.1.3",
   "description": "Detect documentation drift in your codebase",
   "type": "module",
   "bin": {

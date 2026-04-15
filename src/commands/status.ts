@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import { homedir } from 'node:os';
 import { existsSync, readFileSync } from 'node:fs';
 import { hasBlock } from '../utils/claude-md.js';
+import { readStatus, formatStatusLine, isStale } from '../utils/status-provider.js';
 
 const CLAUDE_MD_PATH = join(homedir(), '.claude', 'CLAUDE.md');
 const CLAUDE_JSON_PATH = join(homedir(), '.claude.json');
@@ -42,6 +43,17 @@ export async function status(): Promise<void> {
     `  CLAUDE.md instructions:    ${claudeMdInstalled ? '✓ installed' : '✗ not installed'}`,
   );
   console.log(`  CLAUDE.md path:            ${CLAUDE_MD_PATH}`);
+
+  // Show latest watch results if available
+  const watchData = readStatus();
+  if (watchData) {
+    const line = formatStatusLine();
+    const stale = isStale();
+    const age = stale ? ' (stale)' : '';
+    console.log(`\n  Watch results${age}:        ${line}`);
+    console.log(`  Last scan:               ${watchData.timestamp}`);
+    console.log(`  Summary:                 ${watchData.summary}`);
+  }
 
   const allGood = mcpRegistered && claudeMdInstalled;
   if (allGood) {

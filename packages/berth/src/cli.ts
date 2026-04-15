@@ -96,6 +96,14 @@ program
   });
 
 program
+  .command('predict [dir]')
+  .description('Predict port conflicts from project config files before starting')
+  .action(async (dir, _opts, cmd) => {
+    const { predictCommand } = await import('./commands/predict.js');
+    await predictCommand(dir || '.', getGlobalOptions(cmd));
+  });
+
+program
   .command('watch')
   .description('Monitor for port conflicts in real-time')
   .option('-i, --interval <seconds>', 'Polling interval in seconds', '5')

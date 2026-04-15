@@ -6,6 +6,7 @@ import type {
   KillOutput,
   RegisteredProject,
   ActivePort,
+  DockerPort,
   Conflict,
   Resolution,
 } from '../types.js';
@@ -16,17 +17,25 @@ export function renderStatus(output: StatusOutput): string {
 
   // Active Ports
   if (output.active.length > 0) {
+    // Build a map of ports owned by Docker containers for annotation
+    const dockerPortMap = new Map(output.docker.map((d) => [d.port, d]));
+
     lines.push(chalk.bold('\n── Active Ports ' + '─'.repeat(50)));
     const table = new Table({
-      head: ['PORT', 'PID', 'PROCESS', 'PROJECT', 'ADDRESS'].map((h) => chalk.dim(h)),
+      head: ['PORT', 'PID', 'PROCESS', 'TYPE', 'PROJECT', 'ADDRESS'].map((h) => chalk.dim(h)),
       style: { head: [], border: [] },
       chars: tableChars(),
     });
     for (const p of output.active.sort((a, b) => a.port - b.port)) {
+      const dp = dockerPortMap.get(p.port);
+      const typeLabel = dp
+        ? chalk.cyan(`docker (${dp.containerName})`)
+        : chalk.dim('native');
       table.push([
         chalk.green(String(p.port)),
         String(p.pid),
         p.process,
+        typeLabel,
         p.project || portLabel(p.port),
         chalk.dim(p.address),
       ]);
@@ -38,7 +47,7 @@ export function renderStatus(output: StatusOutput): string {
   if (output.docker.length > 0) {
     lines.push(chalk.bold('\n── Docker Ports ' + '─'.repeat(50)));
     const table = new Table({
-      head: ['PORT', 'CONTAINER', 'IMAGE', 'STATUS'].map((h) => chalk.dim(h)),
+      head: ['PORT', 'CONTAINER', 'IMAGE', 'STATUS', 'HEALTH'].map((h) => chalk.dim(h)),
       style: { head: [], border: [] },
       chars: tableChars(),
     });
@@ -48,6 +57,7 @@ export function renderStatus(output: StatusOutput): string {
         p.containerName,
         p.image,
         chalk.green(p.status),
+        formatDockerHealth(p),
       ]);
     }
     lines.push(table.toString());
@@ -119,7 +129,20 @@ export function renderCheck(output: CheckOutput): string {
     lines.push(chalk.bold('\n── Suggested Fixes ' + '─'.repeat(47)));
     for (const res of output.resolutions) {
       const icon = res.automatic ? chalk.green('→') : chalk.yellow('→');
-      lines.push(`  ${icon} ${res.description}`);
+      let detail = `  ${icon} ${res.description}`;
+
+      // Add actionable commands for kill resolutions
+      if (res.type === 'kill' && res.pid) {
+        detail += `\n      ${chalk.dim(`Run: ${chalk.white(`kill ${res.pid}`)}`)}`;
+        if (res.targetPort) {
+          detail += `\n      ${chalk.dim(`Or:  ${chalk.white(`PORT=${res.targetPort} npm run dev`)}`)}`;
+        }
+      }
+      if (res.type === 'remap-docker' && res.containerName) {
+        detail += `\n      ${chalk.dim(`Run: ${chalk.white(`docker stop ${res.containerName}`)}`)}`;
+      }
+
+      lines.push(detail);
     }
   }
 
@@ -187,7 +210,22 @@ export function renderList(projects: RegisteredProject[], activePorts: ActivePor
 
 export function renderConflict(conflict: Conflict): string {
   const icon = conflict.severity === 'error' ? chalk.red('✗') : chalk.yellow('⚠');
-  return `  ${icon} Port ${chalk.bold(String(conflict.port))} — ${conflict.suggestion}`;
+  const lines = [`  ${icon} Port ${chalk.bold(String(conflict.port))} — ${conflict.suggestion}`];
+
+  // Add actionable kill/stop commands
+  for (const claimant of conflict.claimants) {
+    if ('pid' in claimant && 'source' in claimant && ((claimant as ActivePort).source === 'lsof' || (claimant as ActivePort).source === 'netstat' || (claimant as ActivePort).source === 'ss')) {
+      const ap = claimant as ActivePort;
+      lines.push(chalk.dim(`    → Run: ${chalk.white(`kill ${ap.pid}`)}`));
+      lines.push(chalk.dim(`    → Or use a different port: ${chalk.white(`PORT=${conflict.port + 1} npm run dev`)}`));
+    }
+    if ('containerId' in claimant) {
+      const dp = claimant as DockerPort;
+      lines.push(chalk.dim(`    → Run: ${chalk.white(`docker stop ${dp.containerName}`)}`));
+    }
+  }
+
+  return lines.join('\n');
 }
 
 export function renderResolutions(resolutions: Resolution[]): string {
@@ -201,6 +239,14 @@ export function renderResolutions(resolutions: Resolution[]): string {
 
 function portLabel(port: number): string {
   return WELL_KNOWN_PORTS[port] ? chalk.dim(`(${WELL_KNOWN_PORTS[port]})`) : '';
+}
+
+function formatDockerHealth(dp: DockerPort): string {
+  const status = dp.status.toLowerCase();
+  if (status.includes('healthy')) return chalk.green('healthy');
+  if (status.includes('unhealthy')) return chalk.red('unhealthy');
+  if (status.includes('starting')) return chalk.yellow('starting');
+  return chalk.dim(status);
 }
 
 function tableChars() {

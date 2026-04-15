@@ -87,4 +87,9 @@ export const FRAMEWORK_DEFAULTS: FrameworkDefault[] = [
   { name: 'Flask', defaultPort: 5000, detectBy: { command: 'flask run' } },
   { name: 'FastAPI', defaultPort: 8000, detectBy: { command: 'uvicorn' } },
   { name: 'Rails', defaultPort: 3000, detectBy: { file: 'Gemfile', command: 'rails server' } },
+  { name: 'Express', defaultPort: 3000, detectBy: { dependency: 'express' } },
+  { name: 'PostgreSQL', defaultPort: 5432, detectBy: { file: 'postgresql.conf' } },
+  { name: 'Redis', defaultPort: 6379, detectBy: { file: 'redis.conf' } },
+  { name: 'MySQL', defaultPort: 3306, detectBy: { file: 'my.cnf' } },
+  { name: 'MongoDB', defaultPort: 27017, detectBy: { file: 'mongod.conf' } },
 ];

@@ -9,7 +9,7 @@ export async function detectDockerPorts(): Promise<DockerPort[]> {
     result = await shellExec('docker', [
       'ps',
       '--format',
-      '{{.ID}}\t{{.Names}}\t{{.Image}}\t{{.Ports}}\t{{.Status}}',
+      '{{.ID}}\t{{.Names}}\t{{.Image}}\t{{.Ports}}\t{{.Status}}\t{{.State}}',
     ]);
   } catch {
     return [];
@@ -30,6 +30,12 @@ export function parseDockerOutput(output: string): DockerPort[] {
     const [containerId, containerName, image, portsStr, status] = parts;
     if (!portsStr || portsStr.trim() === '') continue;
 
+    // Build a richer status string that includes health info from the Status field
+    // Docker Status field looks like: "Up 2 hours (healthy)" or "Up 5 minutes"
+    const healthMatch = status.match(/\((healthy|unhealthy|health:\s*starting)\)/i);
+    const healthSuffix = healthMatch ? ` (${healthMatch[1]})` : '';
+    const normalizedStatus = status.split(' ')[0].toLowerCase() + healthSuffix;
+
     const mappings = portsStr.split(', ');
     for (const mapping of mappings) {
       const parsed = parsePortMapping(mapping.trim());
@@ -42,7 +48,7 @@ export function parseDockerOutput(output: string): DockerPort[] {
         containerName,
         image,
         protocol: parsed.protocol,
-        status: status.split(' ')[0].toLowerCase(),
+        status: normalizedStatus,
       });
     }
   }

@@ -12,7 +12,7 @@ export async function uninstall(): Promise<void> {
   // Step 1: Remove MCP server globally
   console.log('1. Removing velocity-mcp from global MCP servers...');
   try {
-    execSync('claude mcp remove --global velocity-mcp', { stdio: 'pipe' });
+    execSync('claude mcp remove -s user velocity-mcp', { stdio: 'pipe' });
     console.log('   ✓ MCP server removed');
   } catch {
     console.log('   ✓ MCP server was not registered (nothing to remove)');

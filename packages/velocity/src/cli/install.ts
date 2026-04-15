@@ -41,17 +41,18 @@ export async function install(): Promise<void> {
   // Step 1: Add MCP server globally via claude CLI
   console.log('1. Adding velocity-mcp as a global MCP server...');
   try {
-    execSync('claude mcp add --global velocity-mcp -- npx velocity-mcp', {
+    execSync('claude mcp add -s user velocity-mcp -- npx velocity-mcp', {
       stdio: 'pipe',
     });
-    console.log('   ✓ MCP server registered globally');
+    console.log('   ✓ MCP server registered (user scope)');
   } catch (error: unknown) {
     const stderr = (error as { stderr?: Buffer })?.stderr?.toString() ?? '';
     if (stderr.includes('already exists')) {
-      console.log('   ✓ MCP server already registered globally');
+      console.log('   ✓ MCP server already registered');
     } else {
       console.error('   ✗ Failed to register MCP server. Is Claude Code installed?');
-      console.error(`     Run manually: claude mcp add --global velocity-mcp -- npx velocity-mcp`);
+      console.error(`     Run manually: claude mcp add -s user velocity-mcp -- npx velocity-mcp`);
+      if (stderr) console.error(`     Error: ${stderr.trim()}`);
     }
   }
 

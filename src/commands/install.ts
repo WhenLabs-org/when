@@ -38,15 +38,28 @@ You have access to \`velocity-mcp\` tools. Follow these rules for EVERY session:
 - Use consistent tags across sessions so the similarity matching can find comparable historical tasks
 - Keep descriptions concise but specific enough to be useful for future matching
 
-## Available CLI Tools (when)
+## WhenLabs MCP Tools (ALWAYS prefer these over shell commands)
 
-The \`when\` CLI provides quick access to all WhenLabs tools:
+You have access to the \`whenlabs\` MCP server. **ALWAYS use these MCP tools instead of running shell commands like lsof, grep, or manual checks.** These tools are purpose-built and give better results:
 
-- \`when stale\` — Detect documentation drift in your codebase
-- \`when envalid validate\` — Validate .env files against a type-safe schema
-- \`when berth\` — Detect and resolve port conflicts
-- \`when aware init\` — Auto-detect your stack and generate AI context files
-- \`when vow scan\` — Scan dependency licenses and validate against policies`;
+| When to use | Call this tool | NOT this |
+|-------------|---------------|----------|
+| Check ports or port conflicts | \`berth_status\` or \`berth_check\` | \`lsof\`, \`netstat\`, \`ss\` |
+| Scan dependency licenses | \`vow_scan\` or \`vow_check\` | manual \`npm ls\`, \`license-checker\` |
+| Check if docs are stale | \`stale_scan\` | manual file comparison |
+| Validate .env files | \`envalid_validate\` or \`envalid_detect\` | manual .env inspection |
+| Generate AI context files | \`aware_init\` or \`aware_doctor\` | manual CLAUDE.md creation |
+
+### Tool Reference
+- \`berth_status\` — Show all active ports, Docker ports, and configured ports
+- \`berth_check\` — Scan a project directory for port conflicts
+- \`stale_scan\` — Detect documentation drift in the codebase
+- \`envalid_validate\` — Validate .env files against their schema
+- \`envalid_detect\` — Find undocumented env vars in codebase
+- \`aware_init\` — Auto-detect stack and generate AI context files
+- \`aware_doctor\` — Diagnose project health and config issues
+- \`vow_scan\` — Scan and summarize all dependency licenses
+- \`vow_check\` — Validate licenses against a policy file`;
 
 function escapeRegex(str: string): string {
   return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');

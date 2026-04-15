@@ -35,7 +35,7 @@ interface InitOptions {
 export function registerInitCommand(program: Command): void {
   program
     .command('init')
-    .description('Generate a starter .vow.yml policy file')
+    .description('Generate a starter policy file (.vow.yml for plain-English, or use .vow.json for structured policies)')
     .option('-p, --path <dir>', 'Project directory', '.')
     .option('-t, --template <name>', 'Policy template: commercial, opensource, strict', 'commercial')
     .option('--force', 'Overwrite existing file', false)

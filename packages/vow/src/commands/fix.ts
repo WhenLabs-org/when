@@ -7,7 +7,9 @@ import ora from 'ora';
 import { executeScan } from './scan.js';
 import { parsePolicy } from '../policy/parser.js';
 import { evaluatePolicy } from '../policy/evaluator.js';
+import { loadJsonPolicy } from '../policy/json-policy.js';
 import type { PolicyConfig } from '../policy/types.js';
+import type { ParsedPolicy } from '../policy/types.js';
 import { reportFixSuggestions, type FixSuggestion } from '../reporters/terminal.js';
 
 interface FixOptions {
@@ -111,30 +113,62 @@ export function registerFixCommand(program: Command): void {
     .command('fix')
     .description('Suggest alternative packages for policy violations')
     .option('-p, --path <dir>', 'Project directory', '.')
-    .option('--policy <file>', 'Policy file', '.vow.yml')
+    .option('--policy <file>', 'Policy file (default: auto-detect .vow.json then .vow.yml)')
     .option('--api-key <key>', 'Anthropic API key')
     .option('--production', 'Skip devDependencies', false)
     .option('-l, --limit <n>', 'Max alternatives per package', parseInt, 3)
     .action(async (opts: FixOptions) => {
       const projectPath = path.resolve(opts.path);
-      const policyPath = path.resolve(projectPath, opts.policy);
+
+      // Auto-detect policy file: .vow.json first, then .vow.yml
+      let policyPath: string;
+      if (opts.policy && opts.policy !== '.vow.yml') {
+        // Explicit policy file provided
+        policyPath = path.resolve(projectPath, opts.policy);
+      } else {
+        const jsonPath = path.resolve(projectPath, '.vow.json');
+        const yamlPath = path.resolve(projectPath, '.vow.yml');
+        try {
+          await readFile(jsonPath);
+          policyPath = jsonPath;
+        } catch {
+          policyPath = yamlPath;
+        }
+      }
 
       // Read policy
       let policyConfig: PolicyConfig;
       try {
         const content = await readFile(policyPath, 'utf-8');
-        policyConfig = YAML.parse(content) as PolicyConfig;
+        // Support both JSON and YAML formats
+        if (policyPath.endsWith('.json')) {
+          policyConfig = JSON.parse(content) as PolicyConfig;
+        } else {
+          policyConfig = YAML.parse(content) as PolicyConfig;
+        }
       } catch {
         console.error(chalk.red(`Error: Could not read policy file: ${policyPath}`));
+        console.error(chalk.gray('Create one with: vow init'));
         process.exit(2);
       }
 
-      if (!policyConfig.policy) {
-        console.error(chalk.red('Error: Policy file must contain a "policy" field.'));
-        process.exit(2);
+      // Parse policy — support both YAML (plain-English) and JSON (allowed/denied arrays) formats
+      let parsedPolicy: ParsedPolicy;
+      if (policyPath.endsWith('.json')) {
+        const jsonResult = await loadJsonPolicy(projectPath);
+        if (!jsonResult) {
+          console.error(chalk.red('Error: Could not parse .vow.json policy file.'));
+          process.exit(2);
+        }
+        parsedPolicy = jsonResult.policy;
+      } else {
+        if (!policyConfig.policy) {
+          console.error(chalk.red('Error: YAML policy file must contain a "policy" field.'));
+          process.exit(2);
+        }
+        parsedPolicy = await parsePolicy(policyConfig.policy, { apiKey: opts.apiKey });
       }
 
-      const parsedPolicy = await parsePolicy(policyConfig.policy, { apiKey: opts.apiKey });
       const scanResult = await executeScan({ path: opts.path, production: opts.production, format: 'terminal' });
       const checkResult = evaluatePolicy(scanResult, parsedPolicy, policyConfig.overrides ?? []);
 

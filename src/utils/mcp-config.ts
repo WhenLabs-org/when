@@ -2,7 +2,7 @@ import { execSync } from 'node:child_process';
 
 export function registerMcpServer(): { success: boolean; message: string } {
   try {
-    execSync('claude mcp add -s user velocity-mcp -- npx velocity-mcp', { stdio: 'pipe' });
+    execSync('claude mcp add -s user velocity-mcp -- npx @whenlabs/velocity-mcp', { stdio: 'pipe' });
     return { success: true, message: 'MCP server "velocity-mcp" registered successfully.' };
   } catch (err: unknown) {
     const output =

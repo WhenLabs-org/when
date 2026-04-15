@@ -127,8 +127,8 @@ server.tool(
   'Scan for documentation drift — detect when docs say one thing and code says another',
   {
     path: z.string().optional().describe('Project directory to scan (defaults to cwd)'),
-    deep: z.boolean().optional().describe('Enable AI-powered deep analysis'),
-    git: z.boolean().optional().describe('Enable git history staleness checks'),
+    deep: z.coerce.boolean().optional().describe('Enable AI-powered deep analysis'),
+    git: z.coerce.boolean().optional().describe('Enable git history staleness checks'),
     format: z.enum(['terminal', 'json', 'markdown', 'sarif']).optional().describe('Output format'),
   },
   async ({ path, deep, git, format }) => {
@@ -202,7 +202,7 @@ server.tool(
   'Generate .env.schema from an existing .env file — bootstrap type-safe env validation',
   {
     path: z.string().optional().describe('Project directory (defaults to cwd)'),
-    force: z.boolean().optional().describe('Overwrite existing schema'),
+    force: z.coerce.boolean().optional().describe('Overwrite existing schema'),
   },
   async ({ path, force }) => {
     const args = ['init'];
@@ -327,8 +327,8 @@ server.tool(
   'berth_kill',
   'Kill processes on a specific port — free up a port for your dev server',
   {
-    port: z.number().optional().describe('Port number to free'),
-    dev: z.boolean().optional().describe('Kill all dev processes (node, python, ruby, etc.)'),
+    port: z.coerce.number().optional().describe('Port number to free'),
+    dev: z.coerce.boolean().optional().describe('Kill all dev processes (node, python, ruby, etc.)'),
   },
   async ({ port, dev }) => {
     const args = ['kill'];
@@ -400,7 +400,7 @@ server.tool(
   'Auto-resolve all port conflicts and prepare a project to start cleanly',
   {
     project: z.string().describe('Registered project name'),
-    dryRun: z.boolean().optional().describe('Show what would be done without making changes'),
+    dryRun: z.coerce.boolean().optional().describe('Show what would be done without making changes'),
   },
   async ({ project, dryRun }) => {
     const args = ['start', project];
@@ -432,7 +432,7 @@ server.tool(
   {
     path: z.string().optional().describe('Project directory (defaults to cwd)'),
     targets: z.string().optional().describe('Comma-separated targets: claude,cursor,copilot,agents,all'),
-    force: z.boolean().optional().describe('Overwrite existing files without prompting'),
+    force: z.coerce.boolean().optional().describe('Overwrite existing files without prompting'),
   },
   async ({ path, targets, force }) => {
     const args = ['init'];
@@ -451,7 +451,7 @@ server.tool(
   'Regenerate AI context files from .aware.json — update CLAUDE.md, .cursorrules, etc.',
   {
     path: z.string().optional().describe('Project directory (defaults to cwd)'),
-    dryRun: z.boolean().optional().describe('Show what would change without writing files'),
+    dryRun: z.coerce.boolean().optional().describe('Show what would change without writing files'),
   },
   async ({ path, dryRun }) => {
     const args = ['sync'];
@@ -522,7 +522,7 @@ server.tool(
   'Scan dependency licenses — summarize all licenses in the project',
   {
     path: z.string().optional().describe('Project directory (defaults to cwd)'),
-    production: z.boolean().optional().describe('Skip devDependencies'),
+    production: z.coerce.boolean().optional().describe('Skip devDependencies'),
     format: z.enum(['terminal', 'json']).optional().describe('Output format'),
   },
   async ({ path, production, format }) => {
@@ -542,7 +542,7 @@ server.tool(
   'Validate dependency licenses against policy — flag violations before release',
   {
     path: z.string().optional().describe('Project directory (defaults to cwd)'),
-    production: z.boolean().optional().describe('Skip devDependencies'),
+    production: z.coerce.boolean().optional().describe('Skip devDependencies'),
   },
   async ({ path, production }) => {
     const args = ['check'];
@@ -577,8 +577,8 @@ server.tool(
   {
     path: z.string().optional().describe('Project directory (defaults to cwd)'),
     filter: z.string().optional().describe('Show only subtrees containing this license (e.g. "GPL")'),
-    depth: z.number().optional().describe('Max tree depth'),
-    production: z.boolean().optional().describe('Skip devDependencies'),
+    depth: z.coerce.number().optional().describe('Max tree depth'),
+    production: z.coerce.boolean().optional().describe('Skip devDependencies'),
   },
   async ({ path, filter, depth, production }) => {
     const args = ['tree'];
@@ -597,8 +597,8 @@ server.tool(
   'Suggest alternative packages for license policy violations — find compliant replacements',
   {
     path: z.string().optional().describe('Project directory (defaults to cwd)'),
-    production: z.boolean().optional().describe('Skip devDependencies'),
-    limit: z.number().optional().describe('Max alternatives per package'),
+    production: z.coerce.boolean().optional().describe('Skip devDependencies'),
+    limit: z.coerce.number().optional().describe('Max alternatives per package'),
   },
   async ({ path, production, limit }) => {
     const args = ['fix'];
@@ -618,7 +618,7 @@ server.tool(
     path: z.string().optional().describe('Project directory (defaults to cwd)'),
     format: z.enum(['json', 'csv', 'markdown']).optional().describe('Export format (default: json)'),
     output: z.string().optional().describe('Output file path'),
-    production: z.boolean().optional().describe('Skip devDependencies'),
+    production: z.coerce.boolean().optional().describe('Skip devDependencies'),
   },
   async ({ path, format, output, production }) => {
     const args = ['export'];
@@ -638,7 +638,7 @@ server.tool(
   {
     path: z.string().optional().describe('Project directory (defaults to cwd)'),
     output: z.string().optional().describe('Output file (default: THIRD_PARTY_LICENSES.md)'),
-    production: z.boolean().optional().describe('Skip devDependencies'),
+    production: z.coerce.boolean().optional().describe('Skip devDependencies'),
   },
   async ({ path, output, production }) => {
     const args = ['attribution'];

@@ -13,6 +13,8 @@ Coding agents (Claude Code, Cursor, Codex, etc.) have no concept of time. They p
 - **Aggregate stats** -- query performance data grouped by category, tag, project, day, or week
 - **Task history** -- review recent task records with full metadata
 - **Confidence tiers** -- estimates report confidence (high/medium/low/none) based on sample size
+- **Git diff stats** -- `velocity_end_task` captures lines added/removed/files changed from `git diff --stat` and stores them with the task record; `velocity_stats` reports `lines_per_minute` throughput
+- **Confidence intervals** -- `velocity_estimate` returns a p25–p75 range, median duration, and confidence level (high/medium/low/none based on similar task count)
 - **Local persistence** -- all data stored in SQLite at `~/.velocity-mcp/velocity.db` (or `.velocity/velocity.db` project-local)
 - **Global install** -- one command to track velocity across every Claude Code session
 - **Auto project detection** -- automatically detects project name from git remote or directory

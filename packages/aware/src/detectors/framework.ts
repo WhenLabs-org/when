@@ -120,6 +120,28 @@ async function detectJsFramework(projectRoot: string, pkg: PackageJson): Promise
     };
   }
 
+  // Angular
+  if (hasDep(pkg, "@angular/core")) {
+    return {
+      name: "angular",
+      version: getDepVersion(pkg, "@angular/core"),
+      variant: null,
+      confidence: 0.95,
+      detectedFrom: "package.json",
+    };
+  }
+
+  // NestJS
+  if (hasDep(pkg, "@nestjs/core")) {
+    return {
+      name: "nestjs",
+      version: getDepVersion(pkg, "@nestjs/core"),
+      variant: null,
+      confidence: 0.95,
+      detectedFrom: "package.json",
+    };
+  }
+
   // Hono
   if (hasDep(pkg, "hono")) {
     return {
@@ -127,6 +149,17 @@ async function detectJsFramework(projectRoot: string, pkg: PackageJson): Promise
       version: getDepVersion(pkg, "hono"),
       variant: null,
       confidence: 0.90,
+      detectedFrom: "package.json",
+    };
+  }
+
+  // Vue (standalone, not Nuxt — Nuxt is caught above)
+  if (hasDep(pkg, "vue") && !hasDep(pkg, "nuxt") && !hasDep(pkg, "vite")) {
+    return {
+      name: "vue",
+      version: getDepVersion(pkg, "vue"),
+      variant: null,
+      confidence: 0.80,
       detectedFrom: "package.json",
     };
   }
@@ -241,5 +274,14 @@ async function detectGoFramework(projectRoot: string): Promise<StackItem | null>
     return { name: "go", version: null, variant: "gin", confidence: 0.85, detectedFrom: "go.mod" };
   }
 
-  return null;
+  if (goMod.includes("github.com/labstack/echo")) {
+    return { name: "go", version: null, variant: "echo", confidence: 0.85, detectedFrom: "go.mod" };
+  }
+
+  if (goMod.includes("github.com/gofiber/fiber")) {
+    return { name: "go", version: null, variant: "fiber", confidence: 0.85, detectedFrom: "go.mod" };
+  }
+
+  // Generic Go project
+  return { name: "go", version: null, variant: null, confidence: 0.70, detectedFrom: "go.mod" };
 }

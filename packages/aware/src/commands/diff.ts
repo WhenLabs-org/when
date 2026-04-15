@@ -1,9 +1,28 @@
-import { detectStack, stackToConfig } from "../detectors/index.js";
+import chalk from "chalk";
+import { detectStack, stackToConfig, formatStackSummary } from "../detectors/index.js";
 import { loadConfig } from "../utils/config.js";
 import { log } from "../utils/logger.js";
-import { parsePackageJson } from "../utils/parsers.js";
 import { confirm } from "../utils/prompts.js";
 import { syncCommand } from "./sync.js";
+import type { StackConfig } from "../types.js";
+
+const KEY_LABELS: Record<string, string> = {
+  framework: "Framework",
+  language: "Language",
+  styling: "Styling",
+  orm: "ORM",
+  database: "Database",
+  testing: "Testing",
+  linting: "Linting",
+  packageManager: "Package Manager",
+  monorepo: "Monorepo",
+  deployment: "Deployment",
+  auth: "Auth",
+  apiStyle: "API Style",
+  stateManagement: "State Mgmt",
+  cicd: "CI/CD",
+  bundler: "Bundler",
+};
 
 export async function diffCommand(): Promise<void> {
   const projectRoot = process.cwd();
@@ -21,78 +40,100 @@ export async function diffCommand(): Promise<void> {
   const lastSync = config._meta.lastSyncedAt;
   const timeAgo = lastSync ? timeSince(new Date(lastSync)) : "never";
 
-  log.header(`Changes since last sync (${timeAgo}):\n`);
+  log.header(`\nStack diff (last sync: ${timeAgo})\n`);
 
-  // Compare stack
-  let hasChanges = false;
+  // Compare stack with colored output
   const oldStack = config.stack;
+  const changes: Array<{ key: string; label: string; old: string; new: string }> = [];
+  const unchanged: string[] = [];
 
-  log.header("STACK CHANGES:");
-  for (const key of Object.keys(newStackConfig) as (keyof typeof newStackConfig)[]) {
-    const oldVal = JSON.stringify(oldStack[key]);
-    const newVal = JSON.stringify(newStackConfig[key]);
+  for (const key of Object.keys(newStackConfig) as (keyof StackConfig)[]) {
+    const oldVal = formatValue(oldStack[key]);
+    const newVal = formatValue(newStackConfig[key]);
+    const label = KEY_LABELS[key] ?? key;
+
     if (oldVal !== newVal) {
-      hasChanges = true;
-      log.plain(`  ${key}: ${oldVal} → ${newVal}`);
+      changes.push({ key, label, old: oldVal, new: newVal });
+    } else if (oldVal !== "--") {
+      unchanged.push(`${label}: ${oldVal}`);
     }
   }
-  if (!hasChanges) {
-    log.dim("  No stack changes detected.");
+
+  if (changes.length === 0) {
+    log.success("No stack changes detected.\n");
+    printUnchanged(unchanged);
+    printSuggestions(config);
+    return;
   }
 
-  // Compare deps
+  // Print changes table
+  const labelWidth = Math.max(...changes.map((c) => c.label.length), 12);
+
+  for (const change of changes) {
+    const padded = change.label.padEnd(labelWidth);
+
+    if (change.old === "--" && change.new !== "--") {
+      // New addition
+      console.log(`  ${chalk.green("+")} ${padded}  ${chalk.green(change.new)}`);
+    } else if (change.old !== "--" && change.new === "--") {
+      // Removal
+      console.log(`  ${chalk.red("-")} ${padded}  ${chalk.red.strikethrough(change.old)}`);
+    } else {
+      // Change
+      console.log(`  ${chalk.yellow("~")} ${padded}  ${chalk.red(change.old)} ${chalk.dim("→")} ${chalk.green(change.new)}`);
+    }
+  }
+
   log.plain("");
-  log.header("DEPENDENCY CHANGES:");
-  const pkg = await parsePackageJson(projectRoot);
-  if (pkg) {
-    const currentDeps = new Set([
-      ...Object.keys(pkg.dependencies ?? {}),
-      ...Object.keys(pkg.devDependencies ?? {}),
-    ]);
+  log.dim(`  ${changes.length} change(s), ${unchanged.length} unchanged`);
 
-    // We can only compare against what's in the stack config since we don't store full dep lists
-    // Show current dep count as context
-    log.dim(`  ${currentDeps.size} dependencies currently installed`);
-  } else {
-    log.dim("  No package.json found.");
-  }
+  // Print unchanged (collapsed)
+  printUnchanged(unchanged);
 
   // Suggestions
-  log.plain("");
-  log.header("SUGGESTED UPDATES:");
-  const suggestions: string[] = [];
-
-  if (hasChanges) {
-    suggestions.push("Run `aware sync` to regenerate context files with updated stack");
-  }
-
-  if (!config.project.description) {
-    suggestions.push("Add a project description in .aware.json (project.description)");
-  }
-  if (!config.project.architecture) {
-    suggestions.push("Add architecture description in .aware.json (project.architecture)");
-  }
-  if (config.rules.length === 0) {
-    suggestions.push("Add project-specific rules in .aware.json (rules array)");
-  }
-  if (Object.keys(config.conventions).length === 0) {
-    suggestions.push("Add coding conventions in .aware.json (conventions object)");
-  }
-
-  if (suggestions.length === 0) {
-    log.success("  Everything looks good!");
-  } else {
-    for (let i = 0; i < suggestions.length; i++) {
-      log.plain(`  ${i + 1}. ${suggestions[i]}`);
-    }
-  }
+  printSuggestions(config);
 
   // Offer to sync
-  if (hasChanges) {
+  log.plain("");
+  const apply = await confirm("Apply changes and sync?");
+  if (apply) {
+    await syncCommand({ dryRun: false });
+  }
+}
+
+function formatValue(val: string | string[] | null | undefined): string {
+  if (val === null || val === undefined) return "--";
+  if (Array.isArray(val)) {
+    return val.length === 0 ? "--" : val.join(", ");
+  }
+  return val;
+}
+
+function printUnchanged(unchanged: string[]): void {
+  if (unchanged.length > 0) {
     log.plain("");
-    const apply = await confirm("Apply stack changes and sync?");
-    if (apply) {
-      await syncCommand({ dryRun: false });
+    log.dim(`  Unchanged: ${unchanged.join(", ")}`);
+  }
+}
+
+function printSuggestions(config: { project: { description: string; architecture: string }; rules: string[]; conventions: Record<string, unknown> }): void {
+  const suggestions: string[] = [];
+
+  if (!config.project.description) {
+    suggestions.push("Add a project description (project.description)");
+  }
+  if (!config.project.architecture) {
+    suggestions.push("Add architecture description (project.architecture)");
+  }
+  if (config.rules.length === 0) {
+    suggestions.push("Add project-specific rules (rules array)");
+  }
+
+  if (suggestions.length > 0) {
+    log.plain("");
+    log.header("Suggestions:");
+    for (const s of suggestions) {
+      log.dim(`  - ${s}`);
     }
   }
 }

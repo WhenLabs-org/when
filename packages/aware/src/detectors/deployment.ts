@@ -64,17 +64,24 @@ export async function detectDeployment(projectRoot: string): Promise<StackItem |
     };
   }
 
-  // Dockerfile (low priority)
-  if (
+  // Docker
+  const hasDockerfile =
     (await fileExists(path.join(projectRoot, "Dockerfile"))) ||
-    (await fileExists(path.join(projectRoot, "dockerfile")))
-  ) {
+    (await fileExists(path.join(projectRoot, "dockerfile")));
+  const hasCompose =
+    (await fileExists(path.join(projectRoot, "docker-compose.yml"))) ||
+    (await fileExists(path.join(projectRoot, "docker-compose.yaml"))) ||
+    (await fileExists(path.join(projectRoot, "compose.yml"))) ||
+    (await fileExists(path.join(projectRoot, "compose.yaml")));
+
+  if (hasDockerfile || hasCompose) {
+    const variant = hasDockerfile && hasCompose ? "compose" : hasCompose ? "compose" : null;
     return {
       name: "docker",
       version: null,
-      variant: null,
+      variant,
       confidence: 0.70,
-      detectedFrom: "Dockerfile",
+      detectedFrom: hasDockerfile ? "Dockerfile" : "docker-compose.yml",
     };
   }
 

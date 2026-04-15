@@ -11,6 +11,28 @@ export function dockerFragment(
 ): Fragment | null {
   if (!matchesStack(stack.deployment, "docker")) return null;
 
+  const hasCompose = stack.deployment?.variant === "compose";
+
+  const composeSection = hasCompose
+    ? `
+
+### Docker Compose
+- Use \`docker-compose.yml\` (or \`compose.yml\`) for multi-service local development
+- Define services for the app, database, cache, and any other infrastructure
+- Use \`volumes:\` to mount source code for hot-reloading in development
+- Use \`depends_on\` with \`condition: service_healthy\` to control startup order
+- Use named volumes for database data persistence across container restarts
+- Use \`profiles:\` to separate dev-only services (debug tools, seed scripts) from production ones
+- Use \`.env\` file with \`env_file:\` for environment variables — never commit secrets
+- Use a separate \`docker-compose.prod.yml\` override for production-specific settings
+- Use \`docker compose watch\` (Compose v2.22+) for automatic rebuilds on file changes`
+    : `
+
+### Compose
+- Use \`docker-compose.yml\` for local development with all services (DB, cache, app)
+- Mount source code as a volume for hot-reloading in development
+- Use \`depends_on\` with health checks to control startup order`;
+
   return {
     id: "docker",
     category: "deployment",
@@ -37,11 +59,6 @@ export function dockerFragment(
 - Never store secrets in the image — use runtime environment variables or secret management
 - Scan images for vulnerabilities: \`docker scout cves\` or integrate Trivy/Snyk in CI
 - Keep images minimal — use \`alpine\` or \`distroless\` base images to reduce attack surface
-- Set \`HEALTHCHECK\` instructions for container orchestrators to monitor application health
-
-### Compose
-- Use \`docker-compose.yml\` for local development with all services (DB, cache, app)
-- Mount source code as a volume for hot-reloading in development
-- Use \`depends_on\` with health checks to control startup order`,
+- Set \`HEALTHCHECK\` instructions for container orchestrators to monitor application health${composeSection}`,
   };
 }

@@ -4,6 +4,8 @@ import { syncCommand } from "./commands/sync.js";
 import { diffCommand } from "./commands/diff.js";
 import { watchCommand } from "./commands/watch.js";
 import { validateCommand } from "./commands/validate.js";
+import { doctorCommand } from "./commands/doctor.js";
+import { addCommand } from "./commands/add.js";
 import { VERSION } from "./constants.js";
 
 const program = new Command();
@@ -42,5 +44,16 @@ program
   .command("validate")
   .description("Validate .aware.json schema and content")
   .action(validateCommand);
+
+program
+  .command("doctor")
+  .description("Diagnose project health: config issues, stack drift, stale files")
+  .action(doctorCommand);
+
+program
+  .command("add")
+  .description("Add a rule, convention, or structure entry to .aware.json")
+  .requiredOption("-t, --type <type>", "Type to add: rule, convention, structure")
+  .action(addCommand);
 
 program.parse();

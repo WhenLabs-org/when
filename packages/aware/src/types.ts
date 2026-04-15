@@ -21,6 +21,9 @@ export interface DetectedStack {
   deployment: StackItem | null;
   auth: StackItem | null;
   apiStyle: StackItem | null;
+  stateManagement: StackItem | null;
+  cicd: StackItem | null;
+  bundler: StackItem | null;
 }
 
 // ---- Config types (.aware.json) ----
@@ -55,6 +58,9 @@ export interface StackConfig {
   deployment: string | null;
   auth: string | null;
   apiStyle: string | null;
+  stateManagement: string | null;
+  cicd: string | null;
+  bundler: string | null;
 }
 
 export interface ConventionsConfig {
@@ -114,7 +120,9 @@ export type FragmentCategory =
   | "linting"
   | "deployment"
   | "auth"
-  | "api";
+  | "api"
+  | "state-management"
+  | "cicd";
 
 export type FragmentFunction = (
   stack: DetectedStack,
@@ -167,6 +175,8 @@ export interface Detector {
 
 export interface PackageJson {
   name?: string;
+  description?: string;
+  scripts?: Record<string, string>;
   dependencies?: Record<string, string>;
   devDependencies?: Record<string, string>;
   packageManager?: string;

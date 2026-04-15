@@ -43,6 +43,31 @@ const NAME_MAP: Record<string, string> = {
   rust: "Rust",
   python: "Python",
   go: "Go",
+  angular: "Angular",
+  nestjs: "NestJS",
+  vue: "Vue",
+  "vite-vue": "Vite + Vue",
+  zustand: "Zustand",
+  "redux-toolkit": "Redux Toolkit",
+  jotai: "Jotai",
+  xstate: "XState",
+  recoil: "Recoil",
+  pinia: "Pinia",
+  mobx: "MobX",
+  valtio: "Valtio",
+  "github-actions": "GitHub Actions",
+  "gitlab-ci": "GitLab CI",
+  circleci: "CircleCI",
+  jenkins: "Jenkins",
+  "travis-ci": "Travis CI",
+  vite: "Vite",
+  webpack: "Webpack",
+  esbuild: "esbuild",
+  tsup: "tsup",
+  swc: "SWC",
+  rollup: "Rollup",
+  turbopack: "Turbopack",
+  parcel: "Parcel",
 };
 
 const KEY_LABELS: Record<string, string> = {
@@ -58,6 +83,9 @@ const KEY_LABELS: Record<string, string> = {
   deployment: "Deployment",
   auth: "Auth",
   apiStyle: "API Style",
+  stateManagement: "State Management",
+  cicd: "CI/CD",
+  bundler: "Bundler",
 };
 
 /**
@@ -116,6 +144,9 @@ function buildStackSection(stack: StackConfig): string {
     "deployment",
     "auth",
     "apiStyle",
+    "stateManagement",
+    "cicd",
+    "bundler",
   ];
 
   for (const key of keys) {

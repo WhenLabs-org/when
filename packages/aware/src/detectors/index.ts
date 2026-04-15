@@ -11,6 +11,9 @@ import { detectMonorepo } from "./monorepo.js";
 import { detectDeployment } from "./deployment.js";
 import { detectAuth } from "./auth.js";
 import { detectApiStyle } from "./api-style.js";
+import { detectStateManagement } from "./state-management.js";
+import { detectCicd } from "./cicd.js";
+import { detectBundler } from "./bundler.js";
 
 export async function detectStack(projectRoot: string): Promise<DetectedStack> {
   const [
@@ -26,6 +29,9 @@ export async function detectStack(projectRoot: string): Promise<DetectedStack> {
     deployment,
     auth,
     apiStyle,
+    stateManagement,
+    cicd,
+    bundler,
   ] = await Promise.all([
     detectFramework(projectRoot).catch(() => null),
     detectLanguage(projectRoot).catch(() => null),
@@ -39,6 +45,9 @@ export async function detectStack(projectRoot: string): Promise<DetectedStack> {
     detectDeployment(projectRoot).catch(() => null),
     detectAuth(projectRoot).catch(() => null),
     detectApiStyle(projectRoot).catch(() => null),
+    detectStateManagement(projectRoot).catch(() => null),
+    detectCicd(projectRoot).catch(() => null),
+    detectBundler(projectRoot).catch(() => null),
   ]);
 
   return {
@@ -54,6 +63,9 @@ export async function detectStack(projectRoot: string): Promise<DetectedStack> {
     deployment,
     auth,
     apiStyle,
+    stateManagement,
+    cicd,
+    bundler,
   };
 }
 
@@ -78,6 +90,9 @@ export function stackToConfig(stack: DetectedStack): StackConfig {
     deployment: stack.deployment ? formatItem(stack.deployment) : null,
     auth: stack.auth ? formatItem(stack.auth) : null,
     apiStyle: stack.apiStyle ? formatItem(stack.apiStyle) : null,
+    stateManagement: stack.stateManagement ? formatItem(stack.stateManagement) : null,
+    cicd: stack.cicd ? formatItem(stack.cicd) : null,
+    bundler: stack.bundler ? formatItem(stack.bundler) : null,
   };
 }
 
@@ -101,6 +116,9 @@ export function formatStackSummary(stack: DetectedStack): string {
     ["Deployment", stack.deployment],
     ["Auth", stack.auth],
     ["API Style", stack.apiStyle],
+    ["State Mgmt", stack.stateManagement],
+    ["CI/CD", stack.cicd],
+    ["Bundler", stack.bundler],
   ];
 
   for (const [label, value] of entries) {
@@ -137,4 +155,7 @@ export {
   detectDeployment,
   detectAuth,
   detectApiStyle,
+  detectStateManagement,
+  detectCicd,
+  detectBundler,
 };

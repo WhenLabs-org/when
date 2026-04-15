@@ -38,7 +38,7 @@ export class VersionsAnalyzer implements Analyzer {
 
         if (claimedMajor === null || actualMajor === null) continue;
 
-        if (claimedMajor < actualMajor) {
+        if (claimedMajor !== actualMajor) {
           issues.push({
             id: issueId('version', doc.filePath, claim.line),
             category: 'version',

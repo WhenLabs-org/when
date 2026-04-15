@@ -53,8 +53,8 @@ export class SemanticAnalyzer implements AiAnalyzer {
               suggestion: ai.suggestion,
             });
           }
-        } catch {
-          // Skip sections that fail to analyze
+        } catch (err) {
+          console.error(`Warning: AI semantic analysis failed for ${doc.filePath}: ${err instanceof Error ? err.message : 'parse error'}`);
           continue;
         }
       }

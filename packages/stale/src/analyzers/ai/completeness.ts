@@ -43,7 +43,8 @@ export class CompletenessAnalyzer implements AiAnalyzer {
             suggestion: ai.suggestion,
           });
         }
-      } catch {
+      } catch (err) {
+        console.error(`Warning: AI completeness analysis failed for ${doc.filePath}: ${err instanceof Error ? err.message : 'parse error'}`);
         continue;
       }
     }

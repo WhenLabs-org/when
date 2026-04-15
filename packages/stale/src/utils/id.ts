@@ -15,8 +15,13 @@ const CATEGORY_PREFIX: Record<DriftCategory, string> = {
   'response-shape': 'resp',
 };
 
+const idCounts = new Map<string, number>();
+
 export function issueId(category: DriftCategory, file: string, line: number): string {
   const prefix = CATEGORY_PREFIX[category];
   const fileName = file.replace(/[^a-zA-Z0-9]/g, '-').replace(/-+/g, '-').toLowerCase();
-  return `${prefix}-${fileName}-${line}`;
+  const baseId = `${prefix}-${fileName}-${line}`;
+  const count = (idCounts.get(baseId) ?? 0) + 1;
+  idCounts.set(baseId, count);
+  return count === 1 ? baseId : `${baseId}-${count}`;
 }

@@ -95,7 +95,26 @@ export function mergeWithCliFlags(config: StaleConfig, flags: CliFlags): StaleCo
 }
 
 export async function resolveConfig(projectPath: string, flags: CliFlags): Promise<StaleConfig> {
-  const configPath = flags.config ? flags.config : projectPath;
-  const config = await loadConfig(flags.config ? join(projectPath, flags.config, '..') : projectPath);
+  let config: StaleConfig;
+  if (flags.config) {
+    // Load the specific config file the user pointed to
+    const configFullPath = join(projectPath, flags.config);
+    try {
+      const content = await readFile(configFullPath, 'utf-8');
+      const parsed = parseYaml(content);
+      if (parsed && typeof parsed === 'object') {
+        config = deepMerge(DEFAULT_CONFIG as Record<string, any>, parsed as Record<string, any>) as StaleConfig;
+      } else {
+        config = { ...DEFAULT_CONFIG };
+      }
+    } catch (err: unknown) {
+      if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
+        throw new ConfigError(`Config file not found: ${configFullPath}`);
+      }
+      throw new ConfigError(`Failed to parse ${flags.config}: ${(err as Error).message}`);
+    }
+  } else {
+    config = await loadConfig(projectPath);
+  }
   return mergeWithCliFlags(config, flags);
 }

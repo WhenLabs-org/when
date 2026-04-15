@@ -20,6 +20,10 @@ export async function watchCommand(options: CliFlags): Promise<void> {
   const watchFiles = [...docFiles, ...srcFiles];
 
   console.log(chalk.bold('Stale — Watch Mode'));
+  if (process.platform === 'linux') {
+    console.log(chalk.yellow('Warning: recursive file watching is not supported on Linux. Only top-level changes will be detected.'));
+    console.log(chalk.yellow('Consider using a file watcher like nodemon or entr to trigger `stale scan` on changes instead.'));
+  }
   console.log(chalk.dim(`Watching ${watchFiles.length} files for changes...`));
   console.log('');
 

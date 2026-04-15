@@ -68,15 +68,17 @@ async function run(): Promise<void> {
 
     const staticAnalyzers = getStaticAnalyzers(config);
     const issues = await runAnalyzers(staticAnalyzers, ctx);
+    let analyzerCount = staticAnalyzers.length;
 
     if (config.ai.enabled) {
       const aiAnalyzers = getAiAnalyzers(config);
       const aiIssues = await runAnalyzers(aiAnalyzers, ctx);
       issues.push(...aiIssues);
+      analyzerCount += aiAnalyzers.length;
     }
 
     const duration = Date.now() - startTime;
-    const totalChecks = issues.length + Math.max(docs.length * staticAnalyzers.length, issues.length);
+    const totalChecks = docs.length * analyzerCount;
 
     const report: DriftReport = {
       projectPath,

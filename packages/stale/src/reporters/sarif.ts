@@ -43,7 +43,7 @@ export class SarifReporter implements Reporter {
           physicalLocation: {
             artifactLocation: { uri: issue.source.file },
             region: {
-              startLine: issue.source.line,
+              startLine: Math.max(issue.source.line, 1),
               ...(issue.source.endLine ? { endLine: issue.source.endLine } : {}),
             },
           },

@@ -38,7 +38,9 @@
     "simple-git": "^3.27.0",
     "unified": "^11.0.5",
     "unist-util-visit": "^5.0.0",
-    "yaml": "^2.7.1"
+    "yaml": "^2.7.1",
+    "@actions/core": "^1.11.1",
+    "@actions/github": "^6.0.0"
   },
   "devDependencies": {
     "@types/node": "^20.17.0",

@@ -53,11 +53,16 @@ function extractCommands(value: string, blockLine: number): ParsedCommand[] {
       let scriptName: string | undefined;
 
       if (manager === 'npm' || manager === 'yarn' || manager === 'pnpm') {
-        const runMatch = rest.match(/^(?:run\s+)?(\S+)/);
-        if (runMatch && rest.startsWith('run ')) {
-          scriptName = runMatch[1];
-        } else if (['start', 'test', 'build', 'install', 'dev'].includes(rest.split(/\s/)[0])) {
-          scriptName = rest.split(/\s/)[0];
+        const firstWord = rest.split(/\s/)[0];
+        const BUILTIN_ONLY = ['install', 'uninstall', 'update', 'outdated', 'ls', 'init', 'publish', 'pack', 'link', 'ci'];
+        if (rest.startsWith('run ')) {
+          const runMatch = rest.match(/^run\s+(\S+)/);
+          if (runMatch) scriptName = runMatch[1];
+        } else if (['start', 'test', 'build', 'dev'].includes(firstWord)) {
+          scriptName = firstWord;
+        } else if (BUILTIN_ONLY.includes(firstWord)) {
+          // Built-in npm command, not a package.json script — skip
+          scriptName = undefined;
         }
       } else if (manager === 'make') {
         scriptName = rest.split(/\s/)[0];

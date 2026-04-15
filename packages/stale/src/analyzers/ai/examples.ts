@@ -59,7 +59,8 @@ export class ExamplesAnalyzer implements AiAnalyzer {
             suggestion: ai.suggestion,
           });
         }
-      } catch {
+      } catch (err) {
+        console.error(`Warning: AI examples analysis failed for ${doc.filePath}: ${err instanceof Error ? err.message : 'parse error'}`);
         continue;
       }
     }

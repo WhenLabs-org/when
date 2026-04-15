@@ -10,15 +10,6 @@ const JS_ENV_BRACKET_REGEX = /process\.env\[['"]([A-Z][A-Z0-9_]+)['"]\]/g;
 const PY_ENV_REGEX = /os\.(?:environ(?:\.get)?|getenv)\(?['"]([A-Z][A-Z0-9_]+)['"]\)?/g;
 const DOTENV_REGEX = /^([A-Z][A-Z0-9_]+)\s*=/gm;
 
-const ROUTE_REGEXES = [
-  // Express/Fastify/Koa: app.get('/path', ...) or router.post('/path', ...)
-  /(?:app|router|server|fastify)\.(get|post|put|patch|delete|head|options)\s*\(\s*['"`](\/[^'"`]*?)['"`]/gi,
-  // Flask: @app.route('/path', methods=['GET'])
-  /@(?:app|blueprint|bp)\.route\s*\(\s*['"]([^'"]+)['"]\s*(?:,\s*methods\s*=\s*\[([^\]]+)\])?/gi,
-  // Hono: app.get('/path', ...)
-  /\.(?:get|post|put|patch|delete)\s*\(\s*['"`](\/[^'"`]*?)['"`]/gi,
-];
-
 const MAKEFILE_TARGET_REGEX = /^([a-zA-Z_][\w.-]*)\s*:/gm;
 
 async function extractEnvVars(projectPath: string): Promise<CodeEnvVar[]> {
@@ -95,8 +86,8 @@ async function extractRoutes(projectPath: string): Promise<CodeRoute[]> {
       for (let i = 0; i < lines.length; i++) {
         const line = lines[i];
 
-        // Express/Fastify/Koa pattern
-        const routeRegex = /(?:app|router|server|fastify)\.(get|post|put|patch|delete|head|options)\s*\(\s*['"`](\/[^'"`]*?)['"`]/gi;
+        // Express/Fastify/Koa/Hono pattern
+        const routeRegex = /(?:app|router|server|fastify|hono)\.(get|post|put|patch|delete|head|options)\s*\(\s*['"`](\/[^'"`]*?)['"`]/gi;
         let match;
         while ((match = routeRegex.exec(line)) !== null) {
           const framework = content.includes('fastify') ? 'fastify'

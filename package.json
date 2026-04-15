@@ -1,6 +1,6 @@
 {
   "name": "@whenlabs/when",
-  "version": "0.7.0",
+  "version": "0.7.2",
   "description": "The WhenLabs developer toolkit — 6 tools, one install",
   "type": "module",
   "main": "dist/index.js",
@@ -31,7 +31,7 @@
     "@modelcontextprotocol/sdk": "^1.29.0",
     "@whenlabs/aware": "^0.1.0",
     "@whenlabs/berth": "^0.1.0",
-    "@whenlabs/envalid": "^0.1.0",
+    "@whenlabs/envalid": "^0.1.2",
     "@whenlabs/stale": "^0.1.0",
     "@whenlabs/velocity-mcp": "^0.1.0",
     "@whenlabs/vow": "^0.1.0",

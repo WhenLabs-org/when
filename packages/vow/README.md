@@ -29,6 +29,20 @@ Part of the [WhenLabs](https://whenlabs.org) umbrella.
 - **Dependency graph** -- Directed graph with cycle detection, BFS depth calculation, path-to-root tracing
 - **5 output formats** -- Terminal (colored tables), JSON, CSV, Markdown, SARIF (GitHub Code Scanning)
 - **Fix suggestions** -- Queries the npm registry for permissively-licensed alternatives to policy violations
+- **Policy enforcement via `.vow.json`** -- Define `allow`, `deny`, and `warn` license lists in a simple JSON file. `vow check` exits 1 on denied licenses, making it a drop-in CI gate:
+  ```json
+  { "allow": ["MIT", "ISC", "Apache-2.0"], "deny": ["GPL-3.0"], "warn": ["LGPL-*"] }
+  ```
+  ```bash
+  vow check   # exits 1 if any dependency has a denied license
+  ```
+- **UNKNOWN license resolution** -- Automatically resolves packages with unknown licenses by reading their `LICENSE` / `LICENCE` / `COPYING` files directly from `node_modules`
+- **`vow attribution`** -- Generates a `THIRD_PARTY_LICENSES.md` file containing every dependency's name, version, license identifier, and full license text:
+  ```bash
+  vow attribution                     # all deps
+  vow attribution --production        # production deps only
+  vow attribution -o NOTICES.md       # custom output path
+  ```
 
 ## Installation
 

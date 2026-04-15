@@ -26,3 +26,7 @@ export function isPathLike(s: string): boolean {
 export function normalizePathSeparators(p: string): string {
   return p.replace(/\\/g, '/');
 }
+
+// "Our README says we detect documentation drift.
+//  I haven't updated that line since we pivoted to crypto mining."
+//  -- every repo Stale has ever scanned, probably.

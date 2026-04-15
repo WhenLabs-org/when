@@ -19,24 +19,12 @@ The WhenLabs developer toolkit — 6 tools, one install
 ### Mocking
 - Use `vi.mock('module')` at the top of the file to mock entire modules — it is hoisted automatically
 - Use `vi.spyOn(object, 'method')` to observe calls without replacing implementation
-- Use `vi.fn()` for standalone mock functions; assert with `toHaveBeenCalledWith()`
-- Reset mocks between tests: `vi.clearAllMocks()` in `beforeEach` or use `mockReset: true` in config
 
 ### React Component Testing
-- Use `@testing-library/react` with `render()`, `screen`, and `userEvent`
-- Query elements by accessible role first: `screen.getByRole('button', { name: /submit/i })`
-- Use `userEvent` (not `fireEvent`) for realistic user interactions
-- Use `waitFor()` for async state changes; avoid arbitrary timeouts
 
 ### Configuration
-- Configure in `vitest.config.ts` or the `test` field in `vite.config.ts`
-- Use `setupFiles` for global setup (e.g., `@testing-library/jest-dom` matchers)
-- Enable coverage with `vitest run --coverage` using `@vitest/coverage-v8` or `@vitest/coverage-istanbul`
 
 ### Best Practices
-- Keep tests deterministic — mock dates, randomness, and external APIs
-- Test behavior, not implementation — assert on output/DOM state, not internal variables
-- Use `test.each()` for parameterized tests with multiple input/output combinations
 
 ## GitHub Actions CI/CD
 
@@ -48,16 +36,8 @@ The WhenLabs developer toolkit — 6 tools, one install
 
 ### Best Practices
 - Use job-level `concurrency` to cancel in-progress runs on the same branch
-- Cache dependencies with `actions/cache` or built-in caching (e.g., `actions/setup-node` with `cache: 'pnpm'`)
-- Use matrix strategies for testing across multiple versions/platforms
-- Store secrets in GitHub Secrets — never hardcode credentials in workflow files
-- Use `needs:` to define job dependencies and control execution order
-- Use reusable workflows (`workflow_call`) to share CI logic across repos
 
 ### Performance
-- Use `paths` and `paths-ignore` filters to skip unnecessary workflow runs
-- Split long workflows into parallel jobs where possible
-- Use larger runners for compute-heavy tasks (builds, E2E tests)
 
 ## Conventions
 ### Naming

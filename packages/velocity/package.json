@@ -1,0 +1,38 @@
+{
+  "name": "velocity-mcp",
+  "version": "0.1.0",
+  "description": "MCP server that gives coding agents self-awareness of their execution speed",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "velocity-mcp": "dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "start": "node dist/index.js",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": ["mcp", "velocity", "telemetry", "coding-agent"],
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "better-sqlite3": "^11.0.0",
+    "uuid": "^11.0.0",
+    "zod": "^3.25.0"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.0",
+    "@types/node": "^22.0.0",
+    "@types/uuid": "^10.0.0",
+    "typescript": "^5.7.0",
+    "vitest": "^3.0.0"
+  },
+  "files": ["dist"]
+}

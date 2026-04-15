@@ -10,10 +10,10 @@
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --bg:#e5e5e0;
-  --surface:#dcdcd7;
-  --surface-2:#d2d2cd;
-  --border:#bbbbb5;
+  --bg:#ffffff;
+  --surface:#f5f5f5;
+  --surface-2:#ebebeb;
+  --border:#d4d4d4;
   --text:#1a1a18;
   --text-dim:#6e6e68;
   --accent:#c46a1a;
@@ -58,7 +58,7 @@ nav{
   position:fixed;top:0;left:0;right:0;z-index:100;
   padding:1rem 2rem;
   display:flex;justify-content:space-between;align-items:center;
-  background:rgba(229,229,224,0.85);backdrop-filter:blur(12px);
+  background:rgba(255,255,255,0.85);backdrop-filter:blur(12px);
   border-bottom:1px solid var(--border);
 }
 .nav-logo{font-size:0.85rem;font-weight:700;letter-spacing:-0.02em;color:var(--accent)}
@@ -443,7 +443,7 @@ footer a:hover{color:var(--accent)}
   <!-- Warm glow that follows cursor -->
   <div class="hero-glow" aria-hidden="true"></div>
 
-  <div class="hero-badge"><span class="dot"></span> v0.7.2 &middot; Free &amp; open source &middot; MIT</div>
+  <div class="hero-badge"><span class="dot"></span> v0.7.3 &middot; Free &amp; open source &middot; MIT</div>
   <h1>Six tools.<br><em>One install.</em></h1>
   <p class="hero-sub">A unified developer toolkit for AI-assisted workflows. Task timing, doc drift detection, env validation, secret scanning, port conflict resolution, AI context generation, and license auditing — two MCP servers, one install.</p>
   <div class="hero-install" onclick="copyInstall(this)" role="button" tabindex="0" onkeydown="if(event.key==='Enter')copyInstall(this)">

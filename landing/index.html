@@ -436,7 +436,7 @@ footer a:hover{color:var(--accent)}
   <!-- Warm glow that follows cursor -->
   <div class="hero-glow" aria-hidden="true"></div>
 
-  <div class="hero-badge"><span class="dot"></span> v0.8.1 &middot; Free &amp; open source &middot; MIT</div>
+  <div class="hero-badge"><span class="dot"></span> v0.9.0 &middot; Free &amp; open source &middot; MIT</div>
   <h1>Six tools.<br><em>One install.</em></h1>
   <p class="hero-sub">A unified developer toolkit for AI-assisted workflows. Task timing, doc drift detection, env validation, secret scanning, port conflict resolution, AI context generation, and license auditing — one MCP server, one install.</p>
   <div class="hero-install" onclick="copyInstall(this)" role="button" tabindex="0" onkeydown="if(event.key==='Enter')copyInstall(this)">
@@ -467,7 +467,7 @@ footer a:hover{color:var(--accent)}
           <div class="tool-name">velocity</div>
           <span class="tool-badge mcp">MCP</span>
         </div>
-        <div class="tool-desc">Task timing and estimation for coding agents. Builds a local SQLite history so your agent learns its own speed and gives data-backed ETAs.</div>
+        <div class="tool-desc">Task timing, estimation, and performance insights. Builds a local SQLite history so your agent learns its own speed, spots productivity patterns, and gives data-backed ETAs.</div>
         <div class="tool-cmd"><span class="prompt">$</span> velocity_start_task &middot; velocity_estimate</div>
       </div>
 
@@ -477,7 +477,7 @@ footer a:hover{color:var(--accent)}
           <span class="tool-badge mcp">MCP</span>
           <span class="tool-badge cli">CLI</span>
         </div>
-        <div class="tool-desc">Detect documentation drift. Catches wrong file paths, dead links, phantom env vars, outdated npm scripts, and port mismatches in your docs.</div>
+        <div class="tool-desc">Detect and auto-fix documentation drift. Catches wrong file paths, dead links, phantom env vars, and outdated scripts &mdash; then generates fixes you can apply with one command.</div>
         <div class="tool-cmd"><span class="prompt">$</span> when stale scan</div>
       </div>
 
@@ -487,7 +487,7 @@ footer a:hover{color:var(--accent)}
           <span class="tool-badge mcp">MCP</span>
           <span class="tool-badge cli">CLI</span>
         </div>
-        <div class="tool-desc">Validate .env files against a typed schema. Cross-env sync checks, secret leak scanning, and detection of undocumented env vars in code.</div>
+        <div class="tool-desc">Validate .env files against typed schemas &mdash; or generate schemas from code analysis. Cross-env sync checks, secret leak scanning, and auto-detection of undocumented env vars.</div>
         <div class="tool-cmd"><span class="prompt">$</span> when envalid validate</div>
       </div>
 
@@ -497,7 +497,7 @@ footer a:hover{color:var(--accent)}
           <span class="tool-badge mcp">MCP</span>
           <span class="tool-badge cli">CLI</span>
         </div>
-        <div class="tool-desc">Detect and resolve port conflicts. Scans .env, docker-compose, and package.json to find collisions before you hit EADDRINUSE.</div>
+        <div class="tool-desc">Detect, predict, and auto-resolve port conflicts. Scans .env, docker-compose, and package.json to find collisions &mdash; then kills or reassigns ports automatically.</div>
         <div class="tool-cmd"><span class="prompt">$</span> when berth status</div>
       </div>
 
@@ -507,7 +507,7 @@ footer a:hover{color:var(--accent)}
           <span class="tool-badge mcp">MCP</span>
           <span class="tool-badge cli">CLI</span>
         </div>
-        <div class="tool-desc">Auto-detect your stack and generate AI context files for Claude Code, Cursor, GitHub Copilot, and AGENTS.md — all from one config.</div>
+        <div class="tool-desc">Auto-detect your stack and generate AI context files for Claude Code, Cursor, GitHub Copilot, and AGENTS.md. Watches config files and auto-syncs on changes.</div>
         <div class="tool-cmd"><span class="prompt">$</span> when aware init --targets all</div>
       </div>
 
@@ -517,7 +517,7 @@ footer a:hover{color:var(--accent)}
           <span class="tool-badge mcp">MCP</span>
           <span class="tool-badge cli">CLI</span>
         </div>
-        <div class="tool-desc">Scan dependency licenses and validate against plain-English or JSON policies. Generate attribution files and find compliant replacements.</div>
+        <div class="tool-desc">Scan dependency licenses and validate against policies. Generate attribution files, find compliant replacements, and install pre-commit hooks to block violations.</div>
         <div class="tool-cmd"><span class="prompt">$</span> when vow scan</div>
       </div>
 

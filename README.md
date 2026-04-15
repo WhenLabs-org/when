@@ -16,10 +16,9 @@ This is a one-time setup. After install, all six tools are available in every pr
 
 Running `npx @whenlabs/when install` will:
 
-1. Register **two MCP servers** in your Claude Code configuration:
-   - `velocity-mcp` — task timing and estimation tools
-   - `whenlabs` — stale, envalid, berth, aware, and vow tools
+1. Register a **single MCP server** (`whenlabs`) in your Claude Code configuration — all six tools, including velocity, are served from one server
 2. Inject **CLAUDE.md instructions** so Claude knows when to use each tool automatically — and prefers them over shell commands
+3. Clean up any legacy `velocity-mcp` registrations (velocity is now bundled)
 
 Once connected, Claude can call any tool directly without you asking. For example, after a refactor Claude might run `stale_scan` to check for doc drift, or before a release it might run `vow_check` to validate licenses.
 
@@ -118,7 +117,7 @@ when ci --json       # Machine-readable JSON output
 npx @whenlabs/when uninstall
 ```
 
-Removes both MCP servers and cleans up CLAUDE.md instructions.
+Removes the MCP server and cleans up CLAUDE.md instructions.
 
 ## License
 

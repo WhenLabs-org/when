@@ -209,7 +209,15 @@ Scan your codebase for environment variable usage and compare with the schema. F
 envalid detect                          # scan current directory
 envalid detect -d src                   # scan specific directory
 envalid detect --exclude vendor,tmp     # exclude directories
+
+# Auto-generate a schema from detected env vars in code
+envalid detect --generate
+
+# Generate schema to a custom path
+envalid detect --generate -o custom.schema
 ```
+
+The `--generate` flag scans your codebase for `process.env` (and equivalents), infers types, and writes a `.env.schema` — useful for projects that don't have a schema yet.
 
 Supports: `process.env.X` (Node.js), `import.meta.env.X` (Vite), `os.environ` / `os.getenv` (Python), `ENV[]` (Ruby), `os.Getenv` (Go), `env::var` (Rust), `getenv` / `$_ENV` (PHP).
 

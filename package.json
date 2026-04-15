@@ -1,11 +1,12 @@
 {
   "name": "@whenlabs/when",
-  "version": "0.1.2",
+  "version": "0.2.1",
   "description": "The WhenLabs developer toolkit — 6 tools, one install",
   "type": "module",
   "main": "dist/index.js",
   "bin": {
-    "when": "dist/index.js"
+    "when": "dist/index.js",
+    "when-mcp": "dist/mcp.js"
   },
   "scripts": {
     "build": "tsup",
@@ -14,19 +15,28 @@
     "test:watch": "vitest",
     "prepublishOnly": "npm run build"
   },
-  "keywords": ["whenlabs", "developer-tools", "cli", "mcp", "velocity", "claude-code"],
+  "keywords": [
+    "whenlabs",
+    "developer-tools",
+    "cli",
+    "mcp",
+    "velocity",
+    "claude-code"
+  ],
   "license": "MIT",
   "engines": {
     "node": ">=20"
   },
   "dependencies": {
-    "commander": "^12.0.0",
-    "@whenlabs/velocity-mcp": "^0.1.0",
-    "@whenlabs/stale": "^0.1.0",
-    "@whenlabs/envalid": "^0.1.0",
-    "@whenlabs/berth": "^0.1.0",
+    "@modelcontextprotocol/sdk": "^1.29.0",
     "@whenlabs/aware": "^0.1.0",
-    "@whenlabs/vow": "^0.1.0"
+    "@whenlabs/berth": "^0.1.0",
+    "@whenlabs/envalid": "^0.1.0",
+    "@whenlabs/stale": "^0.1.0",
+    "@whenlabs/velocity-mcp": "^0.1.0",
+    "@whenlabs/vow": "^0.1.0",
+    "commander": "^12.0.0",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
@@ -34,5 +44,7 @@
     "typescript": "^5.7.0",
     "vitest": "^3.0.0"
   },
-  "files": ["dist"]
+  "files": [
+    "dist"
+  ]
 }

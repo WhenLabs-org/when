@@ -1,28 +1,28 @@
 import { execSync } from 'node:child_process';
 
-export function registerMcpServer(): { success: boolean; message: string } {
+function registerServer(name: string, command: string): { success: boolean; message: string } {
   try {
-    execSync('claude mcp add -s user velocity-mcp -- npx @whenlabs/velocity-mcp', { stdio: 'pipe' });
-    return { success: true, message: 'MCP server "velocity-mcp" registered successfully.' };
+    execSync(`claude mcp add -s user ${name} -- ${command}`, { stdio: 'pipe' });
+    return { success: true, message: `MCP server "${name}" registered successfully.` };
   } catch (err: unknown) {
     const output =
       err instanceof Error && 'stderr' in err
         ? (err as NodeJS.ErrnoException & { stderr: Buffer }).stderr?.toString() ?? ''
         : '';
     if (output.includes('already exists') || output.includes('already registered')) {
-      return { success: true, message: 'MCP server "velocity-mcp" is already registered.' };
+      return { success: true, message: `MCP server "${name}" is already registered.` };
     }
     return {
       success: false,
-      message: `Failed to register MCP server: ${output || (err instanceof Error ? err.message : String(err))}`,
+      message: `Failed to register "${name}": ${output || (err instanceof Error ? err.message : String(err))}`,
     };
   }
 }
 
-export function unregisterMcpServer(): { success: boolean; message: string } {
+function unregisterServer(name: string): { success: boolean; message: string } {
   try {
-    execSync('claude mcp remove -s user velocity-mcp', { stdio: 'pipe' });
-    return { success: true, message: 'MCP server "velocity-mcp" removed successfully.' };
+    execSync(`claude mcp remove -s user ${name}`, { stdio: 'pipe' });
+    return { success: true, message: `MCP server "${name}" removed.` };
   } catch (err: unknown) {
     const output =
       err instanceof Error && 'stderr' in err
@@ -33,11 +33,29 @@ export function unregisterMcpServer(): { success: boolean; message: string } {
       output.includes('not registered') ||
       output.includes('does not exist')
     ) {
-      return { success: true, message: 'MCP server "velocity-mcp" was not registered.' };
+      return { success: true, message: `MCP server "${name}" was not registered.` };
     }
     return {
       success: false,
-      message: `Failed to remove MCP server: ${output || (err instanceof Error ? err.message : String(err))}`,
+      message: `Failed to remove "${name}": ${output || (err instanceof Error ? err.message : String(err))}`,
     };
   }
+}
+
+export function registerMcpServer(): { success: boolean; message: string } {
+  const velocity = registerServer('velocity-mcp', 'npx @whenlabs/velocity-mcp');
+  const whenlabs = registerServer('whenlabs', 'npx @whenlabs/when when-mcp');
+  return {
+    success: velocity.success && whenlabs.success,
+    message: [velocity.message, whenlabs.message].join('\n  '),
+  };
+}
+
+export function unregisterMcpServer(): { success: boolean; message: string } {
+  const velocity = unregisterServer('velocity-mcp');
+  const whenlabs = unregisterServer('whenlabs');
+  return {
+    success: velocity.success && whenlabs.success,
+    message: [velocity.message, whenlabs.message].join('\n  '),
+  };
 }

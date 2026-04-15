@@ -122,6 +122,29 @@ berth reassign 3000 3001 --project my-app
 
 Updates `.env`, `docker-compose.yml`, and `package.json` with the new port number. Handles `PORT=`, `--port`, `-p`, and URL patterns contextually.
 
+### Resolve port conflicts
+
+```bash
+# Auto-detect and resolve conflicts in the current directory
+berth resolve
+
+# Resolve conflicts in a specific project directory
+berth resolve ~/projects/my-app
+
+# Preview what would happen without making changes
+berth resolve --dry-run
+
+# Allow killing blocking processes
+berth resolve --kill
+
+# Choose a strategy: kill, reassign, or auto (default)
+berth resolve --strategy kill
+berth resolve --strategy reassign
+berth resolve --strategy auto
+```
+
+Scans the project directory for port conflicts and resolves them automatically. The `auto` strategy kills dev processes and reassigns ports for system services. Use `--dry-run` to preview changes.
+
 ### Auto-resolve conflicts
 
 ```bash
@@ -185,6 +208,7 @@ berth-tool/
       register.ts                   # berth register
       list.ts                       # berth list
       reassign.ts                   # berth reassign
+      resolve.ts                    # berth resolve (auto-resolve conflicts)
       start.ts                      # berth start
       watch.ts                      # berth watch
     detectors/

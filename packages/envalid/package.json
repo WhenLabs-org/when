@@ -1,6 +1,6 @@
 {
-  "name": "envalid",
-  "version": "0.1.0",
+  "name": "@whenlabs/berth",
+  "version": "0.1.1",
   "description": "Type safety for .env files",
   "type": "module",
   "bin": {

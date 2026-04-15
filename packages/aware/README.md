@@ -85,15 +85,21 @@ Shows what changed in your detected stack since the last sync. Displays addition
 
 ```bash
 aware diff
+
+# CI-friendly: exit 0 if no changes, exit 1 if drift detected
+aware diff --exit-code
 ```
+
+The `--exit-code` flag is useful in CI pipelines to fail a build when AI context files have drifted from the actual stack.
 
 ### `aware watch`
 
-Watches for project changes (package.json, config files, .env, etc.) and suggests or auto-applies context updates. Uses a 500ms debounce to batch rapid changes.
+Watches for project changes (package.json, config files, .env, etc.) and suggests or auto-applies context updates. Uses native `fs.watch` for efficient file watching with a configurable debounce.
 
 ```bash
 aware watch                         # Watch and suggest
 aware watch --auto-sync             # Watch and auto-regenerate
+aware watch --debounce 5000         # Custom debounce (ms, default: 2000)
 ```
 
 ### `aware validate`

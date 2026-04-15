@@ -26,7 +26,7 @@ export function validate(
     const isRequired = resolveRequired(varSchema, environment);
 
     if (value === undefined || value === "") {
-      if (isRequired) {
+      if (isRequired && varSchema.default === undefined) {
         issues.push({
           variable: name,
           severity: "error",
@@ -109,7 +109,7 @@ function resolveRequired(
 ): boolean {
   if (!varSchema.required) return false;
   if (varSchema.environments) {
-    if (!environment) return false;
+    if (!environment) return true;
     return varSchema.environments.includes(environment);
   }
   return true;

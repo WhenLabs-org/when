@@ -227,9 +227,9 @@ program
   });
 
 // Global error handling
-const run = () => {
+const run = async () => {
   try {
-    program.parse();
+    await program.parseAsync();
   } catch (err) {
     if (err instanceof EnvalidError) {
       console.error(chalk.red(`Error: ${err.message}`));

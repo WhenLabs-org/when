@@ -37,9 +37,11 @@ runs:
       with:
         node-version: ${{ inputs.node-version }}
 
-    - name: Install Envalid
+    - name: Build Envalid
       shell: bash
-      run: npm install -g envalid
+      run: |
+        cd ${{ github.action_path }}
+        npm ci && npm run build
 
     - name: Validate environment
       shell: bash
@@ -57,4 +59,4 @@ runs:
           ARGS="$ARGS --ci"
         fi
 
-        envalid $ARGS
+        node ${{ github.action_path }}/dist/cli.js $ARGS

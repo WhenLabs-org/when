@@ -11,34 +11,34 @@ export interface DetectionResult {
 // Patterns that reference env vars across languages/frameworks
 const ENV_PATTERNS = [
   // JavaScript/TypeScript: process.env.VAR_NAME or process.env["VAR_NAME"]
-  /process\.env\.([A-Z][A-Z0-9_]*)/g,
-  /process\.env\["([A-Z][A-Z0-9_]*)"\]/g,
-  /process\.env\['([A-Z][A-Z0-9_]*)'\]/g,
+  /process\.env\.([A-Za-z][A-Za-z0-9_]*)/g,
+  /process\.env\["([A-Za-z][A-Za-z0-9_]*)"\]/g,
+  /process\.env\['([A-Za-z][A-Za-z0-9_]*)'\]/g,
 
   // Vite/Astro: import.meta.env.VAR_NAME
-  /import\.meta\.env\.([A-Z][A-Z0-9_]*)/g,
+  /import\.meta\.env\.([A-Za-z][A-Za-z0-9_]*)/g,
 
   // Python: os.environ["VAR"] or os.environ.get("VAR") or os.getenv("VAR")
-  /os\.environ\["([A-Z][A-Z0-9_]*)"\]/g,
-  /os\.environ\['([A-Z][A-Z0-9_]*)'\]/g,
-  /os\.environ\.get\(["']([A-Z][A-Z0-9_]*)["']/g,
-  /os\.getenv\(["']([A-Z][A-Z0-9_]*)["']/g,
+  /os\.environ\["([A-Za-z][A-Za-z0-9_]*)"\]/g,
+  /os\.environ\['([A-Za-z][A-Za-z0-9_]*)'\]/g,
+  /os\.environ\.get\(["']([A-Za-z][A-Za-z0-9_]*)["']/g,
+  /os\.getenv\(["']([A-Za-z][A-Za-z0-9_]*)["']/g,
 
   // Ruby: ENV["VAR"] or ENV['VAR'] or ENV.fetch("VAR")
-  /ENV\["([A-Z][A-Z0-9_]*)"\]/g,
-  /ENV\['([A-Z][A-Z0-9_]*)'\]/g,
-  /ENV\.fetch\(["']([A-Z][A-Z0-9_]*)["']/g,
+  /ENV\["([A-Za-z][A-Za-z0-9_]*)"\]/g,
+  /ENV\['([A-Za-z][A-Za-z0-9_]*)'\]/g,
+  /ENV\.fetch\(["']([A-Za-z][A-Za-z0-9_]*)["']/g,
 
   // Go: os.Getenv("VAR")
-  /os\.Getenv\("([A-Z][A-Z0-9_]*)"\)/g,
+  /os\.Getenv\("([A-Za-z][A-Za-z0-9_]*)"\)/g,
 
   // Rust: std::env::var("VAR") or env::var("VAR")
-  /env::var\("([A-Z][A-Z0-9_]*)"\)/g,
+  /env::var\("([A-Za-z][A-Za-z0-9_]*)"\)/g,
 
   // PHP: getenv("VAR") or $_ENV["VAR"]
-  /getenv\(["']([A-Z][A-Z0-9_]*)["']\)/g,
-  /\$_ENV\["([A-Z][A-Z0-9_]*)"\]/g,
-  /\$_ENV\['([A-Z][A-Z0-9_]*)'\]/g,
+  /getenv\(["']([A-Za-z][A-Za-z0-9_]*)["']\)/g,
+  /\$_ENV\["([A-Za-z][A-Za-z0-9_]*)"\]/g,
+  /\$_ENV\['([A-Za-z][A-Za-z0-9_]*)'\]/g,
 ];
 
 const DEFAULT_EXCLUDE = [

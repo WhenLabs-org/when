@@ -13,5 +13,9 @@ export function createReporter(format: ReporterFormat): Reporter {
       return new JsonReporter();
     case "markdown":
       return new MarkdownReporter();
+    default:
+      throw new Error(
+        `Unknown reporter format: "${format}". Valid options are: terminal, json, markdown`,
+      );
   }
 }

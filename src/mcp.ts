@@ -11,8 +11,16 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 
 function findBin(name: string): string {
   const pkgRoot = resolve(__dirname, '..');
+
+  // 1. Check node_modules/.bin symlink (normal case)
   const localBin = resolve(pkgRoot, 'node_modules', '.bin', name);
   if (existsSync(localBin)) return localBin;
+
+  // 2. Check @whenlabs/<name>/dist/cli.js directly (handles missing/wrong symlinks)
+  const directCli = resolve(pkgRoot, 'node_modules', '@whenlabs', name, 'dist', 'cli.js');
+  if (existsSync(directCli)) return directCli;
+
+  // 3. Fallback to global PATH
   return name;
 }
 
@@ -103,6 +111,13 @@ const server = new McpServer({
   version: '0.1.0',
 });
 
+function formatOutput(result: { stdout: string; stderr: string; code: number }): string {
+  const parts: string[] = [];
+  if (result.stdout.trim()) parts.push(result.stdout.trim());
+  if (result.stderr.trim()) parts.push(result.stderr.trim());
+  return parts.join('\n') || 'No output';
+}
+
 // --- stale ---
 server.tool(
   'stale_scan',
@@ -111,7 +126,7 @@ server.tool(
   async ({ path }) => {
     const args = ['scan'];
     const result = await runCli('stale', args, path);
-    const output = result.stdout || result.stderr || 'No output';
+    const output = formatOutput(result);
     writeCache('stale', deriveProject(path), output, result.code);
     const extras = await checkTriggers('stale_scan', result, path);
     return { content: [{ type: 'text' as const, text: output + extras.join('') }] };
@@ -125,7 +140,7 @@ server.tool(
   { path: z.string().optional().describe('Project directory (defaults to cwd)') },
   async ({ path }) => {
     const result = await runCli('envalid', ['validate'], path);
-    const output = result.stdout || result.stderr || 'No output';
+    const output = formatOutput(result);
     writeCache('envalid_validate', deriveProject(path), output, result.code);
     const extras = await checkTriggers('envalid_validate', result, path);
     return { content: [{ type: 'text' as const, text: output + extras.join('') }] };
@@ -138,7 +153,7 @@ server.tool(
   { path: z.string().optional().describe('Project directory (defaults to cwd)') },
   async ({ path }) => {
     const result = await runCli('envalid', ['detect'], path);
-    const output = result.stdout || result.stderr || 'No output';
+    const output = formatOutput(result);
     writeCache('envalid_detect', deriveProject(path), output, result.code);
     const extras = await checkTriggers('envalid_detect', result, path);
     return { content: [{ type: 'text' as const, text: output + extras.join('') }] };
@@ -152,7 +167,7 @@ server.tool(
   {},
   async () => {
     const result = await runCli('berth', ['status', '--json']);
-    const output = result.stdout || result.stderr || 'No output';
+    const output = formatOutput(result);
     writeCache('berth_status', deriveProject(), output, result.code);
     const extras = await checkTriggers('berth_status', result);
     return { content: [{ type: 'text' as const, text: output + extras.join('') }] };
@@ -165,7 +180,7 @@ server.tool(
   { path: z.string().optional().describe('Project directory to check (defaults to cwd)') },
   async ({ path }) => {
     const result = await runCli('berth', ['check', path || '.']);
-    const output = result.stdout || result.stderr || 'No output';
+    const output = formatOutput(result);
     writeCache('berth_check', deriveProject(path), output, result.code);
     const extras = await checkTriggers('berth_check', result, path);
     return { content: [{ type: 'text' as const, text: output + extras.join('') }] };
@@ -184,7 +199,7 @@ server.tool(
     const args = ['init'];
     if (targets) args.push('--targets', targets);
     const result = await runCli('aware', args, path);
-    const output = result.stdout || result.stderr || 'No output';
+    const output = formatOutput(result);
     writeCache('aware_init', deriveProject(path), output, result.code);
     const extras = await checkTriggers('aware_init', result, path);
     return { content: [{ type: 'text' as const, text: output + extras.join('') }] };
@@ -197,7 +212,7 @@ server.tool(
   { path: z.string().optional().describe('Project directory (defaults to cwd)') },
   async ({ path }) => {
     const result = await runCli('aware', ['doctor'], path);
-    const output = result.stdout || result.stderr || 'No output';
+    const output = formatOutput(result);
     writeCache('aware_doctor', deriveProject(path), output, result.code);
     const extras = await checkTriggers('aware_doctor', result, path);
     return { content: [{ type: 'text' as const, text: output + extras.join('') }] };
@@ -211,7 +226,7 @@ server.tool(
   { path: z.string().optional().describe('Project directory (defaults to cwd)') },
   async ({ path }) => {
     const result = await runCli('vow', ['scan'], path);
-    const output = result.stdout || result.stderr || 'No output';
+    const output = formatOutput(result);
     writeCache('vow_scan', deriveProject(path), output, result.code);
     const extras = await checkTriggers('vow_scan', result, path);
     return { content: [{ type: 'text' as const, text: output + extras.join('') }] };
@@ -224,7 +239,7 @@ server.tool(
   { path: z.string().optional().describe('Project directory (defaults to cwd)') },
   async ({ path }) => {
     const result = await runCli('vow', ['check'], path);
-    const output = result.stdout || result.stderr || 'No output';
+    const output = formatOutput(result);
     writeCache('vow_check', deriveProject(path), output, result.code);
     const extras = await checkTriggers('vow_check', result, path);
     return { content: [{ type: 'text' as const, text: output + extras.join('') }] };

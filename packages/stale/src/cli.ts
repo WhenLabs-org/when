@@ -4,6 +4,7 @@ import { Command } from 'commander';
 import { scanCommand } from './commands/scan.js';
 import { initCommand } from './commands/init.js';
 import { watchCommand } from './commands/watch.js';
+import { fixCommand } from './commands/fix.js';
 import chalk from 'chalk';
 
 const program = new Command();
@@ -44,6 +45,29 @@ program
       await initCommand();
     } catch (err: unknown) {
       console.error(chalk.red(`Error: ${(err as Error).message}`));
+      process.exit(1);
+    }
+  });
+
+program
+  .command('fix')
+  .description('Generate fix suggestions for drift issues')
+  .option('-f, --format <format>', 'Output format: terminal, diff', 'terminal')
+  .option('--apply', 'Apply high-confidence fixes to files')
+  .option('--dry-run', 'Show what --apply would change without writing (default when using --apply)')
+  .option('--no-dry-run', 'Actually write changes when using --apply')
+  .option('-c, --config <path>', 'Path to config file')
+  .option('-p, --path <path>', 'Project path (default: current directory)')
+  .option('-v, --verbose', 'Verbose output')
+  .action(async (options) => {
+    try {
+      await fixCommand(options);
+    } catch (err: unknown) {
+      if (options.verbose) {
+        console.error(err);
+      } else {
+        console.error(chalk.red(`Error: ${(err as Error).message}`));
+      }
       process.exit(1);
     }
   });

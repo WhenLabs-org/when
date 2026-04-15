@@ -19,9 +19,23 @@ Running `npx @whenlabs/when install` will:
 1. Register **two MCP servers** in your Claude Code configuration:
    - `velocity-mcp` — task timing and estimation tools
    - `whenlabs` — stale, envalid, berth, aware, and vow tools
-2. Inject **CLAUDE.md instructions** so Claude knows when to use each tool automatically
+2. Inject **CLAUDE.md instructions** so Claude knows when to use each tool automatically — and prefers them over shell commands
 
 Once connected, Claude can call any tool directly without you asking. For example, after a refactor Claude might run `stale_scan` to check for doc drift, or before a release it might run `vow_check` to validate licenses.
+
+## Proactive Background Scans
+
+Tools run automatically in the background on a schedule and report findings in the Claude Code status line:
+
+| Tool | Interval | Status line |
+|------|----------|-------------|
+| berth | 15 min | `ports:N` — port conflicts found |
+| stale | 30 min | `stale:N` — docs drifted from code |
+| envalid | 30 min | `env:N` — .env validation issues |
+| vow | 60 min | `lic:N?` — unknown licenses found |
+| aware | 60 min | `aware:stale` — AI context files outdated |
+
+Only problems are shown — if everything is clean, the status line stays uncluttered. When Claude sees an issue in the status line, it proactively tells you and offers to fix it.
 
 ## MCP Tools
 

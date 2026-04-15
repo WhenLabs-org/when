@@ -2,6 +2,7 @@ import { Command } from 'commander';
 import { createDelegateCommand } from './commands/delegate.js';
 import { createDoctorCommand } from './commands/doctor.js';
 import { createInitCommand } from './commands/init.js';
+import { createWatchCommand } from './commands/watch.js';
 
 const program = new Command();
 
@@ -55,6 +56,7 @@ program
 
 program.addCommand(createInitCommand());
 program.addCommand(createDoctorCommand());
+program.addCommand(createWatchCommand());
 
 // Delegate commands for each tool
 program.addCommand(createDelegateCommand('stale', 'Detect documentation drift in your codebase'));

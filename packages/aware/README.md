@@ -1,6 +1,6 @@
 # Aware
 
-Auto-detect your stack and generate AI context files.
+Auto-detect your stack and generate AI context files. Part of the [WhenLabs](https://whenlabs.org) toolkit.
 
 Aware scans your project, detects your tech stack, and generates context files for **Claude Code**, **Cursor**, **GitHub Copilot**, and **AGENTS.md** -- all from a single source of truth.
 

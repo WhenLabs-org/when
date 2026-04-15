@@ -119,7 +119,7 @@ async function checkTriggers(toolName: string, result: { stdout: string; stderr:
 
 const server = new McpServer({
   name: 'whenlabs',
-  version: '0.2.0',
+  version: '0.3.0',
 });
 
 // =====================================================================
@@ -168,6 +168,26 @@ server.tool(
     writeCache('stale', deriveProject(path), output, result.code);
     const extras = await checkTriggers('stale_scan', result, path);
     return { content: [{ type: 'text' as const, text: output + extras.join('') }] };
+  },
+);
+
+server.tool(
+  'stale_fix',
+  'Auto-fix documentation drift — generate fixes for wrong file paths, dead links, phantom env vars, outdated scripts',
+  {
+    path: z.string().optional().describe('Project directory to scan (defaults to cwd)'),
+    format: z.enum(['terminal', 'diff']).optional().describe('Output format (default: terminal)'),
+    apply: z.coerce.boolean().optional().describe('Apply high-confidence fixes directly'),
+    dryRun: z.coerce.boolean().optional().describe('Show what --apply would do without writing'),
+  },
+  async ({ path, format, apply, dryRun }) => {
+    const args = ['fix'];
+    if (format) args.push('--format', format);
+    if (apply) args.push('--apply');
+    if (dryRun) args.push('--dry-run');
+    const result = await runCli('stale', args, path);
+    const output = formatOutput(result);
+    return { content: [{ type: 'text' as const, text: output }] };
   },
 );
 
@@ -310,6 +330,22 @@ server.tool(
 );
 
 server.tool(
+  'envalid_generate_schema',
+  'Generate .env.schema from code analysis — infer types, required-ness, and sensitivity from usage patterns',
+  {
+    path: z.string().optional().describe('Project directory (defaults to cwd)'),
+    output: z.string().optional().describe('Output file path (default: .env.schema)'),
+  },
+  async ({ path, output }) => {
+    const args = ['detect', '--generate'];
+    if (output) args.push('-o', output);
+    const result = await runCli('envalid', args, path);
+    const outputText = formatOutput(result);
+    return { content: [{ type: 'text' as const, text: outputText }] };
+  },
+);
+
+server.tool(
   'envalid_hook_status',
   'Check if the envalid pre-commit git hook is installed',
   { path: z.string().optional().describe('Project directory (defaults to cwd)') },
@@ -439,6 +475,26 @@ server.tool(
 );
 
 server.tool(
+  'berth_resolve',
+  'Auto-resolve port conflicts — detect conflicts and fix via kill or reassign strategy',
+  {
+    path: z.string().optional().describe('Project directory (defaults to cwd)'),
+    strategy: z.enum(['kill', 'reassign', 'auto']).optional().describe('Resolution strategy (default: auto)'),
+    kill: z.coerce.boolean().optional().describe('Allow killing processes (required for kill/auto strategies)'),
+    dryRun: z.coerce.boolean().optional().describe('Show what would be done without making changes'),
+  },
+  async ({ path, strategy, kill, dryRun }) => {
+    const args = ['resolve'];
+    if (strategy) args.push('--strategy', strategy);
+    if (kill) args.push('--kill');
+    if (dryRun) args.push('--dry-run');
+    const result = await runCli('berth', args, path);
+    const output = formatOutput(result);
+    return { content: [{ type: 'text' as const, text: output }] };
+  },
+);
+
+server.tool(
   'berth_predict',
   'Predict port conflicts from project config files before starting — dry-run conflict check',
   { path: z.string().optional().describe('Project directory (defaults to cwd)') },
@@ -493,9 +549,14 @@ server.tool(
 server.tool(
   'aware_diff',
   'Show project changes since last sync — see what drifted in your codebase',
-  { path: z.string().optional().describe('Project directory (defaults to cwd)') },
-  async ({ path }) => {
-    const result = await runCli('aware', ['diff'], path);
+  {
+    path: z.string().optional().describe('Project directory (defaults to cwd)'),
+    exitCode: z.coerce.boolean().optional().describe('Return exit code 1 if changes detected (useful for CI)'),
+  },
+  async ({ path, exitCode }) => {
+    const args = ['diff'];
+    if (exitCode) args.push('--exit-code');
+    const result = await runCli('aware', args, path);
     const output = formatOutput(result);
     return { content: [{ type: 'text' as const, text: output }] };
   },
@@ -656,6 +717,45 @@ server.tool(
     const result = await runCli('vow', args, path);
     const outputText = formatOutput(result);
     return { content: [{ type: 'text' as const, text: outputText }] };
+  },
+);
+
+server.tool(
+  'vow_hook_install',
+  'Install a pre-commit git hook that checks dependency licenses before each commit',
+  {
+    path: z.string().optional().describe('Project directory (defaults to cwd)'),
+  },
+  async ({ path }) => {
+    const result = await runCli('vow', ['hook', 'install'], path);
+    const output = formatOutput(result);
+    return { content: [{ type: 'text' as const, text: output }] };
+  },
+);
+
+server.tool(
+  'vow_hook_uninstall',
+  'Remove the vow pre-commit license check hook',
+  {
+    path: z.string().optional().describe('Project directory (defaults to cwd)'),
+  },
+  async ({ path }) => {
+    const result = await runCli('vow', ['hook', 'uninstall'], path);
+    const output = formatOutput(result);
+    return { content: [{ type: 'text' as const, text: output }] };
+  },
+);
+
+server.tool(
+  'vow_hook_status',
+  'Check if the vow pre-commit license check hook is installed',
+  {
+    path: z.string().optional().describe('Project directory (defaults to cwd)'),
+  },
+  async ({ path }) => {
+    const result = await runCli('vow', ['hook', 'status'], path);
+    const output = formatOutput(result);
+    return { content: [{ type: 'text' as const, text: output }] };
   },
 );
 

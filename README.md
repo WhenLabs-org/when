@@ -45,17 +45,21 @@ These tools are available to Claude in every session after install:
 | `velocity_start_task` | Start timing a coding task |
 | `velocity_end_task` | End timing and record results |
 | `velocity_estimate` | Estimate time for a planned task |
-| `velocity_stats` | Show aggregate performance stats |
+| `velocity_stats` | Show aggregate performance stats with insights |
 | `velocity_history` | Show task history |
 | `stale_scan` | Detect documentation drift |
+| `stale_fix` | Auto-fix documentation drift (wrong paths, dead links, phantom env vars) |
 | `envalid_validate` | Validate .env files against schemas |
 | `envalid_detect` | Find undocumented env vars in codebase |
+| `envalid_generate_schema` | Generate .env.schema from code analysis |
 | `berth_status` | Show active ports and conflicts |
 | `berth_check` | Scan project for port conflicts |
+| `berth_resolve` | Auto-resolve port conflicts (kill or reassign) |
 | `aware_init` | Auto-detect stack, generate AI context files |
 | `aware_doctor` | Diagnose project health and config issues |
 | `vow_scan` | Scan and summarize dependency licenses |
 | `vow_check` | Validate licenses against policy |
+| `vow_hook_install` | Install pre-commit license check hook |
 
 ## Multi-Editor Support
 
@@ -77,12 +81,18 @@ You can also run tools directly from the command line:
 ```bash
 when init            # Onboard a project — detect stack, run all tools
 when stale scan
+when stale fix       # Auto-fix documentation drift
 when envalid validate
+when envalid detect --generate  # Generate schema from code
 when berth status
+when berth resolve   # Auto-resolve port conflicts
 when aware init
 when vow scan
+when vow hook install  # Install pre-commit license hook
 when status          # Show installation status
 when doctor          # Run all tools, show unified health report
+when doctor --watch  # Continuous monitoring dashboard
+when watch           # Background daemon for status line
 when ci              # Run checks for CI (exits 1 on issues)
 ```
 
@@ -92,7 +102,11 @@ One command to onboard any project. Auto-detects your stack, runs all 5 tools in
 
 ### `when doctor`
 
-Runs all 5 CLI tools against the current project and displays a unified health report card. Supports `--json` for machine-readable output.
+Runs all 5 CLI tools against the current project and displays a unified health report card. Supports `--json` for machine-readable output and `--watch` for continuous monitoring with a live dashboard.
+
+### `when watch`
+
+Background daemon that runs all 5 tools on intervals and writes results to `~/.whenlabs/status.json`. Powers the Claude Code status line integration. Use `--once` for a single scan or `--interval <seconds>` to customize the schedule.
 
 ### `when ci`
 

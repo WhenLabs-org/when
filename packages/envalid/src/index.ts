@@ -9,7 +9,8 @@ export { generateExample } from "./commands/generate.js";
 export { inferType, generateSchema } from "./commands/init.js";
 export { createReporter } from "./reporters/index.js";
 export { maskValue } from "./utils/crypto.js";
-export { detectEnvUsage } from "./env/detector.js";
+export { detectEnvUsage, detectEnvVarsInCode } from "./env/detector.js";
+export { generateSchemaFromCode } from "./commands/detect-generate.js";
 export { scanSecrets } from "./commands/secrets.js";
 export {
   installHook,
@@ -36,5 +37,6 @@ export type { EnvFile } from "./env/reader.js";
 export type { ValidateOptions } from "./commands/validate.js";
 export type { ReporterFormat } from "./reporters/index.js";
 export type { DetectionResult, FileLocation } from "./env/detector.js";
+export type { GenerateSchemaResult } from "./commands/detect-generate.js";
 export type { EnvalidConfig } from "./config.js";
 export type { SecretFinding, SecretsResult } from "./commands/secrets.js";

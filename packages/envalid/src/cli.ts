@@ -14,9 +14,11 @@ import {
   runHookUninstall,
   runHookStatus,
 } from "./commands/hook.js";
-import { detectEnvUsage } from "./env/detector.js";
+import { detectEnvUsage, detectEnvVarsInCode } from "./env/detector.js";
+import { generateSchemaFromCode } from "./commands/detect-generate.js";
 import { scanSecrets } from "./commands/secrets.js";
-import { EnvalidError } from "./errors.js";
+import { EnvalidError, SchemaNotFoundError } from "./errors.js";
+import { existsSync } from "node:fs";
 
 const program = new Command();
 
@@ -39,6 +41,16 @@ program
     "terminal",
   )
   .action((options) => {
+    if (!existsSync(options.schema)) {
+      console.error(chalk.red(`Error: Schema file not found: ${options.schema}`));
+      console.log("");
+      console.log("  No .env.schema found. Generate one with:");
+      console.log("");
+      console.log(chalk.cyan("    envalid detect --generate") + chalk.dim("    (from code analysis)"));
+      console.log(chalk.cyan("    envalid init") + chalk.dim("              (from existing .env file)"));
+      console.log("");
+      process.exit(2);
+    }
     const schema = parseSchemaFile(options.schema);
     const envFile = readEnvFile(options.env);
     const result = validate(schema, envFile, {
@@ -177,16 +189,53 @@ program
   .option("-s, --schema <path>", "Path to .env.schema", ".env.schema")
   .option("-d, --dir <path>", "Root directory to scan", ".")
   .option("--exclude <dirs>", "Comma-separated directories to exclude")
+  .option("--generate", "Auto-generate .env.schema from detected env vars", false)
+  .option("-o, --output <path>", "Output schema path (used with --generate)", ".env.schema")
   .option(
     "-f, --format <format>",
     "Output format: terminal, json",
     "terminal",
   )
   .action((options) => {
-    const schema = parseSchemaFile(options.schema);
     const exclude = options.exclude
       ? (options.exclude as string).split(",").map((s: string) => s.trim())
       : undefined;
+
+    // --generate mode: scan code and produce a schema without needing an existing one
+    if (options.generate) {
+      const envVarLocations = detectEnvVarsInCode(options.dir, { exclude });
+      const varNames = Object.keys(envVarLocations);
+
+      if (varNames.length === 0) {
+        console.log(chalk.yellow("\n  No env var usage found in code.\n"));
+        return;
+      }
+
+      const result = generateSchemaFromCode(envVarLocations, options.output);
+
+      if (options.format === "json") {
+        console.log(JSON.stringify(result.schema, null, 2));
+        return;
+      }
+
+      console.log("");
+      console.log(chalk.green(`  ✓ Generated ${chalk.bold(options.output)} with ${result.variableCount} variables`));
+      console.log("");
+      for (const [name, varSchema] of Object.entries(result.schema.variables)) {
+        const flags = [
+          varSchema.type,
+          varSchema.required ? "required" : "optional",
+          varSchema.sensitive ? "sensitive" : null,
+        ].filter(Boolean).join(", ");
+        console.log(`    ${chalk.bold(name)} ${chalk.dim(`(${flags})`)}`);
+      }
+      console.log("");
+      console.log(chalk.dim("  Review the generated schema and adjust types/requirements as needed."));
+      return;
+    }
+
+    // Normal detect mode: compare code usage against existing schema
+    const schema = parseSchemaFile(options.schema);
     const result = detectEnvUsage(options.dir, schema, {
       exclude,
     });

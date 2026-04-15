@@ -5,6 +5,7 @@ import type { EnvSchema } from "../schema/types.js";
 export interface FileLocation {
   file: string;
   line: number;
+  context?: string; // the source line where the env var was referenced
 }
 
 export interface DetectionResult {
@@ -129,13 +130,39 @@ function extractEnvVarsWithLocations(
       while ((match = pattern.exec(line)) !== null) {
         const varName = match[1];
         const locations = result.get(varName) ?? [];
-        locations.push({ file: relPath, line: i + 1 });
+        locations.push({ file: relPath, line: i + 1, context: line.trim() });
         result.set(varName, locations);
       }
     }
   }
 
   return result;
+}
+
+/**
+ * Detect env var usage in code without requiring a schema.
+ * Returns a map of variable names to their file locations (with context).
+ */
+export function detectEnvVarsInCode(
+  rootDir: string,
+  options?: { exclude?: string[] },
+): Record<string, FileLocation[]> {
+  const exclude = options?.exclude ?? DEFAULT_EXCLUDE;
+  const files = collectFiles(rootDir, exclude);
+  const allLocations: Record<string, FileLocation[]> = {};
+
+  for (const file of files) {
+    const content = readFileSync(file, "utf-8");
+    const fileLocations = extractEnvVarsWithLocations(content, file, rootDir);
+    for (const [varName, locations] of fileLocations) {
+      if (!allLocations[varName]) {
+        allLocations[varName] = [];
+      }
+      allLocations[varName].push(...locations);
+    }
+  }
+
+  return allLocations;
 }
 
 export function detectEnvUsage(

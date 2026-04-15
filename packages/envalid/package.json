@@ -1,5 +1,5 @@
 {
-  "name": "@whenlabs/berth",
+  "name": "@whenlabs/envalid",
   "version": "0.1.1",
   "description": "Type safety for .env files",
   "type": "module",

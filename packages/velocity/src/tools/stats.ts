@@ -73,6 +73,10 @@ export function registerStats(server: McpServer, queries: TaskQueries): void {
           : 0;
         const med = median(durations);
 
+        const totalLines = groupTasks.reduce((s, t) => s + (t.lines_added ?? 0) + (t.lines_removed ?? 0), 0);
+        const totalMinutes = durations.reduce((s, d) => s + d, 0) / 60;
+        const lpm = totalMinutes > 0 && totalLines > 0 ? Math.round((totalLines / totalMinutes) * 10) / 10 : null;
+
         breakdown.push({
           group,
           count: groupTasks.length,
@@ -80,17 +84,23 @@ export function registerStats(server: McpServer, queries: TaskQueries): void {
           avg_duration_seconds: Math.round(avg),
           median_duration: formatDuration(med),
           median_duration_seconds: Math.round(med),
+          lines_per_minute: lpm,
         });
       }
 
       breakdown.sort((a, b) => b.count - a.count);
 
       const totalTime = tasks.reduce((s, t) => s + (t.duration_seconds ?? 0), 0);
+      const totalLines = tasks.reduce((s, t) => s + (t.lines_added ?? 0) + (t.lines_removed ?? 0), 0);
+      const totalMinutes = totalTime / 60;
+      const overallLpm = totalMinutes > 0 && totalLines > 0 ? Math.round((totalLines / totalMinutes) * 10) / 10 : null;
+
       const result = {
         period: `last ${days} days`,
         total_tasks: tasks.length,
         total_time: formatDuration(totalTime),
         total_time_seconds: Math.round(totalTime),
+        lines_per_minute: overallLpm,
         breakdown,
       };
 

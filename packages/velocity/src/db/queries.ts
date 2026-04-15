@@ -13,7 +13,8 @@ export class TaskQueries {
       getTask: db.prepare('SELECT * FROM tasks WHERE id = ?'),
       getActiveTask: db.prepare('SELECT * FROM tasks WHERE id = ? AND ended_at IS NULL'),
       endTask: db.prepare(`
-        UPDATE tasks SET ended_at = ?, duration_seconds = ?, status = ?, files_actual = ?, notes = ?
+        UPDATE tasks SET ended_at = ?, duration_seconds = ?, status = ?, files_actual = ?, notes = ?,
+          lines_added = ?, lines_removed = ?, files_changed = ?, git_diff_stat = ?
         WHERE id = ?
       `),
       getCompletedByCategory: db.prepare(`
@@ -60,8 +61,12 @@ export class TaskQueries {
     status: TaskStatus,
     filesActual: number | null,
     notes: string | null,
+    linesAdded: number | null = null,
+    linesRemoved: number | null = null,
+    filesChanged: number | null = null,
+    gitDiffStat: string | null = null,
   ): void {
-    this.stmts.endTask.run(endedAt, durationSeconds, status, filesActual, notes, id);
+    this.stmts.endTask.run(endedAt, durationSeconds, status, filesActual, notes, linesAdded, linesRemoved, filesChanged, gitDiffStat, id);
   }
 
   getCompletedByCategory(category: Category): TaskRow[] {

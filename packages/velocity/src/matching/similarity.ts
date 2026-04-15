@@ -1,5 +1,5 @@
 import type { Task, PlanItem, SimilarTask, Confidence } from '../types.js';
-import { confidenceFromCount } from '../types.js';
+import { confidenceFromCount, percentile } from '../types.js';
 
 const SIMILARITY_THRESHOLD = 0.3;
 const RECENCY_WINDOW_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
@@ -100,6 +100,9 @@ export interface TaskEstimate {
   seconds: number;
   matchCount: number;
   confidence: Confidence;
+  p25_seconds: number;
+  median_seconds: number;
+  p75_seconds: number;
 }
 
 export function estimateTask(plan: PlanItem, historicalTasks: Task[]): TaskEstimate {
@@ -107,16 +110,31 @@ export function estimateTask(plan: PlanItem, historicalTasks: Task[]): TaskEstim
   const matchCount = similar.length;
 
   if (matchCount === 0) {
+    const heuristic = heuristicEstimate(plan);
     return {
-      seconds: heuristicEstimate(plan),
+      seconds: heuristic,
       matchCount: 0,
       confidence: 'none',
+      p25_seconds: heuristic,
+      median_seconds: heuristic,
+      p75_seconds: heuristic,
     };
   }
+
+  const durations = similar
+    .filter(s => s.task.duration_seconds != null)
+    .map(s => s.task.duration_seconds!);
+
+  const p25 = percentile(durations, 25);
+  const p50 = percentile(durations, 50);
+  const p75 = percentile(durations, 75);
 
   return {
     seconds: weightedMedian(similar),
     matchCount,
     confidence: confidenceFromCount(matchCount),
+    p25_seconds: Math.round(p25),
+    median_seconds: Math.round(p50),
+    p75_seconds: Math.round(p75),
   };
 }

@@ -25,6 +25,10 @@ function makeTask(overrides: Partial<Task> = {}): Task {
     files_estimated: null,
     files_actual: null,
     notes: null,
+    lines_added: null,
+    lines_removed: null,
+    files_changed: null,
+    git_diff_stat: null,
     ...overrides,
   };
 }

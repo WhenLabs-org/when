@@ -33,11 +33,19 @@ export function registerEstimate(server: McpServer, queries: TaskQueries): void 
         totalSeconds += est.seconds;
         totalMatchCount += est.matchCount;
 
+        const range = est.matchCount > 0
+          ? `${formatDuration(est.p25_seconds)}-${formatDuration(est.p75_seconds)} (p25-p75), median ${formatDuration(est.median_seconds)}`
+          : `~${formatDuration(est.seconds)} (heuristic)`;
+
         breakdown.push({
           description: planItem.description,
           estimate: formatDuration(est.seconds),
           estimate_seconds: Math.round(est.seconds),
-          based_on: est.matchCount > 0 ? `${est.matchCount} similar tasks` : 'heuristic (no history)',
+          p25_seconds: Math.round(est.p25_seconds),
+          median_seconds: Math.round(est.median_seconds),
+          p75_seconds: Math.round(est.p75_seconds),
+          range,
+          based_on: est.matchCount > 0 ? `Based on ${est.matchCount} similar tasks: ${range}` : 'heuristic (no history)',
           confidence: est.confidence,
         });
 

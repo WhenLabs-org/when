@@ -1,8 +1,44 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 import type { TaskQueries } from '../db/queries.js';
 import { STATUSES, formatDuration, parseTask } from '../types.js';
 import { findSimilarTasks, weightedMedian } from '../matching/similarity.js';
+
+const execFileAsync = promisify(execFile);
+
+interface GitDiffStats {
+  lines_added: number;
+  lines_removed: number;
+  files_changed: number;
+  raw_stat: string;
+}
+
+async function captureGitDiffStats(): Promise<GitDiffStats | null> {
+  try {
+    const { stdout } = await execFileAsync('git', ['diff', '--stat', 'HEAD~1'], {
+      timeout: 5000,
+    });
+    if (!stdout.trim()) return null;
+
+    const lines = stdout.trim().split('\n');
+    const summaryLine = lines[lines.length - 1];
+    // e.g. " 3 files changed, 42 insertions(+), 10 deletions(-)"
+    const filesMatch = summaryLine.match(/(\d+)\s+files?\s+changed/);
+    const insertMatch = summaryLine.match(/(\d+)\s+insertions?\(\+\)/);
+    const deleteMatch = summaryLine.match(/(\d+)\s+deletions?\(-\)/);
+
+    return {
+      lines_added: insertMatch ? parseInt(insertMatch[1], 10) : 0,
+      lines_removed: deleteMatch ? parseInt(deleteMatch[1], 10) : 0,
+      files_changed: filesMatch ? parseInt(filesMatch[1], 10) : 0,
+      raw_stat: stdout.trim(),
+    };
+  } catch {
+    return null;
+  }
+}
 
 export function registerEndTask(server: McpServer, queries: TaskQueries): void {
   server.tool(
@@ -30,7 +66,14 @@ export function registerEndTask(server: McpServer, queries: TaskQueries): void {
       const endedAt = new Date().toISOString();
       const durationSeconds = Math.max(0, (new Date(endedAt).getTime() - new Date(row.started_at).getTime()) / 1000);
 
-      queries.endTask(args.task_id, endedAt, durationSeconds, args.status, args.actual_files ?? null, args.notes ?? null);
+      const gitStats = await captureGitDiffStats();
+
+      queries.endTask(
+        args.task_id, endedAt, durationSeconds, args.status,
+        args.actual_files ?? null, args.notes ?? null,
+        gitStats?.lines_added ?? null, gitStats?.lines_removed ?? null,
+        gitStats?.files_changed ?? null, gitStats?.raw_stat ?? null,
+      );
 
       let message = `Task ${args.status} in ${formatDuration(durationSeconds)}.`;
 
@@ -63,7 +106,7 @@ export function registerEndTask(server: McpServer, queries: TaskQueries): void {
         }
       }
 
-      const result = {
+      const result: Record<string, unknown> = {
         task_id: args.task_id,
         duration_seconds: Math.round(durationSeconds * 10) / 10,
         duration_human: formatDuration(durationSeconds),
@@ -71,6 +114,15 @@ export function registerEndTask(server: McpServer, queries: TaskQueries): void {
         tags: parseTask(row).tags,
         message,
       };
+
+      if (gitStats) {
+        result.git_diff = {
+          lines_added: gitStats.lines_added,
+          lines_removed: gitStats.lines_removed,
+          files_changed: gitStats.files_changed,
+          diff_stat: gitStats.raw_stat,
+        };
+      }
 
       return { content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }] };
     },

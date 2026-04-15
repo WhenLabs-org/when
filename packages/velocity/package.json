@@ -1,5 +1,5 @@
 {
-  "name": "velocity-mcp",
+  "name": "@whenlabs/velocity-mcp",
   "version": "0.1.0",
   "description": "MCP server that gives coding agents self-awareness of their execution speed",
   "type": "module",

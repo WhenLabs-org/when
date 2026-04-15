@@ -3,7 +3,7 @@ import { homedir } from 'node:os';
 import { mkdirSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 
-const SCHEMA_VERSION = 1;
+const SCHEMA_VERSION = 2;
 
 export function getDbPath(): string {
   const localDir = join(process.cwd(), '.velocity');
@@ -39,7 +39,11 @@ export function initDb(dbPath?: string): Database.Database {
       status TEXT,
       files_estimated INTEGER,
       files_actual INTEGER,
-      notes TEXT
+      notes TEXT,
+      lines_added INTEGER,
+      lines_removed INTEGER,
+      files_changed INTEGER,
+      git_diff_stat TEXT
     );
 
     CREATE INDEX IF NOT EXISTS idx_tasks_category ON tasks(category);
@@ -52,6 +56,26 @@ export function initDb(dbPath?: string): Database.Database {
   if (!existing) {
     db.prepare('INSERT INTO meta (key, value) VALUES (?, ?)').run('schema_version', String(SCHEMA_VERSION));
     db.prepare('INSERT INTO meta (key, value) VALUES (?, ?)').run('first_run_date', new Date().toISOString());
+  }
+
+  // Migration: add git diff columns (v1 -> v2)
+  const currentVersion = existing ? Number(existing.value) : SCHEMA_VERSION;
+  if (currentVersion < 2) {
+    const cols = db.prepare("PRAGMA table_info(tasks)").all() as { name: string }[];
+    const colNames = new Set(cols.map(c => c.name));
+    if (!colNames.has('lines_added')) {
+      db.exec('ALTER TABLE tasks ADD COLUMN lines_added INTEGER');
+    }
+    if (!colNames.has('lines_removed')) {
+      db.exec('ALTER TABLE tasks ADD COLUMN lines_removed INTEGER');
+    }
+    if (!colNames.has('files_changed')) {
+      db.exec('ALTER TABLE tasks ADD COLUMN files_changed INTEGER');
+    }
+    if (!colNames.has('git_diff_stat')) {
+      db.exec('ALTER TABLE tasks ADD COLUMN git_diff_stat TEXT');
+    }
+    db.prepare('UPDATE meta SET value = ? WHERE key = ?').run(String(SCHEMA_VERSION), 'schema_version');
   }
 
   return db;

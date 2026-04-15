@@ -24,8 +24,12 @@ export async function doctorCommand(): Promise<void> {
   const configContent = await readFile(configPath);
 
   if (!configContent) {
-    log.error(`${CONFIG_FILE} not found. Run \`aware init\` first.`);
-    process.exit(1);
+    log.warn(`${CONFIG_FILE} not found. Run \`aware init\` to generate it.`);
+    log.plain("");
+    log.plain("  aware init          Generate config and context files");
+    log.plain("  aware init --all    Generate for all supported targets");
+    log.plain("");
+    return;
   }
 
   let config: AwareConfig;

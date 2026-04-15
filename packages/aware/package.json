@@ -1,5 +1,5 @@
 {
-  "name": "aware-cli",
+  "name": "@whenlabs/aware",
   "version": "0.1.0",
   "description": "Auto-detect your stack, generate and sync AI context files (CLAUDE.md, .cursorrules, copilot-instructions.md, AGENTS.md)",
   "type": "module",

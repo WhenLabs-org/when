@@ -1,0 +1,21 @@
+You are working on @whenlabs/when, the whenlabs developer toolkit — 6 tools, one install.
+
+Tech stack: TypeScript 5.7, Vitest 3.0, npm, GitHub Actions, tsup 8.0
+
+Rules:
+- Use `describe()` to group related tests; `it()` or `test()` for individual cases
+- Use `expect()` assertions — prefer specific matchers (`toEqual`, `toContain`, `toThrow`) over generic `toBeTruthy`
+- Use `vi.mock('module')` at the top of the file to mock entire modules — it is hoisted automatically
+- Use `vi.spyOn(object, 'method')` to observe calls without replacing implementation
+- Use descriptive names for workflow files (e.g., `ci.yml`, `deploy.yml`, `release.yml`)
+- Use `workflow_dispatch` for manually triggerable workflows
+- Use job-level `concurrency` to cancel in-progress runs on the same branch
+- Use matrix strategies for testing across multiple versions/platforms
+- files: kebab-case
+- functions: camelCase
+- constants: UPPER_SNAKE_CASE
+- style: named imports preferred
+- order: third-party,local,types
+
+Project structure:
+- src/utils/ — Utility functions and helpers

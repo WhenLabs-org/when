@@ -31,17 +31,18 @@ export async function initCommand(options: InitOptions): Promise<void> {
     }
   }
 
-  // Parse targets
-  const targetNames = options.targets.split(",").map((t) => t.trim());
+  // Parse targets — "all" is shorthand for claude,cursor,copilot,agents
+  const rawTargets = options.targets.split(",").map((t) => t.trim());
+  const isAll = rawTargets.includes("all");
   const targets: TargetsConfig = {
-    claude: targetNames.includes("claude"),
-    cursor: targetNames.includes("cursor"),
-    copilot: targetNames.includes("copilot"),
-    agents: targetNames.includes("agents"),
+    claude: isAll || rawTargets.includes("claude"),
+    cursor: isAll || rawTargets.includes("cursor"),
+    copilot: isAll || rawTargets.includes("copilot"),
+    agents: isAll || rawTargets.includes("agents"),
   };
 
   if (!targets.claude && !targets.cursor && !targets.copilot && !targets.agents) {
-    log.error("No valid targets specified. Use: claude, cursor, copilot, agents");
+    log.error("No valid targets specified. Use: claude, cursor, copilot, agents, all");
     process.exit(1);
   }
 

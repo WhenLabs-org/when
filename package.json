@@ -1,6 +1,6 @@
 {
   "name": "@whenlabs/when",
-  "version": "0.9.2",
+  "version": "0.9.3",
   "description": "The WhenLabs developer toolkit — 6 tools, one install",
   "type": "module",
   "main": "dist/index.js",

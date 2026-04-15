@@ -43,19 +43,33 @@ function unregisterServer(name: string): { success: boolean; message: string } {
 }
 
 export function registerMcpServer(): { success: boolean; message: string } {
-  const velocity = registerServer('velocity-mcp', 'npx @whenlabs/velocity-mcp');
+  // All 6 tools (including velocity) are now served by the single whenlabs MCP
   const whenlabs = registerServer('whenlabs', 'npx @whenlabs/when when-mcp');
+
+  // Clean up legacy standalone velocity-mcp registration if present
+  const legacyCleanup = unregisterServer('velocity-mcp');
+
+  const messages = [whenlabs.message];
+  if (legacyCleanup.success && !legacyCleanup.message.includes('was not registered')) {
+    messages.push('Removed legacy standalone velocity-mcp (now bundled in whenlabs)');
+  }
+
   return {
-    success: velocity.success && whenlabs.success,
-    message: [velocity.message, whenlabs.message].join('\n  '),
+    success: whenlabs.success,
+    message: messages.join('\n  '),
   };
 }
 
 export function unregisterMcpServer(): { success: boolean; message: string } {
-  const velocity = unregisterServer('velocity-mcp');
   const whenlabs = unregisterServer('whenlabs');
+  // Also clean up legacy velocity-mcp if it exists
+  const velocity = unregisterServer('velocity-mcp');
+  const messages = [whenlabs.message];
+  if (velocity.success && !velocity.message.includes('was not registered')) {
+    messages.push(velocity.message);
+  }
   return {
-    success: velocity.success && whenlabs.success,
-    message: [velocity.message, whenlabs.message].join('\n  '),
+    success: whenlabs.success,
+    message: messages.join('\n  '),
   };
 }

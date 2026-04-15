@@ -23,6 +23,7 @@ import { angularFragment } from "./framework/angular.js";
 import { nestjsFragment } from "./framework/nestjs.js";
 import { vueFragment } from "./framework/vue.js";
 import { goWebFragment } from "./framework/go-web.js";
+import { goFragment } from "./framework/go.js";
 
 // Styling fragments
 import { tailwindcssFragment } from "./styling/tailwindcss.js";
@@ -97,6 +98,7 @@ const allFragmentFunctions: FragmentFunction[] = [
   nestjsFragment,
   vueFragment,
   goWebFragment,
+  goFragment,
 
   // Styling (20-29)
   tailwindcssFragment,

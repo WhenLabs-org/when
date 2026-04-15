@@ -209,8 +209,8 @@ async function detectStructure(projectRoot: string): Promise<Record<string, stri
   for (const dir of srcDirs) {
     const key = `src/${dir}/`;
     const fullPath = path.join(projectRoot, "src", dir);
-    if (await fileExists(fullPath)) {
-      structure[key] = KNOWN_DIRS[key] ?? "";
+    if (KNOWN_DIRS[key] && await fileExists(fullPath)) {
+      structure[key] = KNOWN_DIRS[key];
     }
   }
 

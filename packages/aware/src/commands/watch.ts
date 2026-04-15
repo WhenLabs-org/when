@@ -99,6 +99,15 @@ export async function watchCommand(options: WatchOptions): Promise<void> {
       }
 
       if (options.autoSync) {
+        // Merge new detections into config (preserve user overrides for non-null existing values)
+        for (const key of Object.keys(newStackConfig) as (keyof typeof newStackConfig)[]) {
+          const current = currentConfig.stack[key];
+          const detected = newStackConfig[key];
+          if (current === null || (Array.isArray(current) && current.length === 0)) {
+            (currentConfig.stack as unknown as Record<string, unknown>)[key] = detected;
+          }
+        }
+
         // Auto-sync
         const fragments = resolveFragments(stack, currentConfig);
         const results = generateAll(stack, currentConfig, fragments);

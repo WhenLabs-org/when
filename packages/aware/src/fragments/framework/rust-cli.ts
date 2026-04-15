@@ -9,7 +9,7 @@ export function rustCliFragment(
   stack: DetectedStack,
   _config: AwareConfig,
 ): Fragment | null {
-  if (!matchesStack(stack.framework, "rust-cli")) return null;
+  if (!matchesStack(stack.framework, "rust") || stack.framework?.variant !== "cli") return null;
 
   return {
     id: "rust-cli",

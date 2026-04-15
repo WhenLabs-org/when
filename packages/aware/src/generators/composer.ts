@@ -32,6 +32,7 @@ const NAME_MAP: Record<string, string> = {
   clerk: "Clerk",
   trpc: "tRPC",
   graphql: "GraphQL",
+  postgres: "PostgreSQL",
   postgresql: "PostgreSQL",
   mysql: "MySQL",
   mongodb: "MongoDB",

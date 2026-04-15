@@ -436,9 +436,9 @@ footer a:hover{color:var(--accent)}
   <!-- Warm glow that follows cursor -->
   <div class="hero-glow" aria-hidden="true"></div>
 
-  <div class="hero-badge"><span class="dot"></span> v0.7.3 &middot; Free &amp; open source &middot; MIT</div>
+  <div class="hero-badge"><span class="dot"></span> v0.8.0 &middot; Free &amp; open source &middot; MIT</div>
   <h1>Six tools.<br><em>One install.</em></h1>
-  <p class="hero-sub">A unified developer toolkit for AI-assisted workflows. Task timing, doc drift detection, env validation, secret scanning, port conflict resolution, AI context generation, and license auditing — two MCP servers, one install.</p>
+  <p class="hero-sub">A unified developer toolkit for AI-assisted workflows. Task timing, doc drift detection, env validation, secret scanning, port conflict resolution, AI context generation, and license auditing — one MCP server, one install.</p>
   <div class="hero-install" onclick="copyInstall(this)" role="button" tabindex="0" onkeydown="if(event.key==='Enter')copyInstall(this)">
     <span><span class="prompt">$</span> npx @whenlabs/when install</span>
     <span class="copy-hint">Click to copy</span>
@@ -531,21 +531,21 @@ footer a:hover{color:var(--accent)}
     <div class="section-label">How it works</div>
     <div class="section-title">Install once. Use everywhere.</div>
     <p style="color:var(--text-dim);font-size:0.85rem;max-width:550px;line-height:1.7;margin-bottom:0">
-      One package registers two MCP servers and gives your agent 30+ tools. Works with Claude Code, Cursor, VS Code, and Windsurf. Also installs a standalone CLI.
+      One package registers a single MCP server with 30+ tools. Works with Claude Code, Cursor, VS Code, and Windsurf. Also installs a standalone CLI.
     </p>
     <div class="steps">
       <div class="step">
         <div class="step-num">1</div>
         <div>
           <h3>Install</h3>
-          <p>One command registers two MCP servers (<em>velocity-mcp</em> and <em>whenlabs</em>) and writes CLAUDE.md instructions. All six tools are available immediately as <code style="color:var(--accent);background:var(--surface-2);border:1px solid var(--border);border-radius:4px;padding:0.15rem 0.4rem;font-size:0.8rem">when &lt;tool&gt;</code> subcommands and as MCP tools your agent calls automatically.</p>
+          <p>One command registers a single MCP server (<em>whenlabs</em>) and writes CLAUDE.md instructions. All six tools — including velocity — are available immediately as <code style="color:var(--accent);background:var(--surface-2);border:none;border-radius:6px;padding:0.15rem 0.4rem;font-size:0.8rem;box-shadow:inset 2px 2px 4px var(--shadow-dark), inset -2px -2px 4px var(--shadow-light)">when &lt;tool&gt;</code> subcommands and as MCP tools your agent calls automatically.</p>
         </div>
       </div>
       <div class="step">
         <div class="step-num">2</div>
         <div>
           <h3>Use</h3>
-          <p>Your agent calls the right tool at the right time. After a refactor, it runs <em>stale scan</em> to catch doc drift. Before a release, <em>vow check</em> validates licenses. Before starting dev, <em>berth check</em> finds port conflicts. Run <code style="color:var(--accent);background:var(--surface-2);border:1px solid var(--border);border-radius:4px;padding:0.15rem 0.4rem;font-size:0.8rem">when doctor</code> for a unified health report.</p>
+          <p>Your agent calls the right tool at the right time. After a refactor, it runs <em>stale scan</em> to catch doc drift. Before a release, <em>vow check</em> validates licenses. Before starting dev, <em>berth check</em> finds port conflicts. Run <code style="color:var(--accent);background:var(--surface-2);border:none;border-radius:6px;padding:0.15rem 0.4rem;font-size:0.8rem;box-shadow:inset 2px 2px 4px var(--shadow-dark), inset -2px -2px 4px var(--shadow-light)">when doctor</code> for a unified health report.</p>
         </div>
       </div>
       <div class="step">
@@ -586,8 +586,7 @@ footer a:hover{color:var(--accent)}
 <br>
 <span class="result"><span class="ok">when</span>  WhenLabs toolkit installer</span>
 <span class="result"></span>
-<span class="result">  <span class="ok">&#10003;</span> MCP server registered: velocity-mcp</span>
-<span class="result">  <span class="ok">&#10003;</span> MCP server registered: whenlabs</span>
+<span class="result">  <span class="ok">&#10003;</span> MCP server registered: whenlabs (all 6 tools)</span>
 <span class="result">  <span class="ok">&#10003;</span> CLAUDE.md instructions written</span>
 <span class="result"></span>
 <span class="result"><span class="dim">Installation complete. Run</span> when status <span class="dim">to verify.</span></span>
@@ -679,7 +678,7 @@ footer a:hover{color:var(--accent)}
         <h3>Claude Code <span class="badge">recommended</span></h3>
         <pre><span class="cmd">npx @whenlabs/when install</span>
 
-<span class="dim"># Registers velocity as an MCP server and updates your CLAUDE.md automatically.</span></pre>
+<span class="dim"># Registers one MCP server with all 6 tools and updates your CLAUDE.md.</span></pre>
       </div>
 
       <div class="setup-option">

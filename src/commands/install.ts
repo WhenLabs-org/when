@@ -14,7 +14,7 @@ const CLAUDE_MD_CONTENT = `# WhenLabs Toolkit
 
 ## Task Timing (velocity-mcp)
 
-You have access to \`velocity-mcp\` tools. Follow these rules for EVERY session:
+Velocity tools are part of the unified \`whenlabs\` MCP server. Follow these rules for EVERY session:
 
 1. **Before starting any discrete coding task**, call \`velocity_start_task\` with:
    - Appropriate \`category\` (scaffold, implement, refactor, debug, test, config, docs, deploy)
@@ -41,7 +41,7 @@ You have access to \`velocity-mcp\` tools. Follow these rules for EVERY session:
 
 ## WhenLabs MCP Tools (ALWAYS prefer these over shell commands)
 
-You have access to the \`whenlabs\` MCP server. **ALWAYS use these MCP tools instead of running shell commands like lsof, grep, or manual checks.** These tools are purpose-built and give better results:
+All six tools (including velocity) are available through the unified \`whenlabs\` MCP server. **ALWAYS use these MCP tools instead of running shell commands like lsof, grep, or manual checks.** These tools are purpose-built and give better results:
 
 | When to use | Call this tool | NOT this |
 |-------------|---------------|----------|
@@ -114,7 +114,7 @@ export async function install(options: InstallOptions = {}): Promise<void> {
   const claudeOnly = editorFlags.length === 0;
 
   if (claudeOnly) {
-    // 1. Register MCP server (Claude Code)
+    // 1. Register unified MCP server (all 6 tools in one)
     const mcpResult = registerMcpServer();
     console.log(mcpResult.success ? `  ✓ ${mcpResult.message}` : `  ✗ ${mcpResult.message}`);
 

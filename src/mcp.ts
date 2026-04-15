@@ -7,6 +7,17 @@ import { existsSync, mkdirSync, writeFileSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { homedir } from 'node:os';
 
+// Velocity — embedded directly (no separate MCP server needed)
+import {
+  initDb,
+  TaskQueries,
+  registerStartTask,
+  registerEndTask,
+  registerEstimate,
+  registerStats,
+  registerHistory,
+} from '@whenlabs/velocity-mcp/lib';
+
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 function findBin(name: string): string {
@@ -108,8 +119,24 @@ async function checkTriggers(toolName: string, result: { stdout: string; stderr:
 
 const server = new McpServer({
   name: 'whenlabs',
-  version: '0.1.0',
+  version: '0.2.0',
 });
+
+// =====================================================================
+// VELOCITY — Task timing & estimation (embedded, uses SQLite)
+// =====================================================================
+
+const velocityDb = initDb();
+const velocityQueries = new TaskQueries(velocityDb);
+
+// Cast needed: velocity-mcp may resolve its own @modelcontextprotocol/sdk copy,
+// creating duplicate private types. Runtime types are identical.
+const s = server as Parameters<typeof registerStartTask>[0];
+registerStartTask(s, velocityQueries);
+registerEndTask(s, velocityQueries);
+registerEstimate(s, velocityQueries);
+registerStats(s, velocityQueries);
+registerHistory(s, velocityQueries);
 
 function formatOutput(result: { stdout: string; stderr: string; code: number }): string {
   const parts: string[] = [];
@@ -650,6 +677,16 @@ server.tool(
     return { content: [{ type: 'text' as const, text: outputText }] };
   },
 );
+
+process.on('SIGINT', () => {
+  velocityDb.close();
+  process.exit(0);
+});
+
+process.on('SIGTERM', () => {
+  velocityDb.close();
+  process.exit(0);
+});
 
 async function main() {
   const transport = new StdioServerTransport();

@@ -1,17 +1,23 @@
 import { execSync } from 'node:child_process';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 
 function registerServer(name: string, command: string): { success: boolean; message: string } {
+  // Remove first to ensure we always update to the latest command
+  try {
+    execSync(`claude mcp remove -s user ${name}`, { stdio: 'pipe' });
+  } catch {
+    // Ignore — may not exist yet
+  }
+
   try {
     execSync(`claude mcp add -s user ${name} -- ${command}`, { stdio: 'pipe' });
-    return { success: true, message: `MCP server "${name}" registered successfully.` };
+    return { success: true, message: `MCP server "${name}" registered.` };
   } catch (err: unknown) {
     const output =
       err instanceof Error && 'stderr' in err
         ? (err as NodeJS.ErrnoException & { stderr: Buffer }).stderr?.toString() ?? ''
         : '';
-    if (output.includes('already exists') || output.includes('already registered')) {
-      return { success: true, message: `MCP server "${name}" is already registered.` };
-    }
     return {
       success: false,
       message: `Failed to register "${name}": ${output || (err instanceof Error ? err.message : String(err))}`,
@@ -42,16 +48,45 @@ function unregisterServer(name: string): { success: boolean; message: string } {
   }
 }
 
+function cleanLegacyMcpJson(): string | null {
+  // Walk up from cwd looking for .mcp.json files with velocity-mcp entries
+  let dir = process.cwd();
+  const root = resolve('/');
+  while (dir !== root) {
+    const mcpJson = resolve(dir, '.mcp.json');
+    if (existsSync(mcpJson)) {
+      try {
+        const data = JSON.parse(readFileSync(mcpJson, 'utf-8'));
+        if (data?.mcpServers?.['velocity-mcp']) {
+          delete data.mcpServers['velocity-mcp'];
+          writeFileSync(mcpJson, JSON.stringify(data, null, 2) + '\n', 'utf-8');
+          return mcpJson;
+        }
+      } catch {
+        // Skip malformed files
+      }
+    }
+    dir = resolve(dir, '..');
+  }
+  return null;
+}
+
 export function registerMcpServer(): { success: boolean; message: string } {
   // All 6 tools (including velocity) are now served by the single whenlabs MCP
   const whenlabs = registerServer('whenlabs', 'npx @whenlabs/when when-mcp');
 
-  // Clean up legacy standalone velocity-mcp registration if present
+  // Clean up legacy standalone velocity-mcp from user scope
   const legacyCleanup = unregisterServer('velocity-mcp');
+
+  // Also clean up velocity-mcp from any .mcp.json files
+  const cleanedFile = cleanLegacyMcpJson();
 
   const messages = [whenlabs.message];
   if (legacyCleanup.success && !legacyCleanup.message.includes('was not registered')) {
-    messages.push('Removed legacy standalone velocity-mcp (now bundled in whenlabs)');
+    messages.push('Removed legacy velocity-mcp from user config (now bundled in whenlabs)');
+  }
+  if (cleanedFile) {
+    messages.push(`Removed legacy velocity-mcp from ${cleanedFile}`);
   }
 
   return {

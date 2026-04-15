@@ -1,5 +1,6 @@
 import { Command } from 'commander';
 import { createDelegateCommand } from './commands/delegate.js';
+import { createDoctorCommand } from './commands/doctor.js';
 
 const program = new Command();
 
@@ -8,21 +9,29 @@ program
   .version('0.1.0')
   .description('The WhenLabs developer toolkit — 6 tools, one install');
 
-// Install / uninstall (stubs for now — will be implemented next)
+// Install / uninstall
 program
   .command('install')
   .description('Install all WhenLabs tools globally (MCP server + CLAUDE.md instructions)')
-  .action(async () => {
+  .option('--cursor', 'Install MCP servers into Cursor (~/.cursor/mcp.json)')
+  .option('--vscode', 'Install MCP servers into VS Code (settings.json)')
+  .option('--windsurf', 'Install MCP servers into Windsurf (~/.codeium/windsurf/mcp_config.json)')
+  .option('--all', 'Install MCP servers into all supported editors')
+  .action(async (options) => {
     const { install } = await import('./commands/install.js');
-    await install();
+    await install(options);
   });
 
 program
   .command('uninstall')
   .description('Remove all WhenLabs tools')
-  .action(async () => {
+  .option('--cursor', 'Remove MCP servers from Cursor')
+  .option('--vscode', 'Remove MCP servers from VS Code')
+  .option('--windsurf', 'Remove MCP servers from Windsurf')
+  .option('--all', 'Remove MCP servers from all supported editors')
+  .action(async (options) => {
     const { uninstall } = await import('./commands/uninstall.js');
-    await uninstall();
+    await uninstall(options);
   });
 
 program
@@ -32,6 +41,18 @@ program
     const { status } = await import('./commands/status.js');
     await status();
   });
+
+program
+  .command('ci')
+  .description('Run stale, envalid, and vow checks — exits 1 if any tool finds issues')
+  .option('--ci', 'Output GitHub Actions annotations (::error file=X::message)')
+  .option('--json', 'Machine-readable JSON output')
+  .action(async (options) => {
+    const { ci } = await import('./commands/ci.js');
+    await ci(options);
+  });
+
+program.addCommand(createDoctorCommand());
 
 // Delegate commands for each tool
 program.addCommand(createDelegateCommand('stale', 'Detect documentation drift in your codebase'));

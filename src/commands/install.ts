@@ -3,6 +3,7 @@ import { homedir } from 'node:os';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { registerMcpServer } from '../utils/mcp-config.js';
 import { injectBlock } from '../utils/claude-md.js';
+import { installForEditor, ALL_EDITORS, type EditorName } from '../utils/editor-config.js';
 
 const CLAUDE_MD_PATH = join(homedir(), '.claude', 'CLAUDE.md');
 
@@ -92,21 +93,45 @@ function removeOldBlock(filePath: string): void {
   writeFileSync(filePath, content, 'utf-8');
 }
 
-export async function install(): Promise<void> {
+export interface InstallOptions {
+  cursor?: boolean;
+  vscode?: boolean;
+  windsurf?: boolean;
+  all?: boolean;
+}
+
+export async function install(options: InstallOptions = {}): Promise<void> {
   console.log('\n🔧 WhenLabs toolkit installer\n');
 
-  // 1. Register MCP server
-  const mcpResult = registerMcpServer();
-  console.log(mcpResult.success ? `  ✓ ${mcpResult.message}` : `  ✗ ${mcpResult.message}`);
+  const editorFlags = options.all
+    ? ALL_EDITORS
+    : ([
+        options.cursor && 'cursor',
+        options.vscode && 'vscode',
+        options.windsurf && 'windsurf',
+      ].filter(Boolean) as EditorName[]);
 
-  // 2. Inject unified CLAUDE.md block
-  injectBlock(CLAUDE_MD_PATH, CLAUDE_MD_CONTENT);
-  console.log(`  ✓ CLAUDE.md instructions written to ${CLAUDE_MD_PATH}`);
+  const claudeOnly = editorFlags.length === 0;
 
-  // 3. Migrate old velocity-mcp standalone markers if present
-  if (hasOldBlock(CLAUDE_MD_PATH)) {
-    removeOldBlock(CLAUDE_MD_PATH);
-    console.log('  ✓ Removed legacy velocity-mcp markers (migrated to whenlabs block)');
+  if (claudeOnly) {
+    // 1. Register MCP server (Claude Code)
+    const mcpResult = registerMcpServer();
+    console.log(mcpResult.success ? `  ✓ ${mcpResult.message}` : `  ✗ ${mcpResult.message}`);
+
+    // 2. Inject unified CLAUDE.md block
+    injectBlock(CLAUDE_MD_PATH, CLAUDE_MD_CONTENT);
+    console.log(`  ✓ CLAUDE.md instructions written to ${CLAUDE_MD_PATH}`);
+
+    // 3. Migrate old velocity-mcp standalone markers if present
+    if (hasOldBlock(CLAUDE_MD_PATH)) {
+      removeOldBlock(CLAUDE_MD_PATH);
+      console.log('  ✓ Removed legacy velocity-mcp markers (migrated to whenlabs block)');
+    }
+  } else {
+    for (const editor of editorFlags) {
+      const result = installForEditor(editor);
+      console.log(result.success ? `  ✓ ${result.message}` : `  ✗ ${result.message}`);
+    }
   }
 
   console.log('\nInstallation complete. Run `when status` to verify.\n');

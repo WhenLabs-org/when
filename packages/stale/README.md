@@ -40,6 +40,37 @@ With the `--deep` flag, Stale sends doc + code context to Claude for semantic an
 - **Completeness** -- are there setup steps or features missing from docs?
 - **Example freshness** -- do code examples use current patterns from the codebase?
 
+### Code-Doc Drift Detection
+
+Beyond basic command and path checks, Stale detects higher-level drift patterns:
+
+- **Script drift** -- README says `npm run test` but `package.json` has no `test` script
+- **Port drift** -- Docs say "runs on port 3000" but `.env` or config has `PORT=8080`
+- **File reference drift** -- Docs reference `src/config/db.js` but it was renamed to `src/config/db.ts`
+- **Dependency drift** -- README lists `redis` as a prerequisite but it is not in `package.json` or `docker-compose.yml`
+
+### Git Staleness
+
+Flags documentation files that have not been updated in 30+ days when source files they reference have had commits since. Helps surface docs that are likely outdated after active development:
+
+```bash
+stale scan
+```
+```
+  ⚠ README.md last updated 47 days ago; src/ has 12 commits since
+```
+
+### Comment Staleness
+
+Finds inline code comments that reference functions, classes, or variables that have been renamed or deleted:
+
+```bash
+stale scan
+```
+```
+  ⚠ src/api.ts:42 — comment references `handleAuth()` but function was renamed to `authenticateRequest()`
+```
+
 ### Output Formats
 
 - **Terminal** -- colored output with chalk, grouped by category, summary box

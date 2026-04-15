@@ -4,6 +4,16 @@ Type safety for `.env` files. Define a schema, validate every environment agains
 
 Part of the [WhenLabs](https://whenlabs.org) toolchain.
 
+## Why envalid?
+
+| | envalid | dotenv | Manual .env checking |
+|---|---|---|---|
+| Type-safe schema | YAML schema with types, ranges, patterns | No validation | Eyeball it |
+| Detects undocumented vars | Scans codebase for `process.env` usage missing from schema | No detection | grep and hope |
+| Validates against schema | Catches wrong types, missing vars, format mismatches | Loads vars, no validation | Compare files by hand |
+| Multi-environment sync | Validates `.env`, `.env.staging`, `.env.production` together | One file at a time | Diff files manually |
+| CI-ready | `--ci` flag, exit codes, JSON/Markdown output | Not designed for CI | Custom scripting |
+
 ## Install
 
 ```bash

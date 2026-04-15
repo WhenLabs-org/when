@@ -147,4 +147,29 @@ export function registerBerthTools(server: McpServer): void {
       return { content: [{ type: 'text' as const, text: output }] };
     },
   );
+
+  server.tool(
+    'berth_auto_resolve',
+    'Check for port conflicts and auto-resolve them',
+    {
+      path: z.string().optional().describe('Project directory (defaults to cwd)'),
+      strategy: z.enum(['kill', 'reassign', 'auto']).optional().describe('Resolution strategy (default: auto)'),
+    },
+    async ({ path, strategy }) => {
+      const checkResult = await runCli('berth', ['check', path || '.']);
+      const checkOutput = formatOutput(checkResult);
+      writeCache('berth_check', deriveProject(path), checkOutput, checkResult.code);
+
+      const hasConflicts = /conflict/i.test(checkOutput);
+      if (hasConflicts) {
+        const resolveArgs = ['resolve', '--strategy', strategy || 'auto', '--kill'];
+        const resolveResult = await runCli('berth', resolveArgs, path);
+        const resolveOutput = formatOutput(resolveResult);
+        const combined = `${checkOutput}\n--- Auto-resolve applied ---\n${resolveOutput}`;
+        return { content: [{ type: 'text' as const, text: combined }] };
+      }
+
+      return { content: [{ type: 'text' as const, text: checkOutput }] };
+    },
+  );
 }

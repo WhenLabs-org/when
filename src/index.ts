@@ -3,6 +3,7 @@ import { createDelegateCommand } from './commands/delegate.js';
 import { createDoctorCommand } from './commands/doctor.js';
 import { createInitCommand } from './commands/init.js';
 import { createWatchCommand } from './commands/watch.js';
+import { createConfigCommand } from './commands/config.js';
 import { readFileSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -63,6 +64,7 @@ program
 program.addCommand(createInitCommand());
 program.addCommand(createDoctorCommand());
 program.addCommand(createWatchCommand());
+program.addCommand(createConfigCommand());
 
 // Delegate commands for each tool
 program.addCommand(createDelegateCommand('stale', 'Detect documentation drift in your codebase'));

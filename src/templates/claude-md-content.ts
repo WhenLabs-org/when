@@ -42,13 +42,20 @@ All six tools (including velocity) are available through the unified \`whenlabs\
 ### Tool Reference
 - \`berth_status\` — Show all active ports, Docker ports, and configured ports
 - \`berth_check\` — Scan a project directory for port conflicts
+- \`berth_auto_resolve\` — Check for conflicts and auto-resolve them in one step
 - \`stale_scan\` — Detect documentation drift in the codebase
+- \`stale_auto_fix\` — Scan for drift and auto-fix high-confidence issues in one step
 - \`envalid_validate\` — Validate .env files against their schema
 - \`envalid_detect\` — Find undocumented env vars in codebase
+- \`envalid_auto_fix\` — Detect undocumented env vars and auto-generate schema entries
 - \`aware_init\` — Auto-detect stack and generate AI context files
 - \`aware_doctor\` — Diagnose project health and config issues
+- \`aware_auto_sync\` — Diagnose and auto-sync stale AI context files in one step
 - \`vow_scan\` — Scan and summarize all dependency licenses
 - \`vow_check\` — Validate licenses against a policy file
+
+### Cross-tool Intelligence
+Tools provide follow-up suggestions when they detect issues relevant to other tools. When you see a "Tip:" in tool output, act on the suggestion — it means another tool can help.
 
 ### Proactive Background Scans
 WhenLabs tools run automatically in the background on a schedule. The status line shows findings:

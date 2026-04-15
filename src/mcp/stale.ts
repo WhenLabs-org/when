@@ -55,4 +55,31 @@ export function registerStaleTools(server: McpServer): void {
       return { content: [{ type: 'text' as const, text: output }] };
     },
   );
+
+  server.tool(
+    'stale_auto_fix',
+    'Scan for documentation drift and auto-fix high-confidence issues in one step',
+    {
+      path: z.string().optional().describe('Project directory to scan (defaults to cwd)'),
+      deep: z.coerce.boolean().optional().describe('Enable AI-powered deep analysis'),
+    },
+    async ({ path, deep }) => {
+      const scanArgs = ['scan'];
+      if (deep) scanArgs.push('--deep');
+      const scanResult = await runCli('stale', scanArgs, path);
+      const scanOutput = formatOutput(scanResult);
+      writeCache('stale_scan', deriveProject(path), scanOutput, scanResult.code);
+      writeCache('stale_auto_fix', deriveProject(path), scanOutput, scanResult.code);
+
+      if (scanResult.code !== 0) {
+        const fixResult = await runCli('stale', ['fix', '--apply'], path);
+        const fixOutput = formatOutput(fixResult);
+        const combined = `${scanOutput}\n--- Auto-fix applied ---\n${fixOutput}`;
+        writeCache('stale_auto_fix', deriveProject(path), combined, fixResult.code);
+        return { content: [{ type: 'text' as const, text: combined }] };
+      }
+
+      return { content: [{ type: 'text' as const, text: scanOutput }] };
+    },
+  );
 }

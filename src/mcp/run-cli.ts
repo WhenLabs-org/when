@@ -1,8 +1,9 @@
 import { spawn } from 'node:child_process';
 import { join } from 'node:path';
-import { existsSync, mkdirSync, writeFileSync, readFileSync } from 'node:fs';
+import { existsSync, mkdirSync, writeFileSync, readFileSync, readdirSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { findBin } from '../utils/find-bin.js';
+import { getToolConfig, WhenlabsConfig } from '../config/whenlabs-config.js';
 
 export { findBin };
 
@@ -56,6 +57,13 @@ export function formatOutput(result: { stdout: string; stderr: string; code: num
   return parts.join('\n') || 'No output';
 }
 
+export function loadToolConfig<K extends keyof WhenlabsConfig>(
+  toolName: K,
+  path?: string
+): WhenlabsConfig[K] | null {
+  return getToolConfig(toolName, path);
+}
+
 export async function checkTriggers(toolName: string, result: { stdout: string; stderr: string; code: number }, path?: string): Promise<string[]> {
   const output = result.stdout || result.stderr || '';
   const extras: string[] = [];
@@ -89,6 +97,46 @@ export async function checkTriggers(toolName: string, result: { stdout: string; 
       if (projectName) {
         extras.push(`\nNote: Conflicts found in project "${projectName}".`);
       }
+      // Check stale cache for port number references
+      try {
+        const cacheFiles = readdirSync(CACHE_DIR).filter((f) => f.startsWith('stale_'));
+        for (const cacheFile of cacheFiles) {
+          const cached = JSON.parse(readFileSync(join(CACHE_DIR, cacheFile), 'utf8'));
+          if (/\b\d{4,5}\b/.test(cached.output || '')) {
+            extras.push('\nTip: Port references found in documentation — stale_scan may need re-run after resolving conflicts.');
+            break;
+          }
+        }
+      } catch {
+        // best-effort
+      }
+    }
+  }
+
+  if (toolName === 'envalid_detect') {
+    // Detect service URL env vars (HOST, PORT, URL, URI patterns) and suggest berth_register
+    const serviceUrlMatches = output.match(/\b[A-Z_]*(?:HOST|PORT|URL|URI)[A-Z_]*\b/g);
+    if (serviceUrlMatches && serviceUrlMatches.length > 0) {
+      const examples = [...new Set(serviceUrlMatches)].slice(0, 3).join(', ');
+      extras.push(`\nTip: Service URLs detected (${examples}, etc.) — run berth_register to track their ports for conflict detection.`);
+    }
+  }
+
+  if (toolName === 'velocity_end_task') {
+    // If a large number of files were changed, suggest stale_scan
+    const largeChange = /actual_files["\s:]+([1-9]\d)/i.test(output) || /\b([6-9]|\d{2,})\s+files?\b/i.test(output);
+    if (largeChange) {
+      extras.push('\nTip: Large change detected — consider running stale_scan to check for documentation drift.');
+    }
+  }
+
+  if (toolName === 'vow_scan') {
+    // Check if this is the first scan (no prior cache) or new packages detected
+    const cacheFile = join(CACHE_DIR, `vow_scan_${deriveProject(path)}.json`);
+    const isFirstScan = !existsSync(cacheFile);
+    const hasNewPackages = /new package|added|installed/i.test(output);
+    if (isFirstScan || hasNewPackages) {
+      extras.push('\nTip: Dependency changes detected — run aware_sync to update AI context files with new library info.');
     }
   }
 

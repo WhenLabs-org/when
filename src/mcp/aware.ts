@@ -94,4 +94,27 @@ export function registerAwareTools(server: McpServer): void {
       return { content: [{ type: 'text' as const, text: output }] };
     },
   );
+
+  server.tool(
+    'aware_auto_sync',
+    'Diagnose project health and auto-sync stale AI context files',
+    {
+      path: z.string().optional().describe('Project directory (defaults to cwd)'),
+    },
+    async ({ path }) => {
+      const doctorResult = await runCli('aware', ['doctor'], path);
+      const doctorOutput = formatOutput(doctorResult);
+      writeCache('aware_doctor', deriveProject(path), doctorOutput, doctorResult.code);
+
+      const needsSync = /stale|outdated|drift/i.test(doctorOutput);
+      if (needsSync) {
+        const syncResult = await runCli('aware', ['sync'], path);
+        const syncOutput = formatOutput(syncResult);
+        const combined = `${doctorOutput}\n--- Auto-sync applied ---\n${syncOutput}`;
+        return { content: [{ type: 'text' as const, text: combined }] };
+      }
+
+      return { content: [{ type: 'text' as const, text: doctorOutput }] };
+    },
+  );
 }

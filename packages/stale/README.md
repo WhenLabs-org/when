@@ -117,6 +117,18 @@ stale scan --format sarif
 # AI-powered deep analysis
 STALE_AI_KEY=your-key stale scan --deep
 
+# Generate fix suggestions for detected drift
+stale fix
+
+# Show fixes in diff format
+stale fix --format diff
+
+# Apply high-confidence fixes automatically
+stale fix --apply --no-dry-run
+
+# Preview what --apply would change
+stale fix --apply --dry-run
+
 # Watch mode -- re-scans on file changes
 stale watch
 
@@ -139,6 +151,8 @@ npm run test:watch
 
 ### CLI Options
 
+#### `stale scan`
+
 | Flag | Description | Default |
 |------|-------------|---------|
 | `-p, --path <path>` | Project directory to scan | `.` (current directory) |
@@ -146,6 +160,20 @@ npm run test:watch
 | `-d, --deep` | Enable AI-powered analysis (requires `STALE_AI_KEY` env var) | off |
 | `-c, --config <path>` | Path to config file | auto-detect `.stale.yml` |
 | `-v, --verbose` | Verbose error output | off |
+
+#### `stale fix`
+
+Generate fix suggestions for drift issues found by `stale scan`, and optionally apply them.
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `-f, --format <fmt>` | Output format: `terminal`, `diff` | `terminal` |
+| `--apply` | Apply high-confidence fixes to files | off |
+| `--dry-run` | Show what `--apply` would change without writing | on (when `--apply` used) |
+| `--no-dry-run` | Actually write changes when using `--apply` | off |
+| `-p, --path <path>` | Project directory | `.` |
+| `-c, --config <path>` | Path to config file | auto-detect |
+| `-v, --verbose` | Verbose output | off |
 
 ## Configuration
 
@@ -244,6 +272,7 @@ stale-tool/
 │   ├── errors.ts                       # Custom error classes
 │   ├── commands/
 │   │   ├── scan.ts                     # Main scan pipeline
+│   │   ├── fix.ts                      # Fix suggestions and auto-apply
 │   │   ├── init.ts                     # Generate config file
 │   │   └── watch.ts                    # Watch mode with debounce
 │   ├── analyzers/

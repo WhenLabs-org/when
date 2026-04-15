@@ -2,6 +2,8 @@
 
 An MCP server that gives coding agents self-awareness of their own execution speed, enabling time-based planning and estimation.
 
+> **Note:** velocity is now bundled into [`@whenlabs/when`](https://github.com/WhenLabs-org/when). Running `npx @whenlabs/when install` gives you velocity plus five other tools in a single MCP server. This standalone package is still maintained for users who only want velocity.
+
 Coding agents (Claude Code, Cursor, Codex, etc.) have no concept of time. They plan in terms of tasks but cannot estimate how long those tasks will take to execute. Every completed task is a data point about the agent's throughput -- but that data evaporates after each session. velocity-mcp fixes this by recording task-level execution telemetry, categorizing tasks, and estimating future plan duration based on historical performance.
 
 ## Features
@@ -31,9 +33,17 @@ Coding agents (Claude Code, Cursor, Codex, etc.) have no concept of time. They p
 
 ## Installation
 
-### Global Install (recommended)
+### Via WhenLabs toolkit (recommended)
 
-One command to track velocity across every Claude Code session:
+Get velocity plus five other developer tools in a single MCP server:
+
+```bash
+npx @whenlabs/when install
+```
+
+### Standalone Install
+
+If you only want velocity:
 
 ```bash
 npx velocity-mcp install
@@ -163,7 +173,7 @@ Tasks with similarity >= 0.3 are included. The duration estimate is the weighted
 
 ## Agent Instructions
 
-If you used `npx velocity-mcp install`, this is already configured globally. Otherwise, add this to your `CLAUDE.md` or system prompt:
+If you installed via `npx @whenlabs/when install` or `npx velocity-mcp install`, this is already configured globally. Otherwise, add this to your `CLAUDE.md` or system prompt:
 
 ```markdown
 ## Task Timing
@@ -182,6 +192,7 @@ You have access to `velocity-mcp` tools. Follow these rules:
 velocity-mcp/
 ├── src/
 │   ├── index.ts              # MCP server entry point (stdio transport)
+│   ├── lib.ts                # Library exports for embedding in other MCP servers
 │   ├── types.ts              # Shared types, enums, and utility functions
 │   ├── cli/
 │   │   ├── install.ts        # Global install command

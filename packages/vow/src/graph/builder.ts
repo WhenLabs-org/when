@@ -223,6 +223,7 @@ export function buildGraph(
   resolvedPackages: ResolvedPackage[],
   rootName: string,
   rootVersion: string,
+  directDependencyNames?: Set<string>,
 ): DepGraph {
   const graph = new DepGraph();
 
@@ -274,9 +275,10 @@ export function buildGraph(
 
   // Connect root to direct dependencies
   for (const pkg of resolvedPackages) {
-    const isDirectDep = pkg.dependencyType !== 'production' || packageMap.has(pkg.name);
-    if (isDirectDep) {
-      // Check depth — will be calculated in setRoot
+    if (directDependencyNames && directDependencyNames.has(pkg.name)) {
+      graph.addEdge(pkgKey(rootName, rootVersion), pkgKey(pkg.name, pkg.version));
+    } else if (!directDependencyNames) {
+      // Fallback: connect all packages to root (flat graph)
       graph.addEdge(pkgKey(rootName, rootVersion), pkgKey(pkg.name, pkg.version));
     }
   }

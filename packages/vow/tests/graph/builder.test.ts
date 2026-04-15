@@ -58,26 +58,26 @@ describe('buildGraph', () => {
     expect(graph.getNode(pkgKey('accepts', '1.3.8'))).toBeDefined();
   });
 
-  it('computes depths correctly', () => {
+  it('computes depths correctly with direct dependencies', () => {
     const packages = [
       makePkg('a', '1.0.0', 'MIT', ['b']),
       makePkg('b', '1.0.0', 'MIT', ['c']),
       makePkg('c', '1.0.0', 'MIT'),
     ];
 
-    const graph = buildGraph(packages, 'root', '1.0.0');
+    const directDeps = new Set(['a']);
+    const graph = buildGraph(packages, 'root', '1.0.0', directDeps);
 
-    // All packages are connected to root, so direct deps are depth 1
-    // buildGraph connects root → all packages as direct deps
+    // Only 'a' is a direct dep of root → depth 1
     const nodeA = graph.getNode(pkgKey('a', '1.0.0'));
     expect(nodeA?.depth).toBe(1);
 
-    // b is also connected to root directly (min depth wins)
+    // 'b' is a dep of 'a' → depth 2
     const nodeB = graph.getNode(pkgKey('b', '1.0.0'));
-    expect(nodeB?.depth).toBe(1);
+    expect(nodeB?.depth).toBe(2);
 
-    // c is also reachable from root directly
+    // 'c' is a dep of 'b' → depth 3
     const nodeC = graph.getNode(pkgKey('c', '1.0.0'));
-    expect(nodeC?.depth).toBe(1);
+    expect(nodeC?.depth).toBe(3);
   });
 });

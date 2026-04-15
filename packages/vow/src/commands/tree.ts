@@ -28,11 +28,23 @@ export function registerTreeCommand(program: Command): void {
 
       let rootName = 'unknown';
       let rootVersion = '0.0.0';
+      const directDependencyNames = new Set<string>();
       try {
         const content = await readFile(path.join(projectPath, 'package.json'), 'utf-8');
-        const pkgJson = JSON.parse(content) as { name?: string; version?: string };
+        const pkgJson = JSON.parse(content) as {
+          name?: string;
+          version?: string;
+          dependencies?: Record<string, string>;
+          devDependencies?: Record<string, string>;
+          peerDependencies?: Record<string, string>;
+          optionalDependencies?: Record<string, string>;
+        };
         rootName = pkgJson.name ?? 'unknown';
         rootVersion = pkgJson.version ?? '0.0.0';
+        for (const name of Object.keys(pkgJson.dependencies ?? {})) directDependencyNames.add(name);
+        for (const name of Object.keys(pkgJson.devDependencies ?? {})) directDependencyNames.add(name);
+        for (const name of Object.keys(pkgJson.peerDependencies ?? {})) directDependencyNames.add(name);
+        for (const name of Object.keys(pkgJson.optionalDependencies ?? {})) directDependencyNames.add(name);
       } catch {
         // fallback
       }
@@ -50,7 +62,7 @@ export function registerTreeCommand(program: Command): void {
       }
 
       const resolved = await npmResolver.resolve();
-      const graph = buildGraph(resolved, rootName, rootVersion);
+      const graph = buildGraph(resolved, rootName, rootVersion, directDependencyNames);
       spinner.stop();
 
       const output = visualizeTree(graph, {

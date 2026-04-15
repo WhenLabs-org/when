@@ -105,7 +105,7 @@ export function registerCheckCommand(program: Command): void {
       }
 
       // Exit code
-      if (opts.ci || opts.failOn) {
+      if (opts.ci) {
         const shouldFail = opts.failOn === 'warn'
           ? checkResult.blocked.length > 0 || checkResult.warnings.length > 0
           : checkResult.blocked.length > 0;

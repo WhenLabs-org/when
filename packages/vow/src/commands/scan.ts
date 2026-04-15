@@ -25,12 +25,24 @@ export async function executeScan(opts: ScanOptions): Promise<ScanResult> {
   // Read root package.json
   let rootName = 'unknown';
   let rootVersion = '0.0.0';
+  const directDependencyNames = new Set<string>();
   try {
     const pkgJsonPath = path.join(projectPath, 'package.json');
     const content = await readFile(pkgJsonPath, 'utf-8');
-    const pkgJson = JSON.parse(content) as { name?: string; version?: string };
+    const pkgJson = JSON.parse(content) as {
+      name?: string;
+      version?: string;
+      dependencies?: Record<string, string>;
+      devDependencies?: Record<string, string>;
+      peerDependencies?: Record<string, string>;
+      optionalDependencies?: Record<string, string>;
+    };
     rootName = pkgJson.name ?? 'unknown';
     rootVersion = pkgJson.version ?? '0.0.0';
+    for (const name of Object.keys(pkgJson.dependencies ?? {})) directDependencyNames.add(name);
+    for (const name of Object.keys(pkgJson.devDependencies ?? {})) directDependencyNames.add(name);
+    for (const name of Object.keys(pkgJson.peerDependencies ?? {})) directDependencyNames.add(name);
+    for (const name of Object.keys(pkgJson.optionalDependencies ?? {})) directDependencyNames.add(name);
   } catch {
     // no package.json
   }
@@ -56,7 +68,7 @@ export async function executeScan(opts: ScanOptions): Promise<ScanResult> {
 
     spinner.text = `Resolved ${resolved.length} npm packages. Building graph...`;
 
-    graph = buildGraph(resolved, rootName, rootVersion);
+    graph = buildGraph(resolved, rootName, rootVersion, directDependencyNames);
 
     for (const pkg of resolved) {
       allPackages.push({
@@ -69,7 +81,7 @@ export async function executeScan(opts: ScanOptions): Promise<ScanResult> {
       });
     }
   } else {
-    graph = buildGraph([], rootName, rootVersion);
+    graph = buildGraph([], rootName, rootVersion, directDependencyNames);
   }
 
   // Compute summary

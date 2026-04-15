@@ -36,9 +36,10 @@ program
 program
   .command('check [dir]')
   .description('Scan a project directory for port conflicts')
-  .action(async (dir, _opts, cmd) => {
+  .option('--fix', 'Automatically resolve detected conflicts')
+  .action(async (dir, opts, cmd) => {
     const { checkCommand } = await import('./commands/check.js');
-    await checkCommand(dir || '.', getGlobalOptions(cmd));
+    await checkCommand(dir || '.', { ...getGlobalOptions(cmd), fix: opts.fix });
   });
 
 program
@@ -84,6 +85,23 @@ program
   .action(async (oldPort, newPort, opts, cmd) => {
     const { reassignCommand } = await import('./commands/reassign.js');
     await reassignCommand(oldPort, newPort, { ...getGlobalOptions(cmd), project: opts.project });
+  });
+
+program
+  .command('resolve [dir]')
+  .description('Detect and auto-resolve port conflicts')
+  .option('--dry-run', 'Show what would be done without making changes')
+  .option('--kill', 'Allow killing blocking processes')
+  .option('-s, --strategy <strategy>', 'Resolution strategy: kill, reassign, or auto', 'auto')
+  .action(async (dir, opts, cmd) => {
+    const { resolveCommand } = await import('./commands/resolve.js');
+    await resolveCommand({
+      ...getGlobalOptions(cmd),
+      dir: dir || '.',
+      dryRun: opts.dryRun,
+      kill: opts.kill,
+      strategy: opts.strategy,
+    });
   });
 
 program

@@ -1,4 +1,5 @@
 import path from 'node:path';
+import chalk from 'chalk';
 import type { GlobalOptions, CheckOutput } from '../types.js';
 import { detectAllActive, detectAllConfigured } from '../detectors/index.js';
 import { detectConflicts } from '../resolver/conflicts.js';
@@ -6,7 +7,11 @@ import { suggestResolutions } from '../resolver/suggestions.js';
 import { renderCheck } from '../reporters/terminal.js';
 import { formatJson } from '../reporters/json.js';
 
-export async function checkCommand(dir: string, options: GlobalOptions): Promise<void> {
+interface CheckOptions extends GlobalOptions {
+  fix?: boolean;
+}
+
+export async function checkCommand(dir: string, options: CheckOptions): Promise<void> {
   const absDir = path.resolve(dir);
   const projectName = path.basename(absDir);
 
@@ -59,6 +64,19 @@ export async function checkCommand(dir: string, options: GlobalOptions): Promise
   }
 
   if (conflicts.length > 0) {
+    if (options.fix) {
+      // Delegate to the resolve command
+      const { resolveCommand } = await import('./resolve.js');
+      console.log(''); // visual separator
+      await resolveCommand({
+        ...options,
+        dir: absDir,
+        strategy: 'auto',
+        kill: false,
+      });
+    } else if (!options.json) {
+      console.log(chalk.dim(`\nRun ${chalk.white('berth resolve')} to auto-fix conflicts.`));
+    }
     process.exitCode = 1;
   }
 }

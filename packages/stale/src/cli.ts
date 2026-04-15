@@ -11,7 +11,8 @@ const program = new Command();
 program
   .name('stale')
   .description('Detect documentation drift in your codebase')
-  .version('0.1.0');
+  .version('0.1.0')
+  .option('--no-color', 'Disable colored output');
 
 program
   .command('scan')

@@ -1,6 +1,6 @@
 {
-  "name": "vow",
-  "version": "0.1.0",
+  "name": "@whenlabs/vow",
+  "version": "0.1.2",
   "description": "Scan dependency trees and validate licenses against plain-English policies",
   "type": "module",
   "bin": {

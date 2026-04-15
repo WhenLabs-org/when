@@ -24,7 +24,11 @@ const KEY_LABELS: Record<string, string> = {
   bundler: "Bundler",
 };
 
-export async function diffCommand(): Promise<void> {
+interface DiffOptions {
+  exitCode?: boolean;
+}
+
+export async function diffCommand(options: DiffOptions = {}): Promise<void> {
   const projectRoot = process.cwd();
 
   const config = await loadConfig(projectRoot);
@@ -63,6 +67,9 @@ export async function diffCommand(): Promise<void> {
     log.success("No stack changes detected.\n");
     printUnchanged(unchanged);
     printSuggestions(config);
+    if (options.exitCode) {
+      process.exit(0);
+    }
     return;
   }
 
@@ -92,6 +99,11 @@ export async function diffCommand(): Promise<void> {
 
   // Suggestions
   printSuggestions(config);
+
+  // In exit-code mode, exit 1 to signal changes were detected (useful for CI/scripting)
+  if (options.exitCode) {
+    process.exit(1);
+  }
 
   // Offer to sync
   log.plain("");

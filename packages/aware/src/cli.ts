@@ -32,12 +32,14 @@ program
 program
   .command("diff")
   .description("Show project changes since last sync")
+  .option("--exit-code", "Exit 0 if no changes, exit 1 if changes detected", false)
   .action(diffCommand);
 
 program
   .command("watch")
   .description("Watch for project changes and auto-update context files")
   .option("--auto-sync", "Automatically sync without prompting", false)
+  .option("--debounce <ms>", "Milliseconds to wait after changes before triggering", (val: string) => parseInt(val, 10), 2000)
   .action(watchCommand);
 
 program

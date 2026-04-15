@@ -4,24 +4,25 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>when — Six tools. One install.</title>
+<meta name="description" content="A unified developer toolkit for AI-assisted workflows. Six purpose-built tools, one install command.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --bg:#0a0a0c;
-  --surface:#111114;
-  --surface-2:#18181c;
-  --border:#222228;
-  --text:#e8e6e3;
-  --text-dim:#777780;
-  --accent:#c4f74a;
-  --accent-dim:#8ab832;
-  --accent-glow:rgba(196,247,74,0.08);
-  --red:#f74a4a;
-  --blue:#4a9cf7;
-  --orange:#f7a44a;
-  --purple:#a44af7;
+  --bg:#e5e5e0;
+  --surface:#dcdcd7;
+  --surface-2:#d2d2cd;
+  --border:#bbbbb5;
+  --text:#1a1a18;
+  --text-dim:#6e6e68;
+  --accent:#c46a1a;
+  --accent-dim:#9e5515;
+  --accent-glow:rgba(196,106,26,0.08);
+  --red:#c44a3a;
+  --blue:#3a6fa0;
+  --orange:#c46a1a;
+  --purple:#7a4aa0;
   --mono:'JetBrains Mono',monospace;
   --serif:'Instrument Serif',Georgia,serif;
 }
@@ -35,11 +36,21 @@ body{
   -webkit-font-smoothing:antialiased;
 }
 
-/* --- GRAIN OVERLAY --- */
+/* --- ROUGH PAPER TEXTURE --- */
 body::before{
   content:'';position:fixed;top:0;left:0;width:100%;height:100%;
-  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='paper'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='6' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23paper)' opacity='0.09'/%3E%3C/svg%3E");
   pointer-events:none;z-index:9999;
+}
+
+/* --- REDUCED MOTION --- */
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{
+    animation-duration:0.01ms !important;
+    animation-iteration-count:1 !important;
+    transition-duration:0.01ms !important;
+  }
+  .hero-reveal{display:none !important}
 }
 
 /* --- NAV --- */
@@ -47,7 +58,7 @@ nav{
   position:fixed;top:0;left:0;right:0;z-index:100;
   padding:1rem 2rem;
   display:flex;justify-content:space-between;align-items:center;
-  background:rgba(10,10,12,0.85);backdrop-filter:blur(12px);
+  background:rgba(229,229,224,0.85);backdrop-filter:blur(12px);
   border-bottom:1px solid var(--border);
 }
 .nav-logo{font-size:0.85rem;font-weight:700;letter-spacing:-0.02em;color:var(--accent)}
@@ -62,13 +73,31 @@ nav{
   text-align:center;
   padding:8rem 2rem 4rem;
   position:relative;
+  overflow:hidden;
 }
-.hero::after{
-  content:'';position:absolute;top:30%;left:50%;transform:translate(-50%,-50%);
-  width:700px;height:700px;
-  background:radial-gradient(circle,rgba(196,247,74,0.05) 0%,transparent 70%);
-  pointer-events:none;
+
+/* Cursor-reveal image layer — masked by SVG blob */
+.hero-reveal{
+  position:absolute;top:0;left:0;width:100%;height:100%;
+  pointer-events:none;z-index:1;
+  background:url('hero-bg.svg') calc(50% + 40px) center / cover no-repeat;
+  opacity:0.85;
+  -webkit-mask:url(#blob-mask);
+  mask:url(#blob-mask);
 }
+.hero-mask-svg{position:absolute;width:0;height:0;overflow:hidden}
+/* Warm amber glow that follows cursor */
+.hero-glow{
+  position:absolute;top:0;left:0;width:100%;height:100%;
+  pointer-events:none;z-index:0;
+  opacity:0;
+  transition:opacity 0.3s ease;
+  background:radial-gradient(circle 250px at 50% 50%,rgba(196,106,26,0.12),transparent 70%);
+}
+.hero-glow.active{opacity:1}
+
+.hero>*:not(.hero-reveal):not(.hero-glow){position:relative;z-index:2}
+
 .hero-badge{
   display:inline-flex;align-items:center;gap:0.5rem;
   padding:0.35rem 0.85rem;
@@ -76,6 +105,7 @@ nav{
   font-size:0.7rem;color:var(--text-dim);
   margin-bottom:2rem;
   text-transform:uppercase;letter-spacing:0.1em;
+  background:var(--bg);
 }
 .hero-badge .dot{width:6px;height:6px;border-radius:50%;background:var(--accent);animation:pulse 2s infinite}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
@@ -102,17 +132,19 @@ nav{
   font-family:var(--mono);font-size:0.85rem;
   color:var(--text);
   display:flex;align-items:center;gap:1rem;
-  cursor:pointer;transition:border-color .2s;
+  cursor:pointer;transition:border-color .2s,box-shadow .3s;
   position:relative;
 }
-.hero-install:hover{border-color:var(--accent)}
+.hero-install:hover{border-color:var(--accent);box-shadow:0 0 30px rgba(247,164,74,0.06)}
 .hero-install .prompt{color:var(--accent)}
 .hero-install .copy-hint{
   font-size:0.65rem;color:var(--text-dim);
   text-transform:uppercase;letter-spacing:0.1em;
   padding:0.2rem 0.5rem;
   border:1px solid var(--border);border-radius:4px;
+  transition:all .15s ease;
 }
+.hero-install .copy-hint.copied{color:var(--accent);border-color:var(--accent-dim)}
 
 /* --- SECTION SHARED --- */
 section{padding:6rem 2rem}
@@ -128,20 +160,73 @@ section{padding:6rem 2rem}
 }
 
 /* --- TOOL GRID --- */
-.tools{background:var(--surface);border-top:1px solid var(--border);border-bottom:1px solid var(--border)}
+.tools{background:var(--surface);border-top:1px solid var(--border);border-bottom:1px solid var(--border);position:relative}
 .tools-grid{
-  display:grid;grid-template-columns:1fr 1fr 1fr;gap:1px;
-  background:var(--border);
+  display:grid;grid-template-columns:1fr 1fr 1fr;gap:1.25rem;
   margin-top:3rem;
-  border:1px solid var(--border);border-radius:8px;
-  overflow:hidden;
 }
+
+/* SVG turbulence filter — shared, hidden */
+.glass-filters{position:absolute;width:0;height:0;overflow:hidden}
+
 .tool-card{
-  background:var(--bg);padding:1.75rem;
+  padding:1.75rem;
   display:flex;flex-direction:column;gap:0.6rem;
-  transition:background .2s;
+  cursor:default;
+  position:relative;
+  border-radius:16px;
+  overflow:hidden;
+
+  /* Liquid glass */
+  background:rgba(255,255,255,0.15);
+  backdrop-filter:blur(18px) saturate(1.3);
+  -webkit-backdrop-filter:blur(18px) saturate(1.3);
+  border:1px solid rgba(255,255,255,0.35);
+  box-shadow:
+    0 8px 32px rgba(0,0,0,0.06),
+    0 1px 0 rgba(255,255,255,0.5) inset,
+    0 -1px 0 rgba(0,0,0,0.04) inset;
+
+  /* Float above */
+  transform:translateY(0);
+  transition:transform 0.35s cubic-bezier(0.16,1,0.3,1),box-shadow 0.35s cubic-bezier(0.16,1,0.3,1),border-color 0.25s ease;
 }
-.tool-card:hover{background:var(--surface-2)}
+
+/* Turbulence distortion overlay */
+.tool-card::before{
+  content:'';position:absolute;inset:-2px;
+  border-radius:18px;
+  background:linear-gradient(135deg,rgba(255,255,255,0.25) 0%,rgba(255,255,255,0.05) 50%,rgba(255,255,255,0.15) 100%);
+  filter:url(#glass-turbulence);
+  pointer-events:none;
+  z-index:0;
+  opacity:0.6;
+}
+
+/* Specular highlight streak */
+.tool-card::after{
+  content:'';position:absolute;
+  top:-50%;left:-20%;
+  width:140%;height:60%;
+  background:linear-gradient(190deg,rgba(255,255,255,0.35) 0%,rgba(255,255,255,0.08) 40%,transparent 60%);
+  border-radius:50%;
+  pointer-events:none;
+  z-index:0;
+  transform:rotate(-5deg);
+}
+
+.tool-card:hover{
+  transform:translateY(-6px);
+  box-shadow:
+    0 20px 50px rgba(0,0,0,0.1),
+    0 8px 20px rgba(0,0,0,0.05),
+    0 1px 0 rgba(255,255,255,0.6) inset,
+    0 -1px 0 rgba(0,0,0,0.04) inset;
+  border-color:rgba(255,255,255,0.5);
+}
+
+.tool-card>*{position:relative;z-index:1}
+
 .tool-header{display:flex;align-items:center;gap:0.6rem;margin-bottom:0.2rem}
 .tool-name{
   font-size:0.9rem;font-weight:700;color:var(--text);
@@ -153,13 +238,13 @@ section{padding:6rem 2rem}
   text-transform:uppercase;letter-spacing:0.08em;
   border:1px solid;
 }
-.tool-badge.mcp{color:var(--accent);border-color:var(--accent-dim);background:rgba(196,247,74,0.06)}
-.tool-badge.cli{color:var(--blue);border-color:rgba(74,156,247,0.4);background:rgba(74,156,247,0.06)}
+.tool-badge.mcp{color:var(--accent);border-color:var(--accent-dim);background:rgba(196,106,26,0.1)}
+.tool-badge.cli{color:var(--blue);border-color:rgba(58,111,160,0.4);background:rgba(58,111,160,0.1)}
 .tool-desc{font-size:0.78rem;color:var(--text-dim);line-height:1.6}
 .tool-cmd{
   margin-top:auto;padding-top:0.75rem;
   font-size:0.72rem;color:var(--text-dim);
-  background:var(--surface-2);border:1px solid var(--border);border-radius:4px;
+  background:rgba(0,0,0,0.04);border:1px solid rgba(0,0,0,0.06);border-radius:6px;
   padding:0.4rem 0.7rem;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
 }
@@ -187,37 +272,39 @@ section{padding:6rem 2rem}
 .terminal-section{background:var(--surface);border-top:1px solid var(--border);border-bottom:1px solid var(--border)}
 .output-terminal{
   margin-top:3rem;
-  background:var(--surface);
+  background:#111114;
   border:1px solid var(--border);border-radius:12px;
   overflow:hidden;
+  box-shadow:0 8px 40px rgba(26,23,18,0.15);
 }
 .output-titlebar{
   display:flex;align-items:center;gap:0.5rem;
   padding:0.75rem 1rem;
-  background:var(--surface-2);border-bottom:1px solid var(--border);
+  background:#1a1a1e;border-bottom:1px solid #2a2a30;
 }
 .output-dot{width:10px;height:10px;border-radius:50%}
-.output-dot.r{background:var(--red)}
-.output-dot.y{background:var(--orange)}
-.output-dot.g{background:var(--accent)}
+.output-dot.r{background:#ff5f57}
+.output-dot.y{background:#febc2e}
+.output-dot.g{background:#28c840}
 .output-titlebar-label{
-  margin-left:0.5rem;font-size:0.7rem;color:var(--text-dim);
+  margin-left:0.5rem;font-size:0.7rem;color:#777780;
   letter-spacing:0.05em;
 }
 .output-body{
   padding:1.5rem;
   font-size:0.78rem;line-height:1.9;
   overflow-x:auto;
-  background:var(--bg);
+  background:#0a0a0c;
+  color:#e8e6e3;
 }
-.output-body .prompt-line{color:var(--text-dim)}
-.output-body .prompt-char{color:var(--accent);font-weight:700}
-.output-body .result{color:var(--text)}
-.output-body .dim{color:var(--text-dim)}
-.output-body .ok{color:var(--accent)}
-.output-body .info{color:var(--blue)}
-.output-body .warn{color:var(--orange)}
-.output-body .sub{color:var(--text-dim);padding-left:1.5rem}
+.output-body .prompt-line{color:#777780}
+.output-body .prompt-char{color:#e8943a;font-weight:700}
+.output-body .result{color:#e8e6e3}
+.output-body .dim{color:#777780}
+.output-body .ok{color:#e8943a}
+.output-body .info{color:#5b9cf7}
+.output-body .warn{color:#f7a44a}
+.output-body .sub{color:#777780;padding-left:1.5rem}
 
 /* --- SETUP --- */
 .setup .setup-options{
@@ -235,13 +322,13 @@ section{padding:6rem 2rem}
   padding:0.1rem 0.4rem;font-weight:400;
 }
 .setup-option pre{
-  background:var(--bg);border:1px solid var(--border);border-radius:4px;
+  background:#0a0a0c;border:1px solid #2a2a30;border-radius:6px;
   padding:0.75rem 1rem;font-size:0.75rem;overflow-x:auto;
-  color:var(--text-dim);line-height:1.7;
+  color:#999;line-height:1.7;
 }
-.setup-option pre .cmd{color:var(--accent)}
-.setup-option pre .key{color:var(--blue)}
-.setup-option pre .str{color:var(--text)}
+.setup-option pre .cmd{color:#e8943a}
+.setup-option pre .key{color:#5b9cf7}
+.setup-option pre .str{color:#e8e6e3}
 
 /* --- FOOTER --- */
 footer{
@@ -257,10 +344,10 @@ footer a:hover{color:var(--accent)}
 
 /* --- RESPONSIVE --- */
 @media(max-width:800px){
-  .tools-grid{grid-template-columns:1fr 1fr}
+  .tools-grid{grid-template-columns:1fr 1fr;gap:1rem}
 }
 @media(max-width:560px){
-  .tools-grid{grid-template-columns:1fr}
+  .tools-grid{grid-template-columns:1fr;gap:0.85rem}
   .step{grid-template-columns:40px 1fr;gap:1rem}
   nav{padding:0.75rem 1rem}
   .nav-links{gap:1rem}
@@ -274,6 +361,8 @@ footer a:hover{color:var(--accent)}
 .hero h1{animation-delay:0.1s}
 .hero-sub{animation-delay:0.2s}
 .hero-install{animation-delay:0.3s}
+
+
 </style>
 </head>
 <body>
@@ -291,10 +380,29 @@ footer a:hover{color:var(--accent)}
 
 <!-- HERO -->
 <section class="hero">
+  <!-- Cursor-revealed hero image -->
+  <div class="hero-reveal" aria-hidden="true"></div>
+  <!-- SVG mask with turbulence-distorted blob -->
+  <svg class="hero-mask-svg" aria-hidden="true" width="0" height="0">
+    <defs>
+      <filter id="blob-warp" x="-40%" y="-40%" width="180%" height="180%">
+        <feTurbulence id="blob-turb" type="fractalNoise" baseFrequency="0.015" numOctaves="4" seed="3" result="noise"/>
+        <feDisplacementMap in="SourceGraphic" in2="noise" scale="45" xChannelSelector="R" yChannelSelector="G"/>
+      </filter>
+      <mask id="blob-mask">
+        <rect width="100%" height="100%" fill="black"/>
+        <circle id="blob-circle" cx="-200" cy="-200" r="110" fill="white" filter="url(#blob-warp)"/>
+      </mask>
+    </defs>
+  </svg>
+
+  <!-- Warm glow that follows cursor -->
+  <div class="hero-glow" aria-hidden="true"></div>
+
   <div class="hero-badge"><span class="dot"></span> Free &amp; open source &middot; MIT</div>
   <h1>Six tools.<br><em>One install.</em></h1>
   <p class="hero-sub">A unified developer toolkit for AI-assisted workflows. Time your tasks, validate your configs, scan your ports, audit your licenses — all from a single CLI.</p>
-  <div class="hero-install" onclick="navigator.clipboard.writeText('npx @whenlabs/when install');this.querySelector('.copy-hint').textContent='Copied!'">
+  <div class="hero-install" onclick="copyInstall(this)" role="button" tabindex="0" onkeydown="if(event.key==='Enter')copyInstall(this)">
     <span><span class="prompt">$</span> npx @whenlabs/when install</span>
     <span class="copy-hint">Click to copy</span>
   </div>
@@ -302,6 +410,15 @@ footer a:hover{color:var(--accent)}
 
 <!-- TOOL GRID -->
 <section class="tools" id="tools">
+  <!-- SVG filter for liquid glass turbulence -->
+  <svg class="glass-filters" aria-hidden="true">
+    <defs>
+      <filter id="glass-turbulence" x="-10%" y="-10%" width="120%" height="120%">
+        <feTurbulence type="fractalNoise" baseFrequency="0.015" numOctaves="3" seed="2" result="noise"/>
+        <feDisplacementMap in="SourceGraphic" in2="noise" scale="6" xChannelSelector="R" yChannelSelector="G"/>
+      </filter>
+    </defs>
+  </svg>
   <div class="container">
     <div class="section-label">The toolkit</div>
     <div class="section-title">Everything your agent needs</div>
@@ -379,7 +496,7 @@ footer a:hover{color:var(--accent)}
         <div class="step-num">1</div>
         <div>
           <h3>Install</h3>
-          <p>Run one command to install the full toolkit. All six tools are available immediately as <code style="color:var(--accent);background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:0.15rem 0.4rem;font-size:0.8rem">when &lt;tool&gt;</code> subcommands.</p>
+          <p>Run one command to install the full toolkit. All six tools are available immediately as <code style="color:var(--accent);background:var(--surface-2);border:1px solid var(--border);border-radius:4px;padding:0.15rem 0.4rem;font-size:0.8rem">when &lt;tool&gt;</code> subcommands.</p>
         </div>
       </div>
       <div class="step">
@@ -418,22 +535,22 @@ footer a:hover{color:var(--accent)}
 <span class="result"><span class="ok">when</span>  Bootstrapping WhenLabs toolkit...</span>
 <span class="result"></span>
 <span class="result"><span class="ok">+</span> velocity   <span class="dim">MCP server registered (npx @whenlabs/velocity)</span></span>
-<span class="result"><span class="ok">+</span> stale      <span class="dim">CLI ready  →  when stale check</span></span>
-<span class="result"><span class="ok">+</span> envalid    <span class="dim">CLI ready  →  when envalid check</span></span>
-<span class="result"><span class="ok">+</span> berth      <span class="dim">CLI ready  →  when berth scan</span></span>
-<span class="result"><span class="ok">+</span> aware      <span class="dim">CLI ready  →  when aware scan</span></span>
-<span class="result"><span class="ok">+</span> vow        <span class="dim">CLI ready  →  when vow scan</span></span>
+<span class="result"><span class="ok">+</span> stale      <span class="dim">CLI ready  &rarr;  when stale check</span></span>
+<span class="result"><span class="ok">+</span> envalid    <span class="dim">CLI ready  &rarr;  when envalid check</span></span>
+<span class="result"><span class="ok">+</span> berth      <span class="dim">CLI ready  &rarr;  when berth scan</span></span>
+<span class="result"><span class="ok">+</span> aware      <span class="dim">CLI ready  &rarr;  when aware scan</span></span>
+<span class="result"><span class="ok">+</span> vow        <span class="dim">CLI ready  &rarr;  when vow scan</span></span>
 <br>
 <span class="result"><span class="info">i</span> Appending velocity rules to CLAUDE.md...</span>
-<span class="result"><span class="ok">v</span> CLAUDE.md updated</span>
+<span class="result"><span class="ok">&#10003;</span> CLAUDE.md updated</span>
 <br>
 <span class="result"><span class="ok">All done.</span> <span class="dim">Run</span> when --help <span class="dim">to get started.</span></span>
-<br>
+<br><br>
 <span class="prompt-line"><span class="prompt-char">$</span> when berth scan</span>
 <br>
 <span class="result"><span class="info">Scanning active ports...</span></span>
 <span class="result"></span>
-<span class="result"><span class="warn">!</span> Port 3000  <span class="dim">node (pid 81234)  →  your-app</span></span>
+<span class="result"><span class="warn">!</span> Port 3000  <span class="dim">node (pid 81234)  &rarr;  your-app</span></span>
 <span class="result"><span class="warn">!</span> Port 5432  <span class="dim">postgres (pid 512)</span></span>
 <span class="result"><span class="ok">+</span> Port 8080  <span class="dim">free</span></span>
 <span class="result"></span>
@@ -493,6 +610,115 @@ footer a:hover{color:var(--accent)}
     <a href="https://github.com/WhenLabs-org/when">GitHub</a>
   </div>
 </footer>
+
+<script>
+// Copy install command
+function copyInstall(el){
+  navigator.clipboard.writeText('npx @whenlabs/when install');
+  var hint=el.querySelector('.copy-hint');
+  hint.textContent='Copied!';
+  hint.classList.add('copied');
+  setTimeout(function(){hint.textContent='Click to copy';hint.classList.remove('copied')},2000);
+}
+
+// Flowing blob cursor reveal + scroll fade
+(function(){
+  var hero=document.querySelector('.hero');
+  var reveal=document.querySelector('.hero-reveal');
+  var glow=document.querySelector('.hero-glow');
+  var circle=document.getElementById('blob-circle');
+  var turb=document.getElementById('blob-turb');
+  if(!reveal||!hero||!circle||!turb)return;
+
+  var heroH=window.innerHeight;
+  var scrollTicking=false;
+  var mouseIn=false;
+  var mx=-200,my=-200; // current blob position
+  var tx=-200,ty=-200; // target (actual mouse)
+  var time=0;
+  var animating=false;
+
+  // Smooth lerp + sine-wave frequency morph for organic flow
+  function animate(){
+    if(!mouseIn&&Math.abs(mx-tx)<1&&Math.abs(my-ty)<1){animating=false;return;}
+
+    // Ease toward target (lerp)
+    mx+=(tx-mx)*0.12;
+    my+=(ty-my)*0.12;
+
+    // Move the SVG mask circle
+    circle.setAttribute('cx',mx);
+    circle.setAttribute('cy',my);
+
+    // Smoothly oscillate baseFrequency for organic morphing — no frame jumps
+    time+=0.008;
+    var freq=0.015+Math.sin(time)*0.004+Math.sin(time*1.7)*0.002;
+    turb.setAttribute('baseFrequency',freq.toFixed(5));
+
+    requestAnimationFrame(animate);
+  }
+
+  function startAnim(){
+    if(!animating){animating=true;animate();}
+  }
+
+  hero.addEventListener('mouseenter',function(){
+    mouseIn=true;
+    glow.classList.add('active');
+    startAnim();
+  });
+
+  hero.addEventListener('mouseleave',function(){
+    mouseIn=false;
+    glow.classList.remove('active');
+    tx=-200;ty=-200;
+    startAnim();
+  });
+
+  hero.addEventListener('mousemove',function(e){
+    var rect=hero.getBoundingClientRect();
+    tx=e.clientX-rect.left;
+    ty=e.clientY-rect.top;
+    glow.style.background='radial-gradient(circle 230px at '+tx+'px '+ty+'px,rgba(196,106,26,0.08),transparent 70%)';
+    startAnim();
+  },{passive:true});
+
+  // Scroll fade
+  function onScroll(){
+    if(!scrollTicking){
+      requestAnimationFrame(function(){
+        var progress=Math.min(window.scrollY/heroH,1);
+        reveal.style.opacity=0.85*(1-progress);
+        scrollTicking=false;
+      });
+      scrollTicking=true;
+    }
+  }
+  window.addEventListener('scroll',onScroll,{passive:true});
+  onScroll();
+
+  // Touch support
+  hero.addEventListener('touchstart',function(){
+    mouseIn=true;
+    glow.classList.add('active');
+    startAnim();
+  },{passive:true});
+
+  hero.addEventListener('touchmove',function(e){
+    var t=e.touches[0],rect=hero.getBoundingClientRect();
+    tx=t.clientX-rect.left;
+    ty=t.clientY-rect.top;
+    glow.style.background='radial-gradient(circle 230px at '+tx+'px '+ty+'px,rgba(196,106,26,0.08),transparent 70%)';
+  },{passive:true});
+
+  hero.addEventListener('touchend',function(){
+    mouseIn=false;
+    glow.classList.remove('active');
+    tx=-200;ty=-200;
+    startAnim();
+  });
+})();
+</script>
 
 </body>
 </html>

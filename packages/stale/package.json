@@ -1,6 +1,6 @@
 {
   "name": "stale-cli",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Detect documentation drift in your codebase",
   "type": "module",
   "bin": {
@@ -25,9 +25,11 @@
   ],
   "license": "MIT",
   "dependencies": {
+    "@actions/core": "^3.0.0",
+    "@actions/github": "^9.1.0",
     "@anthropic-ai/sdk": "^0.88.0",
-    "chalk": "^5.4.1",
     "boxen": "^8.0.1",
+    "chalk": "^5.4.1",
     "commander": "^14.0.0",
     "fast-glob": "^3.3.3",
     "fastest-levenshtein": "^1.0.16",
@@ -38,9 +40,7 @@
     "simple-git": "^3.27.0",
     "unified": "^11.0.5",
     "unist-util-visit": "^5.0.0",
-    "yaml": "^2.7.1",
-    "@actions/core": "^1.11.1",
-    "@actions/github": "^6.0.0"
+    "yaml": "^2.7.1"
   },
   "devDependencies": {
     "@types/node": "^20.17.0",

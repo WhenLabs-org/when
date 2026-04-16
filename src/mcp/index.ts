@@ -23,6 +23,7 @@ import { registerEnvalidTools } from './envalid.js';
 import { registerBerthTools } from './berth.js';
 import { registerAwareTools } from './aware.js';
 import { registerVowTools } from './vow.js';
+import { registerVelocityDashboard } from './velocity-dashboard.js';
 
 const server = new McpServer({
   name: 'whenlabs',
@@ -54,6 +55,7 @@ registerEnvalidTools(server);
 registerBerthTools(server);
 registerAwareTools(server);
 registerVowTools(server);
+registerVelocityDashboard(server);
 
 // =====================================================================
 // GRACEFUL SHUTDOWN

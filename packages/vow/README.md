@@ -4,6 +4,11 @@ Scan your project's entire dependency tree, resolve the license for every packag
 
 Part of the [WhenLabs](https://whenlabs.org) umbrella.
 
+> **Part of the [WhenLabs toolkit](https://github.com/WhenLabs-org/when)** — install all 6 tools with one command:
+> ```
+> npx @whenlabs/when install
+> ```
+
 ## Why vow?
 
 | | vow | license-checker | Manually checking |
@@ -45,6 +50,8 @@ Part of the [WhenLabs](https://whenlabs.org) umbrella.
   ```
 
 ## Installation
+
+> **Recommended:** Install the full WhenLabs toolkit with `npx @whenlabs/when install` to get vow plus 5 other tools in one step.
 
 ```bash
 npm install -g vow

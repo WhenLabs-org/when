@@ -1,6 +1,7 @@
 {
   "name": "@whenlabs/when",
-  "version": "0.11.0",
+  "version": "0.11.1",
+  "mcpName": "io.github.whenlabs-org/when",
   "description": "The WhenLabs developer toolkit — 6 tools, one install",
   "type": "module",
   "main": "dist/index.js",
@@ -24,6 +25,10 @@
     "claude-code"
   ],
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/WhenLabs-org/when.git"
+  },
   "engines": {
     "node": ">=20"
   },

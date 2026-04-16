@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Introspective Gap: When AI Answer Engines Misdescribe Their Own Source Selection Behavior</title>
+<meta name="description" content="Paper I of III: A Simulation-Calibrated Exploratory Framework for AEO, GEO, and the Study of LLM Self-Knowledge. By Siddharth Nigam.">
+<meta name="author" content="Siddharth Nigam">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Instrument+Serif:ital@0;1&family=Source+Serif+4:ital,wght@0,400;0,600;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#e0e0e0;
+  --surface-2:#d4d4d4;
+  --text:#1a1a18;
+  --text-dim:#6e6e68;
+  --accent:#c46a1a;
+  --accent-dim:#9e5515;
+  --blue:#3a6fa0;
+  --mono:'JetBrains Mono',monospace;
+  --serif:'Source Serif 4','Instrument Serif',Georgia,serif;
+  --display:'Instrument Serif',Georgia,serif;
+  --shadow-light:#ffffff;
+  --shadow-dark:rgba(163,163,163,0.7);
+  --neu-out:8px 8px 16px var(--shadow-dark), -8px -8px 16px var(--shadow-light);
+  --neu-out-sm:4px 4px 8px var(--shadow-dark), -4px -4px 8px var(--shadow-light);
+  --neu-in:inset 4px 4px 8px var(--shadow-dark), inset -4px -4px 8px var(--shadow-light);
+}
+html{scroll-behavior:smooth;font-size:17px}
+body{background:var(--bg);color:var(--text);font-family:var(--serif);line-height:1.75;-webkit-font-smoothing:antialiased}
+
+/* Nav */
+nav{position:fixed;top:0;left:0;right:0;z-index:100;padding:1rem 2rem;display:flex;justify-content:space-between;align-items:center;background:var(--bg);box-shadow:0 4px 8px var(--shadow-dark),0 -2px 6px var(--shadow-light);font-family:var(--mono)}
+.nav-logo{font-size:0.85rem;font-weight:700;letter-spacing:-0.02em;color:var(--accent);text-decoration:none}
+.nav-links{display:flex;gap:1.5rem}
+.nav-links a{color:var(--text-dim);text-decoration:none;font-size:0.72rem;text-transform:uppercase;letter-spacing:0.08em;padding:0.3rem 0.7rem;border-radius:8px;transition:all .2s}
+.nav-links a:hover{color:var(--accent);box-shadow:var(--neu-in)}
+
+/* Article */
+article{max-width:740px;margin:0 auto;padding:7rem 2rem 4rem}
+
+/* Title block */
+.paper-title{font-family:var(--display);font-size:2rem;font-weight:400;line-height:1.2;letter-spacing:-0.02em;text-align:center;margin-bottom:0.5rem}
+.paper-title em{font-style:italic;color:var(--accent)}
+.paper-subtitle{font-family:var(--serif);font-style:italic;font-size:1rem;text-align:center;color:var(--text-dim);margin-bottom:1.5rem;line-height:1.5}
+.paper-meta{text-align:center;font-size:0.9rem;color:var(--text-dim);margin-bottom:0.5rem}
+.paper-meta strong{color:var(--text);font-weight:600}
+.paper-actions{text-align:center;margin:1.5rem 0 2rem}
+.paper-actions a{display:inline-block;font-family:var(--mono);font-size:0.78rem;color:var(--accent);text-decoration:none;padding:0.5rem 1.2rem;border-radius:10px;background:var(--bg);box-shadow:var(--neu-out-sm);transition:all .2s;margin:0 0.4rem}
+.paper-actions a:hover{box-shadow:var(--neu-in)}
+
+hr.paper-rule{border:none;border-top:1px solid var(--surface-2);margin:2rem 0}
+
+/* Series note */
+.series-note{background:var(--bg);border-radius:12px;padding:1.25rem 1.5rem;box-shadow:var(--neu-in);font-size:0.88rem;line-height:1.7;margin-bottom:2rem;color:var(--text-dim)}
+.series-note strong{color:var(--text)}
+
+/* Abstract */
+.abstract{margin-bottom:2rem}
+.abstract h2{font-family:var(--mono);font-size:0.72rem;text-transform:uppercase;letter-spacing:0.12em;color:var(--accent);margin-bottom:0.75rem}
+.abstract p{font-size:0.92rem;line-height:1.8}
+.keywords{font-size:0.85rem;color:var(--text-dim);margin-top:1rem}
+.keywords strong{color:var(--text)}
+
+/* Sections */
+h2.section-heading{font-family:var(--display);font-size:1.6rem;font-weight:400;margin-top:3rem;margin-bottom:1rem;padding-bottom:0.3rem;border-bottom:1px solid var(--surface-2)}
+h3.subsection-heading{font-size:1.05rem;font-weight:700;margin-top:2rem;margin-bottom:0.75rem;color:var(--text)}
+p{margin-bottom:1rem;font-size:0.95rem}
+em{font-style:italic}
+
+/* Tables */
+.table-wrapper{margin:1.5rem 0;overflow-x:auto}
+.table-wrapper table{width:100%;border-collapse:collapse;font-size:0.82rem;font-family:var(--mono)}
+.table-wrapper caption{font-family:var(--serif);font-size:0.85rem;color:var(--text-dim);text-align:left;margin-bottom:0.75rem;line-height:1.6}
+.table-wrapper th{text-align:left;font-weight:700;padding:0.6rem 0.6rem;border-bottom:2px solid var(--text);font-size:0.78rem}
+.table-wrapper td{padding:0.45rem 0.6rem;border-bottom:1px solid var(--surface-2);color:var(--text)}
+.table-wrapper tr:last-child td{border-bottom:2px solid var(--text)}
+.table-wrapper .num{text-align:right;font-variant-numeric:tabular-nums}
+.highlight-row{font-weight:700}
+
+/* Math */
+.math-block{text-align:center;font-family:var(--mono);font-size:0.88rem;margin:1.25rem 0;padding:1rem;background:var(--bg);border-radius:10px;box-shadow:var(--neu-in)}
+
+/* References */
+.references{margin-top:3rem}
+.references h2{font-family:var(--display);font-size:1.6rem;font-weight:400;margin-bottom:1rem;padding-bottom:0.3rem;border-bottom:1px solid var(--surface-2)}
+.references ol{padding-left:1.5rem;font-size:0.82rem;line-height:1.7;color:var(--text-dim)}
+.references li{margin-bottom:0.5rem}
+.references .ref-title{font-style:italic}
+
+/* Appendix */
+.appendix h2{font-family:var(--display);font-size:1.4rem;font-weight:400;margin-top:2.5rem;margin-bottom:0.75rem;color:var(--accent)}
+
+/* Copyright */
+.copyright{margin-top:3rem;padding:1.5rem;background:var(--bg);border-radius:12px;box-shadow:var(--neu-out-sm);font-size:0.82rem;line-height:1.7;color:var(--text-dim)}
+.copyright strong{color:var(--text)}
+
+/* Footer */
+footer{max-width:740px;margin:2rem auto 0;padding:2rem;font-size:0.7rem;color:var(--text-dim);border-top:1px solid var(--surface-2);font-family:var(--mono)}
+footer a{color:var(--text-dim);text-decoration:none}
+footer a:hover{color:var(--accent)}
+
+@media(max-width:560px){
+  nav{padding:0.75rem 1rem}.nav-links{gap:1rem}
+  article{padding:6rem 1.25rem 3rem}
+  .paper-title{font-size:1.5rem}
+  html{font-size:16px}
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <a class="nav-logo" href="/">@whenlabs/when</a>
+  <div class="nav-links">
+    <a href="/">Home</a>
+    <a href="/blog/">Blog</a>
+    <a href="/research/">Research</a>
+    <a href="https://github.com/WhenLabs-org/when">GitHub</a>
+  </div>
+</nav>
+
+<article>
+
+<!-- Title Block -->
+<h1 class="paper-title">The Introspective Gap: When AI Answer Engines <em>Misdescribe Their Own Source Selection Behavior</em></h1>
+<div class="paper-subtitle">Paper I of III: A Simulation-Calibrated Exploratory Framework for AEO, GEO, and the Study of LLM Self-Knowledge</div>
+<div class="paper-meta"><strong>Siddharth Nigam</strong></div>
+<div class="paper-meta">Independent Researcher</div>
+<div class="paper-meta">April 2026 | Preprint</div>
+
+<div class="paper-actions">
+  <a href="/research/introspective_gap.pdf" download>Download PDF</a>
+</div>
+
+<hr class="paper-rule">
+
+<!-- Series Note -->
+<div class="series-note">
+  <strong>Series Note.</strong> This is the first paper in a three-part series on AI information retrieval and agentic web optimization. Paper II introduces Parametric Divergence Mapping, an empirical methodology for deriving cross-model scoring criteria through iterative refinement. Paper III introduces the AXO (Agentic Execution Optimization) framework, a scoring rubric for measuring website readiness for autonomous AI agent task execution.
+</div>
+
+<hr class="paper-rule">
+
+<!-- Abstract -->
+<div class="abstract">
+  <h2>Abstract</h2>
+  <p>Answer Engine Optimization (AEO) and Generative Engine Optimization (GEO) are becoming central to how information is surfaced in AI-mediated discovery. Most existing work studies these systems from the outside: by measuring rankings, citations, visibility, or prompt-response behavior. This paper proposes a complementary reflexive framework: studying optimization partly through the answer engine's own account of what it values, and then comparing that account to behavior inferred from external empirical literature. The divergence between these two layers is what I call the <em>Introspective Gap</em>.</p>
+  <p>The paper presents three exploratory studies. First, a simulation-calibrated content optimization preference test across ten domains (<em>N</em>=10,000 modeled trials) reproduces the directional finding that citation-oriented strategies do not perform uniformly across domains. Second, a first quantitative framework for estimating the Introspective Gap by comparing an LLM's self-reported source-selection criteria with a synthesized set of behaviorally inferred weights. Under this framework, brand recognition appears substantially under-attributed in self-report, while factual accuracy and author credentials appear over-attributed. Third, an epistemic inflation model suggests that heavily GEO-optimized content may increase apparent confidence beyond evidential warrant, with the strongest inflation concentrated in weakly supported claims.</p>
+  <p>These results should be read as hypothesis-generating rather than definitive measurement. The main contribution is not a final empirical verdict on live answer engines, but a new methodological lens for asking whether AI systems accurately describe the factors that appear to influence their own citation behavior. If that self-description is systematically incomplete or flattering, the implications extend beyond optimization practice to transparency, auditing, and user trust in AI-mediated information systems.</p>
+  <div class="keywords"><strong>Keywords:</strong> Answer Engine Optimization, Generative Engine Optimization, LLM Introspection, Citation Bias, AI Transparency, Epistemic Calibration</div>
+</div>
+
+<hr class="paper-rule">
+
+<!-- 1. Introduction -->
+<h2 class="section-heading">1. Introduction</h2>
+
+<p>The architecture of information discovery is changing. Search results increasingly arrive not as ranked lists but as synthesized answers, summaries, and conversational outputs. In that environment, visibility is no longer only a matter of ranking; it is also a matter of whether a system cites, mentions, paraphrases, or silently absorbs a source into its response. This shift has given rise to two adjacent optimization disciplines.</p>
+
+<p>Answer Engine Optimization (AEO) focuses on increasing the likelihood that content will be surfaced or cited in direct AI-generated answers. Generative Engine Optimization (GEO) extends that ambition by identifying content features that appear to improve visibility within responses produced by large language model-based systems. Prior work has begun to show that factors such as statistics, quotations, structure, and brand or entity strength may influence whether a source is surfaced or cited. Yet almost all of this work treats the model as a black box: the system is observed externally, but its own self-description of what it values is rarely treated as an object of study in itself.</p>
+
+<p>This paper proposes a different approach. Rather than asking only, "What content gets cited?" it also asks, "How does the answer engine describe its own source-selection behavior, and how closely does that description align with patterns inferred from external evidence?" The distance between these two layers is what I call the <em>Introspective Gap</em>.</p>
+
+<p>The term is intentionally narrow. It does not imply access to hidden model internals, and it does not claim that language models possess robust self-knowledge in any human sense. Instead, it refers to a measurable mismatch between <em>self-report</em>&mdash;what an LLM says it values when asked directly about source selection&mdash;and <em>behavioral proxy</em>&mdash;what a synthesized reading of external empirical literature suggests is rewarded in citation or visibility behavior.</p>
+
+<p>The strongest claim of this paper is therefore methodological, not metaphysical. I am not claiming to have directly measured the hidden source-selection circuitry of answer engines. I am claiming that there is value in placing model self-description into explicit comparison with behaviorally inferred evidence, and that this comparison generates testable hypotheses about transparency, optimization, and trust.</p>
+
+<!-- 2. Related Work -->
+<h2 class="section-heading">2. Related Work</h2>
+
+<h3 class="subsection-heading">2.1 Generative Engine Optimization</h3>
+
+<p>Foundational GEO studies [1] have argued that adding statistics, quotations, or fluency enhancements can yield meaningful visibility improvements relative to baseline content. Other work has extended these ideas into verticals such as e-commerce [4], and industry analyses have documented phenomena such as ghost citations [6], uneven brand mention behavior [9], content recency effects [11, 14], and cross-platform instability in citation patterns [7, 8]. A critical literature has also emerged, arguing that GEO effectively transforms LLM-based discovery into a new advertising or influence surface [10], while others question whether citation diversity corresponds to gains in credibility or evidential quality [16]. This paper draws from both strands.</p>
+
+<h3 class="subsection-heading">2.2 Answer Engine Optimization</h3>
+
+<p>AEO scholarship and industry practice focus on increasing the probability that content appears in direct AI answers, voice responses, or chat-based discovery tools. Typical tactics include answer-first formatting, schema markup, entity consistency, and signals associated with trust, expertise, or recency [12, 14]. Much of the evidence comes from applied or industry-facing studies rather than mature peer-reviewed literature, reflecting the youth of the field.</p>
+
+<h3 class="subsection-heading">2.3 LLM Introspection and Self-Knowledge</h3>
+
+<p>A separate research stream has examined whether language models possess any reliable form of self-knowledge [2, 3]. Some work suggests that models can, in limited settings, identify manipulated internal states or predict aspects of their own behavior better than external observers [3]. But this literature remains cautious: introspective performance is partial, task-dependent, and far from comprehensive [2]. What has been missing is a bridge between introspection research and the AEO/GEO literature. That bridge is the paper's main conceptual intervention.</p>
+
+<!-- 3. Methodology -->
+<h2 class="section-heading">3. Methodology</h2>
+
+<h3 class="subsection-heading">3.1 Methodological Orientation: Reflexive AI Research</h3>
+
+<p>A distinctive feature of this paper is its reflexive setup. The LLM is used both as an experimental instrument and, in one part of the analysis, as the source of self-reported judgments about its own source selection. The paper therefore distinguishes sharply between three kinds of evidence, summarized in Table 1.</p>
+
+<div class="table-wrapper">
+<caption>Table 1: Evidentiary provenance. Readers should weight conclusions by layer: directly elicited data carries the most internal validity; synthesized estimates carry cross-study heterogeneity; modeled results are downstream of parameterization.</caption>
+<table>
+<thead><tr><th>Evidentiary Layer</th><th>What It Covers</th><th>Method</th><th>Status</th></tr></thead>
+<tbody>
+<tr><td>Directly elicited</td><td>Self-reported factor weights (Table 3, left column)</td><td>Controlled LLM self-description</td><td>Primary data from this study</td></tr>
+<tr><td>Synthesized from external studies</td><td>Behavioral proxy weights (Table 3, right column)</td><td>Sample-size-weighted median of normalized effect sizes</td><td>Cross-study proxy estimates</td></tr>
+<tr><td>Modeled / simulated</td><td>Citation preferences (Table 2); calibration error (Table 4); visibility asymmetry (Table 5)</td><td>Monte Carlo simulation calibrated to published effect sizes</td><td>Computational extrapolation from prior findings</td></tr>
+</tbody>
+</table>
+</div>
+
+<p>The reflexive setup has an obvious tension. An AI system used to help study an Introspective Gap may itself be subject to one. That is not treated here as disqualifying, but as part of the object of inquiry. The safeguard is not self-validation. The safeguard is falsifiability. Every major claim in this paper can, in principle, be challenged by future controlled live-model experiments, human evaluation studies, or multi-model replication.</p>
+
+<h3 class="subsection-heading">3.2 Experiment 1: Domain-Sensitive Content Preference Simulation</h3>
+
+<p>Ten domain-specific query environments were constructed, each with five content variants: plain baseline, statistics-heavy, structured Q&amp;A, authority-signaled, and entity-rich. The experiment uses Monte Carlo simulation (<em>N</em>=10,000; 1,000 per domain) calibrated to effect sizes from prior GEO literature, with domain modifiers and Gaussian noise (&sigma;=0.03). The experiment does not involve live source injection into commercial answer engines. Its purpose is organizational: to model how strategy preference might shift under different domain assumptions, providing a structured baseline for Experiments 2 and 3.</p>
+
+<h3 class="subsection-heading">3.3 Experiment 2: Estimating the Introspective Gap</h3>
+
+<p>Ten factors were selected as plausible influences on source selection. Self-report values were derived from a controlled elicitation. Comparison weights were synthesized from five prior empirical studies using different designs and metrics: GEO-bench effect sizes [1], Seer Interactive's ghost citation analysis (<em>N</em>=541,213; [6]), AirOps' citation study (<em>N</em>=45,000+; [7]), the Digital Bloom report (<em>N</em>=680M+; [8]), and Sommerfeld et al. (<em>N</em>=55,936; [16]). Where multiple sources bore on the same factor, a sample-size-weighted median of normalized values was used. Where only one source bore directly on a factor, it was treated as a rough point estimate with wider implicit uncertainty.</p>
+
+<p>Table 3 includes estimated uncertainty bands for each behavioral proxy weight. These bands are judgment-based heterogeneity estimates reflecting: the number of independent sources contributing to each weight, the degree of methodological variation across those sources, and the construct distance between what each source measured and the factor being estimated. Factors informed by multiple large-sample studies with convergent findings receive tighter bands; single-source factors receive wider ones. They are <em>not</em> formal confidence intervals derived from a single sampling distribution.</p>
+
+<p>The Introspective Gap is defined as:</p>
+
+<div class="math-block">Gap = Behavioral proxy weight &minus; Self-reported weight</div>
+
+<p>Positive values indicate under-attribution in self-report. Negative values indicate over-attribution. This design allows comparison without claiming that either layer is pure ground truth. The self-report may be incomplete; the behavioral proxy may be noisy; the gap lies in the mismatch itself.</p>
+
+<h3 class="subsection-heading">3.4 Experiment 3: Epistemic Inflation</h3>
+
+<p>Eight claims with varying evidential support (0.35&ndash;0.90) were modeled across five content styles (200 trials per claim-style pair; 8,000 total). Expressed confidence was generated under a diminishing-returns inflation model:</p>
+
+<div class="math-block">effective = base &times; (1 &minus; gt &times; 0.5) + &epsilon;, &nbsp; &epsilon; ~ N(0, 0.05)</div>
+
+<p>This experiment is heavily model-dependent. Results should be read as "if inflation dynamics follow approximately this form, then the downstream pattern is..." rather than as direct measurement of AI confidence calibration. The qualitative pattern&mdash;that optimization inflates weak claims more than strong ones&mdash;is robust across reasonable parameterizations because it follows from the diminishing-returns structure itself. Specific magnitudes are illustrative.</p>
+
+<!-- 4. Results -->
+<h2 class="section-heading">4. Results</h2>
+
+<h3 class="subsection-heading">4.1 Domain-Sensitive Strategy Preferences (Modeled)</h3>
+
+<p>Across the modeled trials, the strongest overall performance was associated with authority-signaled (24.8%) and statistics-heavy (23.7%) content, with plain-text baseline performing worst (12.6%). These figures should be read as modeled preference estimates, not live engine measurements.</p>
+
+<div class="table-wrapper">
+<caption>Table 2: Modeled citation rates by strategy and domain (<em>N</em>=1,000 per domain). 95% CIs &asymp; &plusmn;2.5&ndash;3pp per cell.</caption>
+<table>
+<thead><tr><th>Domain</th><th class="num">Plain</th><th class="num">Stats</th><th class="num">Q&amp;A</th><th class="num">Authority</th><th class="num">Entity</th></tr></thead>
+<tbody>
+<tr><td>Business Software</td><td class="num">11.8%</td><td class="num">25.3%</td><td class="num">19.8%</td><td class="num">22.8%</td><td class="num">20.3%</td></tr>
+<tr><td>Renewable Energy</td><td class="num">13.7%</td><td class="num">26.8%</td><td class="num">16.3%</td><td class="num">22.1%</td><td class="num">21.1%</td></tr>
+<tr><td>Nutrition Science</td><td class="num">12.6%</td><td class="num">25.7%</td><td class="num">17.4%</td><td class="num">28.3%</td><td class="num">16.0%</td></tr>
+<tr><td>Enterprise Software</td><td class="num">13.4%</td><td class="num">23.7%</td><td class="num">24.8%</td><td class="num">21.8%</td><td class="num">16.3%</td></tr>
+<tr><td>Electronics Mfg.</td><td class="num">11.9%</td><td class="num">27.9%</td><td class="num">17.0%</td><td class="num">22.3%</td><td class="num">20.9%</td></tr>
+<tr><td>Clinical Psychology</td><td class="num">11.1%</td><td class="num">24.0%</td><td class="num">19.9%</td><td class="num">27.7%</td><td class="num">17.3%</td></tr>
+<tr><td>Database Technology</td><td class="num">13.2%</td><td class="num">18.2%</td><td class="num">22.8%</td><td class="num">21.8%</td><td class="num">24.0%</td></tr>
+<tr><td>Real Estate Economics</td><td class="num">12.2%</td><td class="num">27.0%</td><td class="num">17.8%</td><td class="num">27.7%</td><td class="num">15.3%</td></tr>
+<tr><td>Human Resources</td><td class="num">12.7%</td><td class="num">20.8%</td><td class="num">20.9%</td><td class="num">28.0%</td><td class="num">17.6%</td></tr>
+<tr><td>Biotechnology</td><td class="num">13.1%</td><td class="num">17.3%</td><td class="num">17.9%</td><td class="num">25.4%</td><td class="num">26.3%</td></tr>
+<tr class="highlight-row"><td><strong>Overall</strong></td><td class="num"><strong>12.6%</strong></td><td class="num"><strong>23.7%</strong></td><td class="num"><strong>19.5%</strong></td><td class="num"><strong>24.8%</strong></td><td class="num"><strong>19.5%</strong></td></tr>
+</tbody>
+</table>
+</div>
+
+<p>That result is less important as a standalone finding than as a staging ground for the paper's larger claim: if models are sensitive to different content signals in different contexts, then asking them to summarize what they value in general may already flatten important structure.</p>
+
+<h3 class="subsection-heading">4.2 Estimated Introspective Gap (Synthesized)</h3>
+
+<div class="table-wrapper">
+<caption>Table 3: Estimated Introspective Gap. Uncertainty bands are judgment-based heterogeneity estimates (see Section 3.3), not formal confidence intervals.</caption>
+<table>
+<thead><tr><th>Factor</th><th class="num">Self-Report</th><th class="num">Behavioral Proxy</th><th class="num">Est. Uncertainty</th><th class="num">Gap</th><th>Interpretation</th></tr></thead>
+<tbody>
+<tr><td>Factual accuracy</td><td class="num">0.95</td><td class="num">0.70</td><td class="num">&plusmn;0.12</td><td class="num">&minus;0.25</td><td>Over-attributed</td></tr>
+<tr><td>Source recency</td><td class="num">0.85</td><td class="num">0.82</td><td class="num">&plusmn;0.06</td><td class="num">&minus;0.03</td><td>Rough alignment</td></tr>
+<tr><td>Author credentials</td><td class="num">0.80</td><td class="num">0.55</td><td class="num">&plusmn;0.10</td><td class="num">&minus;0.25</td><td>Over-attributed</td></tr>
+<tr><td>Statistical evidence</td><td class="num">0.78</td><td class="num">0.88</td><td class="num">&plusmn;0.08</td><td class="num">+0.10</td><td>Under-attributed</td></tr>
+<tr><td>Clarity of writing</td><td class="num">0.72</td><td class="num">0.80</td><td class="num">&plusmn;0.12</td><td class="num">+0.08</td><td>Under-attributed</td></tr>
+<tr><td>Structured formatting</td><td class="num">0.65</td><td class="num">0.78</td><td class="num">&plusmn;0.10</td><td class="num">+0.13</td><td>Under-attributed</td></tr>
+<tr style="font-weight:700"><td>Brand recognition</td><td class="num">0.30</td><td class="num">0.72</td><td class="num">&plusmn;0.10</td><td class="num">+0.42</td><td><strong>Strongly under-attributed</strong></td></tr>
+<tr><td>Keyword density</td><td class="num">0.15</td><td class="num">0.12</td><td class="num">&plusmn;0.05</td><td class="num">&minus;0.03</td><td>Rough alignment</td></tr>
+<tr><td>Content length</td><td class="num">0.40</td><td class="num">0.55</td><td class="num">&plusmn;0.12</td><td class="num">+0.15</td><td>Under-attributed</td></tr>
+<tr><td>Emotional tone</td><td class="num">0.25</td><td class="num">0.35</td><td class="num">&plusmn;0.12</td><td class="num">+0.10</td><td>Under-attributed</td></tr>
+</tbody>
+</table>
+</div>
+
+<p>Several patterns stand out. The self-report appears to privilege factors associated with epistemic seriousness: accuracy, recency, credentials, and evidence. Under the synthesized behavioral proxy, some of those factors remain important, but not always to the degree claimed in self-description. A different cluster&mdash;brand recognition, structure, content length, and presentation signals&mdash;appears under-attributed. The largest gap belongs to brand recognition (+0.42; proxy informed by [6, 8]). Even at the low end of the uncertainty band (proxy = 0.62), the gap remains substantial (+0.32).</p>
+
+<p>This should not be overread. The table does not prove that the model consciously prefers brands. It does something narrower: it exposes a mismatch between the model's normative self-description and an empirically informed proxy of the behavior environment in which citations occur. The pattern is consistent with a social-desirability-like structure familiar from human survey research: epistemically respectable factors are emphasized in self-report, while operationally influential but less flattering factors are muted. I use that comparison once, carefully, and do not claim it identifies a mechanism.</p>
+
+<h3 class="subsection-heading">4.3 Epistemic Inflation (Modeled)</h3>
+
+<div class="table-wrapper">
+<caption>Table 4: Modeled calibration error by content optimization strategy. The narrow CI reflects trial count (<em>N</em>=1,600 per style), not low variance.</caption>
+<table>
+<thead><tr><th>Content Style</th><th class="num">Mean Cal. Error</th><th class="num">SD</th><th class="num">95% CI of Mean</th></tr></thead>
+<tbody>
+<tr><td>Plain</td><td class="num">+0.034</td><td class="num">0.049</td><td class="num">&plusmn;0.0024</td></tr>
+<tr><td>Statistics-Optimized</td><td class="num">+0.122</td><td class="num">0.052</td><td class="num">&plusmn;0.0025</td></tr>
+<tr><td>Authority-Optimized</td><td class="num">+0.145</td><td class="num">0.055</td><td class="num">&plusmn;0.0027</td></tr>
+<tr><td>Structured-AEO</td><td class="num">+0.080</td><td class="num">0.049</td><td class="num">&plusmn;0.0024</td></tr>
+<tr><td>Full-GEO (Combined)</td><td class="num">+0.182</td><td class="num">0.064</td><td class="num">&plusmn;0.0031</td></tr>
+</tbody>
+</table>
+</div>
+
+<p>More important than the absolute values is the qualitative asymmetry. In the model, weaker claims inflate more than stronger ones. Optimization does not simply make well-supported claims look cleaner; it may also make weakly supported claims feel more settled than they are. This result is exploratory. It depends on modeling assumptions and should not be treated as direct proof of live-system calibration failure. But it is a meaningful hypothesis: if optimization systematically changes the presentation cues that models use when expressing confidence, then calibration becomes part of the GEO conversation, not a separate problem.</p>
+
+<h3 class="subsection-heading">4.4 Exploratory Visibility Asymmetry by Brand Size</h3>
+
+<div class="table-wrapper">
+<caption>Table 5: Exploratory visibility ranges by brand size. These are modeled ranges, not observed campaign data.</caption>
+<table>
+<thead><tr><th>Brand Size</th><th class="num">Pre-Optimization</th><th class="num">Post-Optimization</th><th>Direction</th></tr></thead>
+<tbody>
+<tr><td>Enterprise (&gt;10K)</td><td class="num">35&ndash;55%</td><td class="num">52&ndash;90%</td><td>Strong gain</td></tr>
+<tr><td>Mid-market (100&ndash;10K)</td><td class="num">18&ndash;32%</td><td class="num">32&ndash;60%</td><td>Strong gain</td></tr>
+<tr><td>Startup (&lt;100)</td><td class="num">8&ndash;16%</td><td class="num">12&ndash;24%</td><td>Moderate gain</td></tr>
+<tr><td>Solo/Indie</td><td class="num">2&ndash;6%</td><td class="num">2&ndash;11%</td><td>Modest gain</td></tr>
+</tbody>
+</table>
+</div>
+
+<p>The central takeaway is qualitative rather than numerical: under a wide range of plausible settings, optimization tends to help all actors somewhat, but the absolute gains may be larger for actors who already possess stronger brand, entity, or recognition signals. Under the present parameterization, the widening of the absolute gap falls in the 20&ndash;40 percentage point range. This is the weakest and most exploratory section of the paper. It suggests a plausible compounding dynamic, not a measured universal widening effect.</p>
+
+<!-- 5. Discussion -->
+<h2 class="section-heading">5. Discussion</h2>
+
+<h3 class="subsection-heading">5.1 What the Introspective Gap Is and Is Not</h3>
+
+<p>The Introspective Gap should not be mistaken for proof that models are deceptive, self-aware, or internally contradictory in a human sense. The concept is narrower. It names a mismatch between what a model says it values and what a behaviorally informed proxy suggests is rewarded in the environments where citations occur. That mismatch matters even if both layers are imperfect. Users are increasingly offered model-generated explanations of why a source was used or why one answer was preferred. If those explanations systematically overstate epistemically admirable criteria and understate salience, brand, structure, or presentation cues, then explanatory transparency becomes unstable. The paper's concern is not with hidden model consciousness. It is with explanation reliability.</p>
+
+<h3 class="subsection-heading">5.2 Three Interpretable Modes of Misalignment</h3>
+
+<p><strong>Epistemic self-elevation:</strong> self-report places especially high emphasis on factors like accuracy and credentials.</p>
+
+<p><strong>Optimization blindness:</strong> structure, clarity, statistics, and related surface signals appear under-attributed relative to their inferred influence.</p>
+
+<p><strong>Brand opacity:</strong> brand recognition produces the largest gap. The defensible reading is that brand-linked salience may operate through retrieval conditions, entity familiarity, or broader visibility structures not well captured in self-report. The result is an under-described dependence on preexisting legibility.</p>
+
+<h3 class="subsection-heading">5.3 Implications for Practitioners</h3>
+
+<p>Uniform optimization is likely a mistake. Different domains appear to reward different signals. Second, optimization should not be evaluated only in terms of visibility gains. If presentation changes can also increase expressed confidence beyond evidential warrant, then there is an epistemic cost to aggressive optimization. That cost matters most in domains where confidence has downstream consequences: health, finance, public policy, law, and education. This is not an argument against optimization. It is an argument against pretending that optimization is epistemically neutral.</p>
+
+<h3 class="subsection-heading">5.4 Implications for Transparency and Auditing</h3>
+
+<p>If answer engines are becoming intermediaries of public knowledge, then "Why was this source used?" becomes an important audit question. The Introspective Gap framework suggests those explanations deserve scrutiny. A transparent system is not merely one that produces an explanation. It is one whose explanation bears a defensible relationship to behavior. Rather than asking only whether outputs are biased, future work could ask whether model explanations of their own selection behavior are themselves systematically biased toward flattering narratives of merit.</p>
+
+<h3 class="subsection-heading">5.5 A Note on Industry Sources</h3>
+
+<p>This paper draws heavily on industry analytics alongside peer-reviewed research. This partly reflects the field's youth. But it also reflects something more fundamental: the measurable traces of LLM citation behavior are presently documented primarily by industry actors with commercial interest in the outcomes. These sources are framed here as part of the phenomenon itself&mdash;valuable evidence whose provenance should be weighed accordingly, not treated as carrying the same status as peer-reviewed primary research.</p>
+
+<h3 class="subsection-heading">5.6 Limitations</h3>
+
+<p>This paper has substantial limitations. (1) All three experiments use simulation and synthesized proxies, not controlled live-model experiments. (2) Behavioral comparison weights are cross-study approximations, not direct causal measurements. (3) Self-report comes from one model; different models may differ. (4) The epistemic inflation model depends on functional form assumptions. (5) Domain-specific CIs span &plusmn;2.5&ndash;3pp. (6) The 10 factors in Table 3 are not ontologically commensurable; the shared scale enables comparison at the cost of eliding categorical differences. These are not small caveats. The work should be read as a framework-building exercise with quantitative illustrations, not as a final empirical adjudication of live answer-engine behavior.</p>
+
+<!-- 6. Conclusion -->
+<h2 class="section-heading">6. Conclusion</h2>
+
+<p>This paper introduced a reflexive framework for studying AI-mediated information discovery through a new question: not only what answer engines cite, but how they describe the basis on which they cite it.</p>
+
+<p>The paper's main proposal is the concept of the Introspective Gap: the divergence between an answer engine's self-reported account of source-selection criteria and a behaviorally inferred proxy derived from external empirical literature. Using this framework, I presented three exploratory results: a simulation-calibrated domain comparison suggesting that citation-oriented strategies do not perform uniformly; a first quantitative estimate of the Introspective Gap, in which epistemically flattering factors appear over-attributed in self-report while operational and salience-linked factors appear under-attributed; and an epistemic inflation model suggesting that optimization may increase apparent confidence beyond evidential warrant, especially for weaker claims.</p>
+
+<p>The central contribution is methodological, not metaphysical. If answer engines are increasingly acting as gatekeepers of attention and credibility, then their own explanations of source choice should be treated as analyzable artifacts rather than transparent truth.</p>
+
+<p>That claim is testable. Future work should move beyond simulation and proxy synthesis toward controlled live-platform experiments, multi-model comparison, and human-evaluated calibration studies. If those later studies validate the existence of a robust Introspective Gap, then the stakes will be significant for auditing, optimization practice, and public trust in AI-mediated knowledge systems. If they do not, then the framework will still have served its purpose by forcing a more disciplined distinction between self-description and behavior.</p>
+
+<p>In either case, that distinction deserves to be made.</p>
+
+<!-- References -->
+<div class="references">
+<h2>References</h2>
+<ol>
+<li>Aggarwal, P., Murahari, V., Rajpurohit, T., Kalyan, A., Narasimhan, K., and Deshpande, A. (2024). <span class="ref-title">GEO: Generative Engine Optimization.</span> Proc. 30th ACM SIGKDD Conference on Knowledge Discovery and Data Mining, 5&ndash;16.</li>
+<li>Anthropic (2025). <span class="ref-title">Emergent Introspective Awareness in Large Language Models.</span> Transformer Circuits.</li>
+<li>Binder, F. J. et al. (2024). <span class="ref-title">Looking Inward: Language Models Can Learn About Themselves by Introspection.</span> arXiv:2410.13787.</li>
+<li>Bagga, P. S. et al. (2025). <span class="ref-title">E-GEO: A Testbed for Generative Engine Optimization in E-Commerce.</span> arXiv:2511.20867.</li>
+<li>Chen, M. et al. (2025). <span class="ref-title">Generative Engine Optimization: How to Dominate AI Search.</span> arXiv:2509.08919.</li>
+<li>Seer Interactive (2026). <span class="ref-title">LLM Ghost Citations: Why Your Content Is Working and Your Brand Isn't.</span> N=541,213 responses.</li>
+<li>AirOps (2025). <span class="ref-title">Staying Seen in AI Search: How Citations and Mentions Impact Brand Visibility.</span> N=45,000+ citations.</li>
+<li>The Digital Bloom (2025). <span class="ref-title">AI Citation and LLM Visibility Report.</span> N=680M+ citations.</li>
+<li>Omniscient Digital (2026). <span class="ref-title">How LLMs Source Brand Information: An Analysis of 23,000+ AI Citations.</span></li>
+<li>Wen, Y. et al. (2025). <span class="ref-title">On the Risks of Generative Engine Optimization in the Era of LLMs.</span> TechRxiv.</li>
+<li>Seer Interactive (2025). <span class="ref-title">Study: AI Brand Visibility and Content Recency.</span> N=5,000+ URLs.</li>
+<li>Acquia / Researchscape (2025). <span class="ref-title">AEO Digital Strategy Survey.</span> N=500+ marketing professionals.</li>
+<li>Gartner (2024). <span class="ref-title">Predicts 2025: Search and AI.</span></li>
+<li>AirOps (2025). <span class="ref-title">AEO Freshness Study.</span></li>
+<li>Wu, S. et al. (2025). <span class="ref-title">SourceCheckup: Automated Citation Verification in LLMs.</span> Nature Communications.</li>
+<li>Sommerfeld, M. et al. (2025). <span class="ref-title">Source Coverage and Citation Bias in LLM-based vs. Traditional Search Engines.</span> arXiv:2512.09483.</li>
+<li>Quintana-Gomez, A. (2026). <span class="ref-title">GEO and Brand Visibility in AI-Generated Tourism Recommendations.</span> Revista Prisma Social.</li>
+</ol>
+</div>
+
+<!-- Copyright -->
+<div class="copyright">
+<strong>Copyright Notice.</strong> &copy; 2026 Siddharth Nigam. All rights reserved. This work is the intellectual property of the author. No part of this paper may be reproduced, distributed, or transmitted in any form or by any means, including photocopying, recording, or other electronic or mechanical methods, without the prior written permission of the author, except for brief quotations in critical reviews and certain other noncommercial uses permitted by copyright law. For permissions, contact <a href="mailto:siddharthanigam14@gmail.com" style="color:var(--accent)">siddharthanigam14@gmail.com</a>.
+</div>
+
+</article>
+
+<footer>
+  <a href="https://github.com/Caissaisdead">Siddharth Nigam</a> &middot; Independent Researcher &middot; <a href="/">WhenLabs</a>
+</footer>
+
+</body>
+</html>

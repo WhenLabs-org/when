@@ -2,6 +2,11 @@
 
 An MCP server that gives coding agents self-awareness of their own execution speed, enabling time-based planning and estimation.
 
+> **Part of the [WhenLabs toolkit](https://github.com/WhenLabs-org/when)** — install all 6 tools with one command:
+> ```
+> npx @whenlabs/when install
+> ```
+
 > **Note:** velocity is now bundled into [`@whenlabs/when`](https://github.com/WhenLabs-org/when). Running `npx @whenlabs/when install` gives you velocity plus five other tools in a single MCP server. This standalone package is still maintained for users who only want velocity.
 
 Coding agents (Claude Code, Cursor, Codex, etc.) have no concept of time. They plan in terms of tasks but cannot estimate how long those tasks will take to execute. Every completed task is a data point about the agent's throughput -- but that data evaporates after each session. velocity-mcp fixes this by recording task-level execution telemetry, categorizing tasks, and estimating future plan duration based on historical performance.

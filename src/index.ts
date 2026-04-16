@@ -4,6 +4,10 @@ import { createDoctorCommand } from './commands/doctor.js';
 import { createInitCommand } from './commands/init.js';
 import { createWatchCommand } from './commands/watch.js';
 import { createConfigCommand } from './commands/config.js';
+import { createUpgradeCommand } from './commands/upgrade.js';
+import { createEjectCommand } from './commands/eject.js';
+import { createDiffCommand } from './commands/diff.js';
+import { createDashboardCommand } from './commands/dashboard.js';
 import { readFileSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -65,6 +69,9 @@ program.addCommand(createInitCommand());
 program.addCommand(createDoctorCommand());
 program.addCommand(createWatchCommand());
 program.addCommand(createConfigCommand());
+program.addCommand(createUpgradeCommand());
+program.addCommand(createEjectCommand());
+program.addCommand(createDiffCommand());
 
 // Delegate commands for each tool
 program.addCommand(createDelegateCommand('stale', 'Detect documentation drift in your codebase'));
@@ -72,6 +79,9 @@ program.addCommand(createDelegateCommand('envalid', 'Validate .env files against
 program.addCommand(createDelegateCommand('berth', 'Detect and resolve port conflicts'));
 program.addCommand(createDelegateCommand('aware', 'Auto-detect your stack and generate AI context files'));
 program.addCommand(createDelegateCommand('vow', 'Scan dependency licenses and validate against policies'));
-program.addCommand(createDelegateCommand('velocity', 'velocity-mcp task timing server', 'velocity-mcp'));
+// Velocity — delegate with a built-in `dashboard` subcommand
+const velocityCmd = createDelegateCommand('velocity', 'velocity-mcp task timing server', 'velocity-mcp');
+velocityCmd.addCommand(createDashboardCommand());
+program.addCommand(velocityCmd);
 
 program.parse();

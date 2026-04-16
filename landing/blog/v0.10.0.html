@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>v0.10.0: One Command to Rule Them All — WhenLabs</title>
+<meta name="description" content="WhenLabs v0.10.0 ships magical project onboarding, auto-fix MCP tools, cross-tool intelligence, and unified config.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#e0e0e0;
+  --surface:#e0e0e0;
+  --surface-2:#d4d4d4;
+  --text:#1a1a18;
+  --text-dim:#6e6e68;
+  --accent:#c46a1a;
+  --accent-dim:#9e5515;
+  --red:#c44a3a;
+  --blue:#3a6fa0;
+  --mono:'JetBrains Mono',monospace;
+  --serif:'Instrument Serif',Georgia,serif;
+  --shadow-light:#ffffff;
+  --shadow-dark:rgba(163,163,163,0.7);
+  --neu-out:8px 8px 16px var(--shadow-dark), -8px -8px 16px var(--shadow-light);
+  --neu-out-sm:4px 4px 8px var(--shadow-dark), -4px -4px 8px var(--shadow-light);
+  --neu-in:inset 4px 4px 8px var(--shadow-dark), inset -4px -4px 8px var(--shadow-light);
+}
+html{scroll-behavior:smooth;font-size:16px}
+body{
+  background:var(--bg);color:var(--text);
+  font-family:var(--mono);line-height:1.65;
+  -webkit-font-smoothing:antialiased;
+}
+
+nav{
+  position:fixed;top:0;left:0;right:0;z-index:100;
+  padding:1rem 2rem;
+  display:flex;justify-content:space-between;align-items:center;
+  background:var(--bg);
+  box-shadow:0 4px 8px var(--shadow-dark), 0 -2px 6px var(--shadow-light);
+}
+.nav-logo{font-size:0.85rem;font-weight:700;letter-spacing:-0.02em;color:var(--accent);text-decoration:none}
+.nav-links{display:flex;gap:1.5rem}
+.nav-links a{
+  color:var(--text-dim);text-decoration:none;font-size:0.75rem;text-transform:uppercase;letter-spacing:0.08em;
+  padding:0.3rem 0.7rem;border-radius:8px;transition:all .2s;
+}
+.nav-links a:hover{color:var(--accent);box-shadow:var(--neu-in)}
+
+article{
+  max-width:720px;margin:0 auto;
+  padding:8rem 2rem 4rem;
+}
+article h1{
+  font-family:var(--serif);
+  font-size:clamp(1.8rem,4vw,2.8rem);
+  font-weight:400;line-height:1.15;
+  letter-spacing:-0.02em;
+  margin-bottom:0.5rem;
+}
+article h1 em{font-style:italic;color:var(--accent)}
+.byline{
+  font-size:0.8rem;color:var(--text-dim);
+  margin-bottom:2.5rem;padding-bottom:1.5rem;
+  border-bottom:1px solid var(--surface-2);
+}
+article h2{
+  font-family:var(--serif);
+  font-size:1.5rem;font-weight:400;
+  margin-top:3rem;margin-bottom:1rem;
+  color:var(--text);
+}
+article h3{
+  font-size:0.9rem;font-weight:700;
+  margin-top:2rem;margin-bottom:0.75rem;
+  color:var(--accent);
+}
+article p{
+  font-size:0.85rem;color:var(--text);
+  line-height:1.8;margin-bottom:1.25rem;
+}
+article hr{
+  border:none;border-top:1px solid var(--surface-2);
+  margin:2.5rem 0;
+}
+article a{color:var(--accent);text-decoration:none}
+article a:hover{text-decoration:underline}
+article em{font-style:italic}
+
+pre{
+  background:#0a0a0c;color:#e8e6e3;
+  border:none;border-radius:12px;
+  padding:1.25rem 1.5rem;
+  font-family:var(--mono);font-size:0.78rem;
+  line-height:1.8;overflow-x:auto;
+  margin-bottom:1.5rem;
+  box-shadow:var(--neu-in);
+}
+code{
+  font-family:var(--mono);font-size:0.82em;
+  background:var(--surface-2);
+  padding:0.15rem 0.4rem;border-radius:6px;
+  box-shadow:inset 2px 2px 4px var(--shadow-dark), inset -2px -2px 4px var(--shadow-light);
+}
+pre code{background:none;padding:0;box-shadow:none;font-size:1em}
+
+table{
+  width:100%;border-collapse:collapse;
+  margin-bottom:1.5rem;font-size:0.8rem;
+}
+th{
+  text-align:left;font-weight:700;
+  padding:0.6rem 0.75rem;
+  border-bottom:2px solid var(--surface-2);
+}
+td{
+  padding:0.5rem 0.75rem;
+  border-bottom:1px solid var(--surface-2);
+  color:var(--text-dim);
+}
+td:first-child{color:var(--text);font-weight:500}
+
+.cta{
+  display:inline-block;margin-top:1rem;
+  background:var(--bg);border:none;border-radius:12px;
+  padding:0.75rem 1.5rem;
+  font-family:var(--mono);font-size:0.85rem;color:var(--text);
+  text-decoration:none;
+  box-shadow:var(--neu-out);
+  transition:box-shadow .25s ease;
+}
+.cta:hover{box-shadow:var(--neu-in);text-decoration:none}
+.cta .prompt{color:var(--accent)}
+
+footer{
+  max-width:720px;margin:0 auto;
+  padding:2rem;
+  font-size:0.7rem;color:var(--text-dim);
+  border-top:1px solid var(--surface-2);
+}
+footer a{color:var(--text-dim);text-decoration:none}
+footer a:hover{color:var(--accent)}
+
+@media(max-width:560px){
+  nav{padding:0.75rem 1rem}
+  .nav-links{gap:1rem}
+  article{padding:6rem 1.25rem 3rem}
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <a class="nav-logo" href="/">@whenlabs/when</a>
+  <div class="nav-links">
+    <a href="/">Home</a>
+    <a href="/blog/">Blog</a>
+    <a href="https://github.com/WhenLabs-org/when">GitHub</a>
+  </div>
+</nav>
+
+<article>
+
+<h1>v0.10.0: One Command to <em>Rule Them All</em></h1>
+<div class="byline">Siddharth &mdash; WhenLabs &mdash; April 15, 2026</div>
+
+<p>If you use AI coding agents seriously, you have probably hit this wall: the agent is productive, but keeping it well-informed takes work. Does it know your .env schema? Does it know which ports your services claim? Is your CLAUDE.md still accurate after three sprints of refactoring? Are the docs you told it to trust still correct?</p>
+
+<p>Each of those is a solved problem. WhenLabs ships tools for all of them. The friction was that each tool had its own config file, its own install step, and its own CLI surface. A six-tool toolkit was starting to feel like a six-tool burden.</p>
+
+<p>v0.10.0 is the release that collapses that complexity.</p>
+
+<hr>
+
+<h2>What shipped in v0.10.0</h2>
+
+<h3>1. <code>when init</code> &mdash; full project onboarding in one command</h3>
+
+<p>Before v0.10.0, onboarding a new project meant: create <code>.env.schema</code>, create <code>.vow.json</code>, create <code>.stale.yml</code>, register berth ports, run each tool to verify, fix whatever it found. Four to eight commands, in order, some depending on others.</p>
+
+<p><code>when init</code> does all of it in one shot:</p>
+
+<pre><code>$ when init
+
+when  Project onboarding
+
+  Project:  my-saas-app
+  Stack:    Node.js + TypeScript + React
+  Package:  npm (347 deps)
+
+  Bootstrap
+  + Created .env.schema
+  + Created .vow.json  (opensource)
+  + Created .stale.yml
+  + Generated .whenlabs.yml
+
+  Scan
+  &#10003; stale     No doc drift
+  ! envalid   2 undocumented env vars
+  &#10003; berth     No port conflicts
+  &#10003; vow       All licenses permissive
+  &#10003; aware     Generated CLAUDE.md, .cursorrules
+
+Run when install to connect MCP tools to your editor.</code></pre>
+
+<p>Bootstrap, parallel scan, auto-fix, unified config &mdash; all in one call. The command is idempotent: safe to re-run after adding new services or dependencies.</p>
+
+<h3>2. Auto-fix MCP tools &mdash; scan and fix in a single call</h3>
+
+<p>Every tool that can fix things now has an <code>_auto_fix</code> variant that combines the scan and the fix into one MCP call:</p>
+
+<table>
+<tr><th>Auto-fix tool</th><th>What it does</th></tr>
+<tr><td><code>stale_auto_fix</code></td><td>Scan for documentation drift, apply fixes</td></tr>
+<tr><td><code>envalid_auto_fix</code></td><td>Detect undocumented env vars, generate schema entries</td></tr>
+<tr><td><code>berth_auto_resolve</code></td><td>Find port conflicts, kill or reassign</td></tr>
+<tr><td><code>aware_auto_sync</code></td><td>Detect stale AI context files, regenerate</td></tr>
+</table>
+
+<p>Before, an agent running these checks had to call <code>stale_scan</code> to find issues, inspect the output, then call <code>stale_fix</code> with the right arguments. That is two round-trips and requires the agent to correctly parse and re-encode the scan results.</p>
+
+<p>With <code>stale_auto_fix</code>, the agent makes one call. The tool handles the feedback loop internally and returns a summary of what it fixed. This also means the auto-fix tools work correctly even in autonomous/background contexts where there is no agent to interpret intermediate results.</p>
+
+<h3>3. Cross-tool intelligence</h3>
+
+<p>Tools now trigger suggestions for related tools when they detect relevant issues. These surface as <code>Tip:</code> lines in tool output.</p>
+
+<p>For example: running <code>aware_init</code> generates new context files. Generating new files means existing stale-detection baselines may be wrong. So <code>aware_init</code> now emits:</p>
+
+<pre><code>Tip: New files generated &mdash; run stale_scan to update drift baselines.</code></pre>
+
+<p>Or: <code>envalid_detect</code> finds a <code>REDIS_URL</code> env var. That looks like a service URL, which means there is probably a port involved:</p>
+
+<pre><code>Tip: Service URL env vars detected &mdash; run berth_register to track ports.</code></pre>
+
+<p>The connections are not hardcoded rules. They are grounded in what each tool actually observes. The result is that running one tool surfaces work you would have otherwise missed.</p>
+
+<h3>4. Unified <code>.whenlabs.yml</code> config</h3>
+
+<p>Previously each tool read from its own config file: <code>.stale.yml</code>, <code>.vow.json</code>, <code>.aware.json</code>, etc. They still work. But v0.10.0 introduces <code>.whenlabs.yml</code> as a single source of truth for all six tools:</p>
+
+<pre><code># .whenlabs.yml
+stale:
+  ignore: ["node_modules", "dist"]
+
+envalid:
+  schema: .env.schema
+  envFiles: [".env", ".env.local"]
+
+berth:
+  ports:
+    api: 3000
+    worker: 3001
+
+vow:
+  policy: opensource
+
+aware:
+  targets: [claude, cursor]</code></pre>
+
+<p>Generate it from your existing configs with <code>when config init</code>. Validate with <code>when config validate</code>. All six tools read <code>.whenlabs.yml</code> first. Per-tool config files remain as overrides.</p>
+
+<hr>
+
+<h2>Getting started</h2>
+
+<p>Three lines:</p>
+
+<pre><code>npx @whenlabs/when install   # register MCP server, write CLAUDE.md
+when init                    # onboard current project
+when doctor                  # verify everything looks good</code></pre>
+
+<p>That is it. All six tools are available to your agent in every session.</p>
+
+<a class="cta" href="/"><span class="prompt">$</span> npx @whenlabs/when install</a>
+
+<hr>
+
+<h2>What is next</h2>
+
+<p>The next release is focused on the velocity side of the toolkit: a web-based task timing dashboard, smarter velocity estimates that account for task type and file complexity, and export to standard time-tracking formats. If your team has multiple engineers using AI agents, velocity data across sessions becomes genuinely useful for planning &mdash; that is what we are building toward.</p>
+
+<p>If you run into issues or have questions: <a href="https://github.com/WhenLabs-org/when">github.com/WhenLabs-org/when</a></p>
+
+</article>
+
+<footer>
+  Built by <a href="https://github.com/Caissaisdead">Siddharth</a> at WhenLabs &middot; MIT License
+</footer>
+
+</body>
+</html>

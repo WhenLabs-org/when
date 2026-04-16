@@ -4,6 +4,11 @@ Detect documentation drift in your codebase. Part of the [WhenLabs](https://when
 
 Stale cross-references what your README, CONTRIBUTING.md, and docs say against what your code actually does -- and flags every discrepancy.
 
+> **Part of the [WhenLabs toolkit](https://github.com/WhenLabs-org/when)** — install all 6 tools with one command:
+> ```
+> npx @whenlabs/when install
+> ```
+
 ## The Problem
 
 Documentation rots silently. README says `npm run dev` but the script was renamed months ago. Docs reference `src/config/database.js` but the file was moved to TypeScript. Setup instructions say "requires Node 16+" but `package.json` has `engines: ">=20"`. Stale catches all of this automatically.
@@ -81,6 +86,8 @@ stale scan
 - **SARIF** -- GitHub Code Scanning integration
 
 ## Installation
+
+> **Recommended:** Install the full WhenLabs toolkit with `npx @whenlabs/when install` to get stale plus 5 other tools in one step.
 
 Requires **Node.js >= 20**.
 

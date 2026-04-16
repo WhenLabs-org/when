@@ -4,6 +4,11 @@ Auto-detect your stack and generate AI context files. Part of the [WhenLabs](htt
 
 Aware scans your project, detects your tech stack, and generates context files for **Claude Code**, **Cursor**, **GitHub Copilot**, and **AGENTS.md** -- all from a single source of truth.
 
+> **Part of the [WhenLabs toolkit](https://github.com/WhenLabs-org/when)** — install all 6 tools with one command:
+> ```
+> npx @whenlabs/when install
+> ```
+
 ## The Problem
 
 Every AI coding tool reads a different context file:
@@ -44,6 +49,8 @@ Detected Stack
 One command. Full stack detection. Four context files. All in sync.
 
 ## Install
+
+> **Recommended:** Install the full WhenLabs toolkit with `npx @whenlabs/when install` to get aware plus 5 other tools in one step.
 
 ```bash
 npm install -g aware-cli

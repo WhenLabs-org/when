@@ -4,6 +4,11 @@ Port & Process Conflict Resolver for Developers. Part of the [WhenLabs](https://
 
 See every port your dev environment is using, detect conflicts before they happen, and resolve them with one command. Berth scans your running processes, Docker containers, and project config files to give you a unified view of port usage across your entire local development stack.
 
+> **Part of the [WhenLabs toolkit](https://github.com/WhenLabs-org/when)** — install all 6 tools with one command:
+> ```
+> npx @whenlabs/when install
+> ```
+
 ## Why berth?
 
 | | berth | lsof / netstat | kill-port |
@@ -43,6 +48,8 @@ See every port your dev environment is using, detect conflicts before they happe
   ```
 
 ## Install
+
+> **Recommended:** Install the full WhenLabs toolkit with `npx @whenlabs/when install` to get berth plus 5 other tools in one step.
 
 ```bash
 npm install -g berth

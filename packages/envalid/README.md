@@ -4,6 +4,11 @@ Type safety for `.env` files. Define a schema, validate every environment agains
 
 Part of the [WhenLabs](https://whenlabs.org) toolchain.
 
+> **Part of the [WhenLabs toolkit](https://github.com/WhenLabs-org/when)** — install all 6 tools with one command:
+> ```
+> npx @whenlabs/when install
+> ```
+
 ## Why envalid?
 
 | | envalid | dotenv | Manual .env checking |
@@ -15,6 +20,8 @@ Part of the [WhenLabs](https://whenlabs.org) toolchain.
 | CI-ready | `--ci` flag, exit codes, JSON/Markdown output | Not designed for CI | Custom scripting |
 
 ## Install
+
+> **Recommended:** Install the full WhenLabs toolkit with `npx @whenlabs/when install` to get envalid plus 5 other tools in one step.
 
 ```bash
 npm install -g envalid

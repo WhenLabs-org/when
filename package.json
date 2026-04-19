@@ -7,7 +7,10 @@
     "build": "pnpm -r build",
     "test": "pnpm -r test",
     "lint": "pnpm -r lint",
-    "dev": "pnpm -r --parallel dev"
+    "dev": "pnpm -r --parallel dev",
+    "changeset": "changeset",
+    "version-packages": "changeset version",
+    "release": "pnpm -r build && changeset publish"
   },
   "engines": {
     "node": ">=20.12",
@@ -22,5 +25,8 @@
       "protobufjs",
       "sharp"
     ]
+  },
+  "devDependencies": {
+    "@changesets/cli": "^2.31.0"
   }
 }

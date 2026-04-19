@@ -41,7 +41,7 @@
   },
   "license": "MIT",
   "dependencies": {
-    "@whenlabs/core": "^0.1.0",
+    "@whenlabs/core": "^1.0.0",
     "chalk": "^5.6.2",
     "commander": "^14.0.3",
     "cosmiconfig": "^9.0.1",

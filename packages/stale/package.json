@@ -43,7 +43,7 @@
   "license": "MIT",
   "dependencies": {
     "@anthropic-ai/sdk": "^0.88.0",
-    "@whenlabs/core": "^1.0.0",
+    "@whenlabs/core": "workspace:^",
     "boxen": "^8.0.1",
     "chalk": "^5.4.1",
     "chokidar": "^5.0.0",
@@ -67,6 +67,7 @@
     "@types/semver": "^7.5.8",
     "esbuild": "^0.28.0",
     "tsx": "^4.19.0",
-    "vitest": "^3.1.0"
+    "vitest": "^3.1.0",
+    "@types/mdast": "^4.0.0"
   }
 }

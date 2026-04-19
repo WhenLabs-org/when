@@ -1,0 +1,15 @@
+node_modules/
+# Ignore everything under dist/ except the bundled GitHub Action entry
+# point, which is checked in so consumers can reference the repo via
+# `uses: whenlabs-org/stale@<tag>` without a build step. The CI drift
+# guard regenerates it and fails PRs that forget to commit the rebuild.
+dist/*
+!dist/action/
+dist/action/*
+!dist/action/index.js
+*.tsbuildinfo
+.env
+.env.local
+.DS_Store
+coverage/
+.stale-cache/

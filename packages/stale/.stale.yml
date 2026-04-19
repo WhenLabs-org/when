@@ -1,0 +1,13 @@
+# Config for running `stale` on this repo itself.
+#
+# Fixtures under tests/fixtures/ are intentionally broken — they're test data,
+# not real source. Ignoring them keeps their drift out of the real report.
+#
+# Note: README.md intentionally uses sentences like "docs reference
+# `src/config/db.js`" as *examples* of the drift this tool detects. The
+# tool correctly flags those as file-path drift because it cannot tell
+# illustrative prose from first-person claims. Running `stale scan` on
+# this repo is therefore a live demo of what the tool does.
+ignore:
+  - 'tests/fixtures/**'
+  - '.stale-cache/**'

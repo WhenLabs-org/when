@@ -19,6 +19,8 @@ export {
   getGitRoot,
 } from "./utils/git.js";
 export { loadConfig, mergeOptions } from "./config.js";
+export { createTool, scan as scanTool } from "./tool.js";
+export type { EnvalidScanOptions } from "./tool.js";
 
 // Types
 export type {

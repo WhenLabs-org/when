@@ -1,0 +1,44 @@
+# Generates a CycloneDX SBOM on every release and attaches it to the release
+# artifacts. Required for EO 14028 / EU CRA compliance.
+
+name: SBOM
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write  # to attach the SBOM to the release
+
+jobs:
+  sbom:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Generate CycloneDX SBOM
+        uses: whenlabs-org/vow@v1
+        with:
+          command: sbom
+          format: cyclonedx
+          output-file: sbom-cyclonedx.json
+          production: 'true'
+
+      - name: Generate SPDX SBOM
+        uses: whenlabs-org/vow@v1
+        with:
+          command: sbom
+          format: spdx
+          output-file: sbom-spdx.json
+          production: 'true'
+
+      - name: Attach SBOMs to release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            sbom-cyclonedx.json
+            sbom-spdx.json

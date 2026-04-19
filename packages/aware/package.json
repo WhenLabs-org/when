@@ -1,8 +1,16 @@
 {
   "name": "@whenlabs/aware",
-  "version": "0.1.5",
+  "version": "0.2.0",
   "description": "Auto-detect your stack, generate and sync AI context files (CLAUDE.md, .cursorrules, copilot-instructions.md, AGENTS.md)",
   "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
   "bin": {
     "aware": "./dist/cli.js"
   },
@@ -35,6 +43,7 @@
     "node": ">=18"
   },
   "dependencies": {
+    "@whenlabs/core": "^0.1.0",
     "chalk": "^5.6.2",
     "chokidar": "^5.0.0",
     "commander": "^14.0.3",

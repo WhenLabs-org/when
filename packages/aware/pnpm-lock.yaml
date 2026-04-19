@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      '@whenlabs/core':
+        specifier: ^0.1.0
+        version: 0.1.0
       chalk:
         specifier: ^5.6.2
         version: 5.6.2
@@ -538,6 +541,10 @@ packages:
 
   '@vitest/utils@4.1.4':
     resolution: {integrity: sha512-13QMT+eysM5uVGa1rG4kegGYNp6cnQcsTc67ELFbhNLQO+vgsygtYJx2khvdt4gVQqSSpC/KT5FZZxUpP3Oatw==}
+
+  '@whenlabs/core@0.1.0':
+    resolution: {integrity: sha512-RR9dNsqTfbfSssv5qoNYUQ6rGvZqCdXB12aA8LYGtL1+42bTM/jdnZ2V2t39WK42HWFwgYY3DiPLJmlMezWrAg==}
+    engines: {node: '>=18'}
 
   acorn@8.16.0:
     resolution: {integrity: sha512-UVJyE9MttOsBQIDKw1skb9nAwQuR5wuGD3+82K6JgJlm/Y+KI92oNsMNGZCYdDsVtRHSak0pcV5Dno5+4jh9sw==}
@@ -1456,6 +1463,8 @@ snapshots:
       '@vitest/pretty-format': 4.1.4
       convert-source-map: 2.0.0
       tinyrainbow: 3.1.0
+
+  '@whenlabs/core@0.1.0': {}
 
   acorn@8.16.0: {}
 

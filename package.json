@@ -36,7 +36,7 @@
     "@modelcontextprotocol/sdk": "^1.29.0",
     "@whenlabs/aware": "^0.2.0",
     "@whenlabs/berth": "^0.2.0",
-    "@whenlabs/core": "^0.1.0",
+    "@whenlabs/core": "^1.0.0",
     "@whenlabs/envalid": "^0.2.0",
     "@whenlabs/stale": "^0.2.0",
     "@whenlabs/velocity-mcp": "^0.1.3",

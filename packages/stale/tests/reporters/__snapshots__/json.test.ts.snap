@@ -1,0 +1,186 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`JsonReporter > matches the canonical snapshot 1`] = `
+{
+  "config": {
+    "ai": {
+      "checks": {
+        "completeness": true,
+        "examples": true,
+        "semantic": true,
+      },
+      "enabled": false,
+      "model": "sonnet",
+    },
+    "checks": {
+      "apiRoutes": true,
+      "commands": true,
+      "commentStaleness": false,
+      "dependencies": true,
+      "envVars": true,
+      "filePaths": true,
+      "gitStaleness": false,
+      "urls": true,
+      "versions": true,
+    },
+    "docs": [
+      "README.md",
+      "CONTRIBUTING.md",
+      "docs/**/*.md",
+    ],
+    "ignore": [
+      "node_modules/**",
+      "dist/**",
+      ".git/**",
+      ".stale-cache/**",
+    ],
+    "output": {
+      "format": "terminal",
+    },
+    "severity": {
+      "brokenUrl": "error",
+      "deadCommand": "error",
+      "missingDependency": "warning",
+      "missingFile": "error",
+      "portMismatch": "warning",
+      "routeMismatch": "error",
+      "staleComment": "info",
+      "staleDoc": "warning",
+      "staleEnvVar": "error",
+      "undocumentedEnvVar": "warning",
+      "versionMismatch": "error",
+    },
+  },
+  "docsScanned": [
+    "README.md",
+  ],
+  "duration": 42,
+  "issues": [
+    {
+      "category": "file-path",
+      "evidence": {
+        "actual": "src/db.ts",
+        "expected": "src/db.js",
+      },
+      "id": "file-path:README.md:10",
+      "message": "References \`src/db.js\` — file does not exist",
+      "severity": "error",
+      "source": {
+        "file": "README.md",
+        "line": 10,
+        "text": "src/db.js",
+      },
+      "suggestion": "Update to \`src/db.ts\`",
+    },
+    {
+      "category": "command",
+      "evidence": {
+        "expected": "dev",
+        "similarMatches": [
+          "start",
+        ],
+      },
+      "id": "command:README.md:20",
+      "message": "\`npm run dev\` — script "dev" not found in package.json",
+      "severity": "warning",
+      "source": {
+        "file": "README.md",
+        "line": 20,
+        "text": "npm run dev",
+      },
+    },
+    {
+      "category": "env-var",
+      "id": "env-var:README.md:30",
+      "message": "Env var \`API_URL\` documented but not used in code",
+      "severity": "info",
+      "source": {
+        "file": "README.md",
+        "line": 30,
+        "text": "API_URL",
+      },
+    },
+  ],
+  "projectPath": "/tmp/project",
+  "scannedAt": "2024-01-01T00:00:00.000Z",
+  "summary": {
+    "byCategory": {
+      "api-route": {
+        "errors": 0,
+        "passed": 0,
+        "warnings": 0,
+      },
+      "architecture": {
+        "errors": 0,
+        "passed": 0,
+        "warnings": 0,
+      },
+      "command": {
+        "errors": 0,
+        "passed": 0,
+        "warnings": 1,
+      },
+      "comment-staleness": {
+        "errors": 0,
+        "passed": 0,
+        "warnings": 0,
+      },
+      "completeness": {
+        "errors": 0,
+        "passed": 0,
+        "warnings": 0,
+      },
+      "dependency": {
+        "errors": 0,
+        "passed": 0,
+        "warnings": 0,
+      },
+      "env-var": {
+        "errors": 0,
+        "passed": 0,
+        "warnings": 0,
+      },
+      "example": {
+        "errors": 0,
+        "passed": 0,
+        "warnings": 0,
+      },
+      "file-path": {
+        "errors": 1,
+        "passed": 0,
+        "warnings": 0,
+      },
+      "git-staleness": {
+        "errors": 0,
+        "passed": 0,
+        "warnings": 0,
+      },
+      "response-shape": {
+        "errors": 0,
+        "passed": 0,
+        "warnings": 0,
+      },
+      "semantic": {
+        "errors": 0,
+        "passed": 0,
+        "warnings": 0,
+      },
+      "url": {
+        "errors": 0,
+        "passed": 0,
+        "warnings": 0,
+      },
+      "version": {
+        "errors": 0,
+        "passed": 0,
+        "warnings": 0,
+      },
+    },
+    "errors": 1,
+    "infos": 1,
+    "passed": 7,
+    "totalChecks": 10,
+    "warnings": 1,
+  },
+}
+`;

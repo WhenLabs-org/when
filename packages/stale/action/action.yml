@@ -1,0 +1,33 @@
+name: 'Stale - Documentation Drift Detector'
+description: 'Detect when your docs have gone stale by cross-referencing what docs say against what your codebase actually does'
+branding:
+  icon: 'file-text'
+  color: 'orange'
+
+inputs:
+  deep:
+    description: 'Enable AI-powered deep analysis (requires STALE_AI_KEY secret)'
+    required: false
+    default: 'false'
+  fail-on:
+    description: 'Fail the check on: error, warning, or never'
+    required: false
+    default: 'error'
+  comment:
+    description: 'Post results as a PR comment'
+    required: false
+    default: 'true'
+  config:
+    description: 'Path to .stale.yml config file'
+    required: false
+  format:
+    description: 'Output format: terminal, json, markdown, sarif'
+    required: false
+    default: 'terminal'
+  github-token:
+    description: 'Token used to post PR comments. Defaults to the GITHUB_TOKEN env var if unset.'
+    required: false
+
+runs:
+  using: 'node20'
+  main: '../dist/action/index.js'

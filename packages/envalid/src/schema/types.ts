@@ -1,5 +1,6 @@
-// The 11 supported value types
-export type SchemaValueType =
+// Built-in value types. Plugins may contribute additional types at runtime;
+// `SchemaValueType` is kept as `string` to support the plugin surface.
+export type BuiltinValueType =
   | "string"
   | "integer"
   | "float"
@@ -11,6 +12,8 @@ export type SchemaValueType =
   | "json"
   | "path"
   | "semver";
+
+export type SchemaValueType = BuiltinValueType | (string & {});
 
 // Per-variable schema definition
 export interface VariableSchema {
@@ -42,10 +45,24 @@ export interface EnvSchema {
   version: number;
   variables: Record<string, VariableSchema>;
   groups?: Record<string, GroupSchema>;
+  /** File(s) to inherit variables/groups from (relative paths). */
+  extends?: string | string[];
+  /** Additional files overlaid on top of this one. */
+  imports?: string[];
 }
 
 // Validation result types
 export type ValidationSeverity = "error" | "warning" | "info";
+
+export type ValidationIssueKind =
+  | "missing"
+  | "invalid"
+  | "unknown-variable"
+  | "group"
+  | "live-check-failed"
+  | "live-check-skipped"
+  | "secret-resolution-failed"
+  | "secret-resolution-skipped";
 
 export interface ValidationIssue {
   variable: string;
@@ -54,6 +71,7 @@ export interface ValidationIssue {
   expected?: string;
   actual?: string;
   suggestion?: string;
+  kind?: ValidationIssueKind;
 }
 
 export interface ValidationResult {

@@ -271,6 +271,167 @@ envalid hook status       # check if hook is installed
 
 Works with custom `core.hooksPath` configurations (e.g. Husky).
 
+### `envalid codegen`
+
+Generate a fully-typed `env.ts` from the schema. Literal unions for enums, coerced numbers/booleans, readonly arrays for CSV, defaults folded in. Drop in next to `process.env` and stop writing `!` casts.
+
+```bash
+envalid codegen -o src/env.ts            # Node / default (process.env)
+envalid codegen --runtime import-meta    # Vite (import.meta.env)
+```
+
+### `envalid export`
+
+Emit the schema as a JSON Schema (Draft 2020-12) or an OpenAPI component. Plugin-contributed types participate through their `toJsonSchema` hook.
+
+```bash
+envalid export --format json-schema --pretty
+envalid export --format openapi --openapi-version 3.0 -o env.openapi.json
+```
+
+### `envalid watch`
+
+Re-run validation on every schema / `.env` change. Debounced. Useful in dev or while authoring a schema.
+
+```bash
+envalid watch
+envalid watch --environment production --format json
+```
+
+### `envalid fix`
+
+Interactively patch validation errors — prompts you for a replacement value, validates it against the schema before writing, masks prompts for `sensitive: true` vars. `--auto` fills defaults non-interactively.
+
+```bash
+envalid fix                 # interactive
+envalid fix --auto          # fill from schema defaults
+envalid fix -o .env.fixed   # write to a different file
+```
+
+### `envalid migrate`
+
+Apply a declarative migration to the schema, `.env` files, and source code in a single shot. Renames, removes, and retypes; idempotent via a content-hash ledger at `.envalid/migrations.json`; `--dry-run` prints a diff, `--backup` keeps originals under `.envalid/backups/<id>/`.
+
+```yaml
+# migrations/2026-04-19-rename-db-host.yaml
+version: 1
+id: 2026-04-19-rename-db-host
+migrations:
+  - rename: { from: DB_HOST, to: DATABASE_HOST }
+  - retype: { variable: PORT, to: integer, default: 3000 }
+  - remove: { variable: LEGACY_TOKEN }
+```
+
+```bash
+envalid migrate -f migrations/2026-04-19-rename-db-host.yaml \
+  --env .env,.env.staging \
+  --code src/app.ts,src/config.ts
+envalid migrate -f migration.yaml --dry-run
+```
+
+## Async validators, plugins & secret providers
+
+### Plugins
+
+Register custom types from any npm package. Validators can be sync or async.
+
+```js
+// envalid.config.js
+import awsPlugin from "@company/envalid-aws";
+export default { plugins: [awsPlugin()] };
+```
+
+```ts
+import { definePlugin } from "@whenlabs/envalid";
+
+export default () => definePlugin({
+  name: "@company/envalid-aws",
+  validators: [
+    {
+      name: "aws-region",
+      typeHint: "string",
+      validate: (value) =>
+        /^[a-z]{2}-[a-z]+-\d+$/.test(value)
+          ? { valid: true }
+          : { valid: false, message: "bad region" },
+      toJsonSchema: () => ({
+        type: "string",
+        pattern: "^[a-z]{2}-[a-z]+-\\d+$",
+      }),
+    },
+  ],
+});
+```
+
+### Live (async) validation
+
+Async validators are skipped by default. Pass `--check-live` (or set `checkLive: true` in `envalid.config.js`) to run them in CI. Concurrency is capped with `--concurrency N` (default 8).
+
+```bash
+envalid validate --check-live --concurrency 16
+```
+
+### Secret provider references
+
+Reference values in `.env` files as `@scheme:payload` — envalid resolves them before validation when `--check-live` is enabled. Built-in providers: `vault`, `aws-sm`, `doppler`, `1password`. Custom providers are contributed via plugins.
+
+```bash
+# .env
+DATABASE_URL=@vault:secret/data/app#DATABASE_URL
+STRIPE_KEY=@aws-sm:my-secret#STRIPE_KEY
+FEATURE_FLAGS=@doppler:myapp/prod/FEATURE_FLAGS
+API_TOKEN=@1password:op://vault/item/token
+```
+
+Offline runs (`--no-resolve-secrets` or the default without `--check-live`) surface an info issue per reference and leave the raw token in place.
+
+## Schema composition
+
+Compose schemas across monorepos. `extends` contributes defaults; `imports` overlays last-wins.
+
+```yaml
+# apps/web/.env.schema
+version: 1
+extends: ../../.env.schema
+imports:
+  - ./payments.schema.yaml
+variables:
+  SESSION_SECRET:
+    type: string
+    required: true
+```
+
+Cycles are detected; groups merge variable-lists and `required_in` arrays.
+
+## Framework adapters
+
+Subpath imports for first-class integration. Each adapter validates once at process start and exposes a frozen typed env object.
+
+```ts
+// Express
+import { envalidMiddleware, getEnv } from "@whenlabs/envalid/express";
+app.use(envalidMiddleware());
+console.log(getEnv().DATABASE_URL);
+
+// Fastify
+import { envalidFastifyPlugin } from "@whenlabs/envalid/fastify";
+await fastify.register(envalidFastifyPlugin());
+
+// Next.js
+import { createServerEnv, createClientEnv } from "@whenlabs/envalid/nextjs";
+export const serverEnv = createServerEnv();
+export const clientEnv = createClientEnv(); // only NEXT_PUBLIC_* vars
+
+// NestJS
+import { envalidProvider, ENVALID_TOKEN } from "@whenlabs/envalid/nestjs";
+@Module({ providers: [envalidProvider()] })
+export class AppModule {}
+
+// Vite
+import { envalidVitePlugin } from "@whenlabs/envalid/vite";
+export default defineConfig({ plugins: [envalidVitePlugin()] });
+```
+
 ## CI Integration
 
 ### GitHub Action

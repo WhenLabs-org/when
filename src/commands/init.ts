@@ -1,10 +1,11 @@
 import { Command } from 'commander';
 import { spawn } from 'node:child_process';
-import { resolve, dirname, basename } from 'node:path';
+import { resolve, dirname } from 'node:path';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { stringify } from 'yaml';
 import { findBin } from '../utils/find-bin.js';
+import { detectProjectWithStack } from '../utils/detect-project.js';
 import { loadConfig, CONFIG_FILENAME } from '../config/whenlabs-config.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -21,39 +22,6 @@ const c = {
 
 function colorize(text: string, ...codes: string[]): string {
   return codes.join('') + text + c.reset;
-}
-
-function detectProject(cwd: string): { name: string; stack: string } {
-  let name = basename(cwd);
-  const pkgPath = resolve(cwd, 'package.json');
-  if (existsSync(pkgPath)) {
-    try {
-      const pkg = JSON.parse(readFileSync(pkgPath, 'utf-8'));
-      if (pkg.name) name = pkg.name;
-    } catch { /* use directory name */ }
-  }
-
-  const stackFiles: [string, string][] = [
-    ['package.json', 'node'],
-    ['Cargo.toml', 'rust'],
-    ['go.mod', 'go'],
-    ['pyproject.toml', 'python'],
-    ['requirements.txt', 'python'],
-    ['Gemfile', 'ruby'],
-    ['build.gradle', 'java'],
-    ['pom.xml', 'java'],
-    ['mix.exs', 'elixir'],
-    ['pubspec.yaml', 'dart'],
-  ];
-
-  const stacks: string[] = [];
-  for (const [file, stack] of stackFiles) {
-    if (existsSync(resolve(cwd, file)) && !stacks.includes(stack)) {
-      stacks.push(stack);
-    }
-  }
-
-  return { name, stack: stacks.length > 0 ? stacks.join(', ') : 'unknown' };
 }
 
 function detectLicenseTemplate(cwd: string): string {
@@ -113,20 +81,20 @@ async function bootstrapConfigs(cwd: string): Promise<{ results: BootstrapResult
     results.push({ label: '.env.schema', action: 'skipped', detail: 'Skipped (no .env found)' });
   }
 
-  // vow: if .vow.json doesn't exist, run vow init
-  const hasVowConfig = existsSync(resolve(cwd, '.vow.json'));
+  // vow: if neither .vow.yml nor .vow.json exists, run vow init (emits .vow.yml)
+  const hasVowConfig = existsSync(resolve(cwd, '.vow.yml')) || existsSync(resolve(cwd, '.vow.json'));
   if (!hasVowConfig) {
     const template = detectLicenseTemplate(cwd);
     const { exitCode } = await runTool(findBin('vow'), ['init', '--template', template], cwd);
     if (exitCode === 0) {
-      results.push({ label: '.vow.json', action: 'created', detail: `Created .vow.json (template: ${template})` });
+      results.push({ label: '.vow.yml', action: 'created', detail: `Created .vow.yml (template: ${template})` });
     } else if (exitCode === 127) {
-      results.push({ label: '.vow.json', action: 'error', detail: 'vow not found' });
+      results.push({ label: '.vow.yml', action: 'error', detail: 'vow not found' });
     } else {
-      results.push({ label: '.vow.json', action: 'error', detail: 'vow init failed' });
+      results.push({ label: '.vow.yml', action: 'error', detail: 'vow init failed' });
     }
   } else {
-    results.push({ label: '.vow.json', action: 'skipped', detail: 'Skipped (already exists)' });
+    results.push({ label: '.vow.yml', action: 'skipped', detail: 'Skipped (already exists)' });
   }
 
   // stale: if .stale.yml doesn't exist, run stale init
@@ -263,7 +231,7 @@ export function createInitCommand(): Command {
     console.log(colorize('  ─────────────────────────────────────────', c.dim));
 
     // Detect project
-    const project = detectProject(cwd);
+    const project = detectProjectWithStack(cwd);
     console.log(`  Project:  ${colorize(project.name, c.bold)}`);
     console.log(`  Stack:    ${colorize(project.stack, c.cyan)}`);
     console.log(`  Path:     ${colorize(cwd, c.dim)}`);

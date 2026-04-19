@@ -161,7 +161,28 @@ describe('when init — bootstrap configs', () => {
     expect(envalidCalls.length).toBeGreaterThan(0);
   });
 
-  it('skips .vow.json bootstrap when it already exists', async () => {
+  it('skips vow bootstrap when .vow.yml already exists', async () => {
+    writeFileSync(join(tmpDir, '.vow.yml'), 'policy: opensource\n', 'utf-8');
+
+    mockSpawn.mockImplementation(() => fakeChild('', 127) as ReturnType<typeof spawn>);
+
+    const logs: string[] = [];
+    const orig = console.log;
+    console.log = (...args: unknown[]) => logs.push(args.join(' '));
+    const origWrite = process.stdout.write.bind(process.stdout);
+    process.stdout.write = (() => true) as typeof process.stdout.write;
+    try {
+      const cmd = createInitCommand();
+      await withCwd(tmpDir, () => cmd.parseAsync(['node', 'when', 'init']));
+    } finally {
+      console.log = orig;
+      process.stdout.write = origWrite;
+    }
+
+    expect(logs.some((l) => l.includes('.vow.yml') && l.includes('Skipped'))).toBe(true);
+  });
+
+  it('still honors legacy .vow.json (skips bootstrap)', async () => {
     writeFileSync(join(tmpDir, '.vow.json'), '{"policy":"opensource"}', 'utf-8');
 
     mockSpawn.mockImplementation(() => fakeChild('', 127) as ReturnType<typeof spawn>);
@@ -179,7 +200,7 @@ describe('when init — bootstrap configs', () => {
       process.stdout.write = origWrite;
     }
 
-    expect(logs.some((l) => l.includes('.vow.json') && l.includes('Skipped'))).toBe(true);
+    expect(logs.some((l) => l.includes('Skipped'))).toBe(true);
   });
 
   it('generates .whenlabs.yml after bootstrapping', async () => {

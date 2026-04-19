@@ -3,9 +3,18 @@ import { join } from 'node:path';
 import { existsSync, mkdirSync, writeFileSync, readFileSync, readdirSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { findBin } from '../utils/find-bin.js';
+import {
+  detectProjectDirName,
+  readAwareProjectName,
+} from '../utils/detect-project.js';
 import { getToolConfig, WhenlabsConfig } from '../config/whenlabs-config.js';
 
 export { findBin };
+
+// Re-export to preserve the pre-refactor public surface of this module
+// (the tool shims import these from './run-cli.js').
+export { readAwareProjectName };
+export const deriveProject = detectProjectDirName;
 
 export function runCli(bin: string, args: string[], cwd?: string): Promise<{ stdout: string; stderr: string; code: number }> {
   return new Promise((res) => {
@@ -34,22 +43,6 @@ export function writeCache(tool: string, project: string, output: string, code: 
   }
 }
 
-export function deriveProject(path?: string): string {
-  const dir = path || process.cwd();
-  return dir.replace(/\\/g, '/').split('/').filter(Boolean).pop() || 'unknown';
-}
-
-export function readAwareProjectName(path?: string): string | null {
-  try {
-    const awareFile = join(path || process.cwd(), '.aware.json');
-    if (!existsSync(awareFile)) return null;
-    const data = JSON.parse(readFileSync(awareFile, 'utf8'));
-    return data.name || data.project || null;
-  } catch {
-    return null;
-  }
-}
-
 export function formatOutput(result: { stdout: string; stderr: string; code: number }): string {
   const parts: string[] = [];
   if (result.stdout.trim()) parts.push(result.stdout.trim());
@@ -64,81 +57,120 @@ export function loadToolConfig<K extends keyof WhenlabsConfig>(
   return getToolConfig(toolName, path);
 }
 
-export async function checkTriggers(toolName: string, result: { stdout: string; stderr: string; code: number }, path?: string): Promise<string[]> {
-  const output = result.stdout || result.stderr || '';
-  const extras: string[] = [];
+/**
+ * A rule that, given a tool invocation's output, may append one or more
+ * follow-up hints (or trigger side-effects like an auto-scan).
+ *
+ * Declarative SuggestionRule replaces the regex grab-bag that used to live
+ * directly inside `checkTriggers`. Kept local here intentionally — Phase 3
+ * will lift the type into @whenlabs/core once the shape is validated.
+ */
+export interface TriggerContext {
+  toolName: string;
+  output: string;
+  path?: string;
+}
 
-  if (toolName === 'aware_init') {
-    // Only trigger if aware_init made actual changes (look for "wrote" / "created" / "updated" in output)
-    const madeChanges = /wrote|created|updated|generated/i.test(output);
-    if (madeChanges) {
+export interface SuggestionRule {
+  /** Short identifier used for debugging/tracing. */
+  id: string;
+  /** Which tool invocation this rule applies to. */
+  tool: string;
+  /** Predicate over tool output (and optional side state). */
+  match: (ctx: TriggerContext) => boolean | Promise<boolean>;
+  /** Produce follow-up text / side-effects. Returns hints to append. */
+  emit: (ctx: TriggerContext) => string[] | Promise<string[]>;
+}
+
+const SUGGESTION_RULES: SuggestionRule[] = [
+  {
+    id: 'aware-init-stack-change',
+    tool: 'aware_init',
+    match: ({ output }) => /wrote|created|updated|generated/i.test(output),
+    async emit({ path }) {
       const staleResult = await runCli('stale', ['scan'], path);
       const staleOutput = staleResult.stdout || staleResult.stderr || '';
-      writeCache('stale', deriveProject(path), staleOutput, staleResult.code);
-      if (staleOutput.trim()) {
-        extras.push(`\n--- Auto-triggered stale_scan (stack change detected) ---\n${staleOutput}`);
-      }
-    }
-  }
-
-  if (toolName === 'vow_scan') {
-    // Trigger note if unknown licenses found
-    const hasUnknown = /unknown|UNKNOWN|unlicensed/i.test(output);
-    if (hasUnknown) {
-      extras.push('\nNote: Unknown licenses detected — check README for license accuracy claims.');
-    }
-  }
-
-  if (toolName === 'berth_check') {
-    // If conflicts found, try to include project name from .aware.json
-    const hasConflicts = /conflict|in use|occupied|taken/i.test(output);
-    if (hasConflicts) {
+      writeCache('stale', detectProjectDirName(path), staleOutput, staleResult.code);
+      if (!staleOutput.trim()) return [];
+      return [`\n--- Auto-triggered stale_scan (stack change detected) ---\n${staleOutput}`];
+    },
+  },
+  {
+    id: 'vow-scan-unknown',
+    tool: 'vow_scan',
+    match: ({ output }) => /unknown|UNKNOWN|unlicensed/i.test(output),
+    emit: () => ['\nNote: Unknown licenses detected — check README for license accuracy claims.'],
+  },
+  {
+    id: 'berth-check-conflicts',
+    tool: 'berth_check',
+    match: ({ output }) => /conflict|in use|occupied|taken/i.test(output),
+    emit({ path }) {
+      const hints: string[] = [];
       const projectName = readAwareProjectName(path);
       if (projectName) {
-        extras.push(`\nNote: Conflicts found in project "${projectName}".`);
+        hints.push(`\nNote: Conflicts found in project "${projectName}".`);
       }
-      // Check stale cache for port number references
       try {
         const cacheFiles = readdirSync(CACHE_DIR).filter((f) => f.startsWith('stale_'));
         for (const cacheFile of cacheFiles) {
-          const cached = JSON.parse(readFileSync(join(CACHE_DIR, cacheFile), 'utf8'));
-          if (/\b\d{4,5}\b/.test(cached.output || '')) {
-            extras.push('\nTip: Port references found in documentation — stale_scan may need re-run after resolving conflicts.');
+          const cached = JSON.parse(readFileSync(join(CACHE_DIR, cacheFile), 'utf8')) as { output?: string };
+          if (/\b\d{4,5}\b/.test(cached.output ?? '')) {
+            hints.push('\nTip: Port references found in documentation — stale_scan may need re-run after resolving conflicts.');
             break;
           }
         }
       } catch {
         // best-effort
       }
-    }
-  }
+      return hints;
+    },
+  },
+  {
+    id: 'envalid-detect-service-urls',
+    tool: 'envalid_detect',
+    match: ({ output }) => /\b[A-Z_]*(?:HOST|PORT|URL|URI)[A-Z_]*\b/.test(output),
+    emit({ output }) {
+      const matches = output.match(/\b[A-Z_]*(?:HOST|PORT|URL|URI)[A-Z_]*\b/g) ?? [];
+      const examples = [...new Set(matches)].slice(0, 3).join(', ');
+      return [`\nTip: Service URLs detected (${examples}, etc.) — run berth_register to track their ports for conflict detection.`];
+    },
+  },
+  {
+    id: 'velocity-large-change',
+    tool: 'velocity_end_task',
+    match: ({ output }) =>
+      /actual_files["\s:]+([1-9]\d)/i.test(output) || /\b([6-9]|\d{2,})\s+files?\b/i.test(output),
+    emit: () => ['\nTip: Large change detected — consider running stale_scan to check for documentation drift.'],
+  },
+  {
+    id: 'vow-scan-first-or-new',
+    tool: 'vow_scan',
+    match: ({ output, path }) => {
+      const cacheFile = join(CACHE_DIR, `vow_scan_${detectProjectDirName(path)}.json`);
+      const isFirstScan = !existsSync(cacheFile);
+      const hasNewPackages = /new package|added|installed/i.test(output);
+      return isFirstScan || hasNewPackages;
+    },
+    emit: () => ['\nTip: Dependency changes detected — run aware_sync to update AI context files with new library info.'],
+  },
+];
 
-  if (toolName === 'envalid_detect') {
-    // Detect service URL env vars (HOST, PORT, URL, URI patterns) and suggest berth_register
-    const serviceUrlMatches = output.match(/\b[A-Z_]*(?:HOST|PORT|URL|URI)[A-Z_]*\b/g);
-    if (serviceUrlMatches && serviceUrlMatches.length > 0) {
-      const examples = [...new Set(serviceUrlMatches)].slice(0, 3).join(', ');
-      extras.push(`\nTip: Service URLs detected (${examples}, etc.) — run berth_register to track their ports for conflict detection.`);
-    }
+export async function checkTriggers(toolName: string, result: { stdout: string; stderr: string; code: number }, path?: string): Promise<string[]> {
+  const ctx: TriggerContext = {
+    toolName,
+    output: result.stdout || result.stderr || '',
+    path,
+  };
+  const extras: string[] = [];
+  for (const rule of SUGGESTION_RULES) {
+    if (rule.tool !== toolName) continue;
+    if (!(await rule.match(ctx))) continue;
+    const hints = await rule.emit(ctx);
+    extras.push(...hints);
   }
-
-  if (toolName === 'velocity_end_task') {
-    // If a large number of files were changed, suggest stale_scan
-    const largeChange = /actual_files["\s:]+([1-9]\d)/i.test(output) || /\b([6-9]|\d{2,})\s+files?\b/i.test(output);
-    if (largeChange) {
-      extras.push('\nTip: Large change detected — consider running stale_scan to check for documentation drift.');
-    }
-  }
-
-  if (toolName === 'vow_scan') {
-    // Check if this is the first scan (no prior cache) or new packages detected
-    const cacheFile = join(CACHE_DIR, `vow_scan_${deriveProject(path)}.json`);
-    const isFirstScan = !existsSync(cacheFile);
-    const hasNewPackages = /new package|added|installed/i.test(output);
-    if (isFirstScan || hasNewPackages) {
-      extras.push('\nTip: Dependency changes detected — run aware_sync to update AI context files with new library info.');
-    }
-  }
-
   return extras;
 }
+
+// Exported for tests
+export const _internal = { SUGGESTION_RULES };

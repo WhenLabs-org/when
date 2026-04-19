@@ -6,7 +6,7 @@ import { ConfigError } from './errors.js';
 
 export const DEFAULT_CONFIG: StaleConfig = {
   docs: ['README.md', 'CONTRIBUTING.md', 'docs/**/*.md'],
-  ignore: ['node_modules/**', 'dist/**', '.git/**'],
+  ignore: ['node_modules/**', 'dist/**', '.git/**', '.stale-cache/**'],
   checks: {
     commands: true,
     filePaths: true,

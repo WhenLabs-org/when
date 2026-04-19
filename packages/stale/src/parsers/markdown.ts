@@ -25,7 +25,23 @@ const COMMAND_REGEX = /^\s*(?:\$\s+)?(npm|yarn|pnpm|npx|make)\s+(.+)$/gm;
 
 const FILE_PATH_REGEX = /(?:^|[\s'"`(])([.\/\w@-]+\/[\w@.-]+(?:\.\w+)?)/g;
 
+// Only treat a candidate as a real file path if it has a file extension
+// OR starts with a known path-like prefix. Eliminates prose tokens like
+// "Travis/CircleCI" or "Redis/Postgres" that share the slash shape.
+const FILE_EXTENSION_REGEX = /\.(?:[tj]sx?|mjs|cjs|m?ts|py|rb|go|rs|java|kt|swift|c|cc|cpp|h|hpp|md|mdx|ya?ml|json|jsonc|toml|ini|conf|cfg|html?|css|scss|sass|less|sql|sh|bash|zsh|fish|dockerfile|lock|xml|svg|png|jpg|jpeg|gif|webp|pdf|txt|log|env|gitignore|gitattributes|editorconfig|npmrc|nvmrc|node-version)$/i;
+const PATH_PREFIX_REGEX = /^(?:\.\.?\/|\/|src\/|lib\/|tests?\/|bin\/|docs?\/|app\/|apps\/|packages\/|dist\/|build\/|public\/|static\/|assets\/|config\/|scripts?\/|\.github\/|\.vscode\/|\.idea\/|node_modules\/|vendor\/)/;
+
+function looksLikeFilePath(candidate: string): boolean {
+  if (FILE_EXTENSION_REGEX.test(candidate)) return true;
+  if (PATH_PREFIX_REGEX.test(candidate)) return true;
+  return false;
+}
+
 const ENV_VAR_REGEX = /\b([A-Z][A-Z0-9_]{2,})\b/g;
+
+// Skip identifiers shaped like <LETTERS><DIGITS> (ES2022, IE11, HTTP2) —
+// these are almost always language/protocol versions, not env vars.
+const VERSION_LIKE_IDENT = /^[A-Z]+\d+$/;
 
 const VERSION_REGEX = /(?:requires?|needs?|Node(?:\.js)?|Python|Ruby|Java|Go)\s*(?:v|version\s*)?(\d+(?:\.\d+)*(?:\.\*)?)\s*(?:or\s+(?:higher|later|above|newer)|\+|>=)?/gi;
 
@@ -89,6 +105,7 @@ function extractFilePaths(text: string, line: number): DocFilePath[] {
     const p = match[1];
     if (p.startsWith('http://') || p.startsWith('https://') || p.startsWith('//')) continue;
     if (p.length < 4) continue;
+    if (!looksLikeFilePath(p)) continue;
     if (seen.has(p)) continue;
     seen.add(p);
 
@@ -117,6 +134,7 @@ function extractEnvVars(text: string, line: number): DocEnvVar[] {
     const name = match[0];
     if (name.length < 4) continue;
     if (skipWords.has(name)) continue;
+    if (VERSION_LIKE_IDENT.test(name)) continue;
     if (seen.has(name)) continue;
     seen.add(name);
 
@@ -264,7 +282,11 @@ export async function parseMarkdownFile(filePath: string, projectPath: string): 
           doc.envVars.push({ name: inlineNode.value, line, context: inlineNode.value });
         }
         // Check if inline code looks like a file path
-        if (inlineNode.value.includes('/') && !inlineNode.value.startsWith('http')) {
+        if (
+          inlineNode.value.includes('/') &&
+          !inlineNode.value.startsWith('http') &&
+          looksLikeFilePath(inlineNode.value)
+        ) {
           doc.filePaths.push({ path: inlineNode.value, line, context: inlineNode.value });
         }
         // Extract port claims from inline code

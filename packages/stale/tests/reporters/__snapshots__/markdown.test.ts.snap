@@ -1,0 +1,36 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`MarkdownReporter > renders the canonical report as a stable snapshot 1`] = `
+"## 🔍 Stale: Documentation Drift Report
+
+| Metric | Count |
+|--------|-------|
+| ❌ Errors | 1 |
+| ⚠️ Warnings | 1 |
+| ✅ Passed | 7 |
+
+<details>
+<summary><strong>File Paths</strong> — 1 errors, 0 warnings</summary>
+
+- ❌ **README.md:10** — References \`src/db.js\` — file does not exist
+  - 💡 Update to \`src/db.ts\`
+
+</details>
+
+<details>
+<summary><strong>Commands</strong> — 0 errors, 1 warnings</summary>
+
+- ⚠️ **README.md:20** — \`npm run dev\` — script "dev" not found in package.json
+
+</details>
+
+<details>
+<summary><strong>Environment Variables</strong> — 0 errors, 0 warnings</summary>
+
+- ℹ️ **README.md:30** — Env var \`API_URL\` documented but not used in code
+
+</details>
+
+---
+*Scanned 1 docs in 42ms*"
+`;

@@ -29,6 +29,9 @@ function makeContext(
       existingFiles: new Set(),
       dependencies: {},
       devDependencies: {},
+      configPorts: [],
+      sourceSymbols: new Set(),
+      workspaces: [],
       ...codebase,
     },
     config: DEFAULT_CONFIG,
@@ -74,5 +77,23 @@ describe('EnvVarsAnalyzer', () => {
 
     const issues = await analyzer.analyze(ctx);
     expect(issues).toHaveLength(0);
+  });
+
+  it('does not flag platform-provided env vars as undocumented', async () => {
+    const ctx = makeContext(
+      [{ envVars: [] }],
+      { envVarsUsed: [
+        { name: 'GITHUB_TOKEN', file: 'action/index.ts', line: 11 },
+        { name: 'GITHUB_WORKSPACE', file: 'action/index.ts', line: 58 },
+        { name: 'HOME', file: 'src/config.ts', line: 5 },
+        { name: 'REAL_APP_VAR', file: 'src/app.ts', line: 2 },
+      ] },
+    );
+    const issues = await analyzer.analyze(ctx);
+    const names = issues.map((i) => i.message);
+    expect(names.some((m) => m.includes('GITHUB_TOKEN'))).toBe(false);
+    expect(names.some((m) => m.includes('GITHUB_WORKSPACE'))).toBe(false);
+    expect(names.some((m) => m.includes('HOME'))).toBe(false);
+    expect(names.some((m) => m.includes('REAL_APP_VAR'))).toBe(true);
   });
 });

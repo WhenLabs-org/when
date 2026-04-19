@@ -1,6 +1,6 @@
 {
   "name": "@whenlabs/stale",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Detect documentation drift in your codebase",
   "type": "module",
   "main": "./dist/src/index.js",
@@ -12,8 +12,9 @@
     }
   },
   "files": [
-    "dist",
-    "README.md"
+    "dist/src",
+    "README.md",
+    "LICENSE"
   ],
   "bin": {
     "stale": "./dist/src/cli.js"
@@ -21,12 +22,16 @@
   "engines": {
     "node": ">=20.0.0"
   },
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && node scripts/bundle-action.mjs",
     "dev": "tsx src/cli.ts",
     "test": "vitest run",
     "test:watch": "vitest",
-    "lint": "eslint src/"
+    "lint": "eslint src/",
+    "prepublishOnly": "npm run test && npm run build"
   },
   "keywords": [
     "documentation",
@@ -37,12 +42,11 @@
   ],
   "license": "MIT",
   "dependencies": {
-    "@actions/core": "^3.0.0",
-    "@actions/github": "^9.1.0",
     "@anthropic-ai/sdk": "^0.88.0",
     "@whenlabs/core": "^1.0.0",
     "boxen": "^8.0.1",
     "chalk": "^5.4.1",
+    "chokidar": "^5.0.0",
     "commander": "^14.0.0",
     "fast-glob": "^3.3.3",
     "fastest-levenshtein": "^1.0.16",
@@ -51,15 +55,18 @@
     "remark-parse": "^11.0.0",
     "semver": "^7.7.1",
     "simple-git": "^3.27.0",
+    "typescript": "^5.7.0",
     "unified": "^11.0.5",
     "unist-util-visit": "^5.0.0",
     "yaml": "^2.7.1"
   },
   "devDependencies": {
+    "@actions/core": "^3.0.0",
+    "@actions/github": "^9.1.0",
     "@types/node": "^20.17.0",
     "@types/semver": "^7.5.8",
+    "esbuild": "^0.28.0",
     "tsx": "^4.19.0",
-    "typescript": "^5.7.0",
     "vitest": "^3.1.0"
   }
 }

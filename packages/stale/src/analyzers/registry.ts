@@ -44,9 +44,26 @@ export function getAiAnalyzers(config: StaleConfig): AiAnalyzer[] {
   return analyzers;
 }
 
-export async function runAnalyzers(analyzers: Analyzer[], ctx: AnalyzerContext): Promise<DriftIssue[]> {
+const DEFAULT_ANALYZER_TIMEOUT_MS = 30_000;
+
+function withTimeout<T>(promise: Promise<T>, ms: number, name: string): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(`Analyzer "${name}" timed out after ${ms}ms`)), ms);
+    promise.then(
+      (value) => { clearTimeout(timer); resolve(value); },
+      (err) => { clearTimeout(timer); reject(err); },
+    );
+  });
+}
+
+export async function runAnalyzers(
+  analyzers: Analyzer[],
+  ctx: AnalyzerContext,
+  options: { timeoutMs?: number } = {},
+): Promise<DriftIssue[]> {
+  const timeoutMs = options.timeoutMs ?? DEFAULT_ANALYZER_TIMEOUT_MS;
   const results = await Promise.allSettled(
-    analyzers.map((analyzer) => analyzer.analyze(ctx)),
+    analyzers.map((analyzer) => withTimeout(analyzer.analyze(ctx), timeoutMs, analyzer.name)),
   );
 
   const issues: DriftIssue[] = [];

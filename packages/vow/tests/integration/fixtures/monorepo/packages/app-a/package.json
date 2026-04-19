@@ -1,0 +1,7 @@
+{
+  "name": "@mono/app-a",
+  "version": "1.0.0",
+  "dependencies": {
+    "ws-dep": "^1.0.0"
+  }
+}

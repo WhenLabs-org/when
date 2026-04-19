@@ -1,0 +1,46 @@
+{
+  "version": 1,
+  "project": {
+    "name": "nextjs-app",
+    "description": "",
+    "architecture": ""
+  },
+  "stack": {
+    "framework": "nextjs:app-router",
+    "language": "typescript",
+    "styling": "tailwindcss",
+    "orm": "drizzle",
+    "database": "postgres",
+    "testing": [
+      "vitest",
+      "playwright",
+      "testing-library"
+    ],
+    "linting": [
+      "eslint",
+      "prettier"
+    ],
+    "packageManager": "pnpm",
+    "monorepo": null,
+    "deployment": "vercel",
+    "auth": "nextauth",
+    "apiStyle": "trpc"
+  },
+  "conventions": {},
+  "rules": [],
+  "structure": {
+    "src/app/": ""
+  },
+  "targets": {
+    "claude": true,
+    "cursor": true,
+    "copilot": true,
+    "agents": false
+  },
+  "_meta": {
+    "createdAt": "2026-04-14T00:02:34.772Z",
+    "lastSyncedAt": null,
+    "lastDetectionHash": "43324038afa3937aa51c7ea043f155d9",
+    "awareVersion": "0.1.0"
+  }
+}

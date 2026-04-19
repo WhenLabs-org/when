@@ -18,6 +18,7 @@ export { toJSON } from './reporters/json.js';
 export { toCSV } from './reporters/csv.js';
 export { toMarkdown, toMarkdownCheckResult } from './reporters/markdown.js';
 export { pkgKey, scanResultToJSON } from './types.js';
+export { createTool } from './tool.js';
 
 // Types
 export type {

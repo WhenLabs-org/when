@@ -1,6 +1,6 @@
 {
   "name": "@whenlabs/vow",
-  "version": "0.1.5",
+  "version": "0.2.0",
   "description": "Scan dependency trees and validate licenses against plain-English policies",
   "type": "module",
   "bin": {
@@ -28,6 +28,7 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.39.0",
+    "@whenlabs/core": "^0.1.0",
     "chalk": "^5.3.0",
     "cli-table3": "^0.6.5",
     "commander": "^12.1.0",

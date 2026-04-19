@@ -1,0 +1,8 @@
+{
+  "name": "integration-gpl-contaminated",
+  "version": "1.0.0",
+  "dependencies": {
+    "alpha": "^1.0.0",
+    "tainted": "^1.0.0"
+  }
+}

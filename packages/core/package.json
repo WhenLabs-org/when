@@ -1,0 +1,49 @@
+{
+  "name": "@whenlabs/core",
+  "version": "1.0.0",
+  "description": "Shared types for the @whenlabs developer toolkit",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup src/index.ts --format esm --dts --clean",
+    "dev": "tsup src/index.ts --format esm --dts --watch",
+    "lint": "tsc --noEmit",
+    "prepublishOnly": "npm run build"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/WhenLabs-org/when.git",
+    "directory": "packages/core"
+  },
+  "homepage": "https://github.com/WhenLabs-org/when/tree/main/packages/core",
+  "bugs": "https://github.com/WhenLabs-org/core/issues",
+  "publishConfig": {
+    "access": "public"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "tsup": "^8.3.5",
+    "typescript": "^5.7.2"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [
+    "whenlabs",
+    "types",
+    "toolkit",
+    "contract"
+  ],
+  "license": "MIT"
+}

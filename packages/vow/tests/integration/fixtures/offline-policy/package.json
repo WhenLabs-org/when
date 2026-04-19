@@ -1,0 +1,7 @@
+{
+  "name": "integration-offline-policy",
+  "version": "1.0.0",
+  "dependencies": {
+    "alpha": "^1.0.0"
+  }
+}

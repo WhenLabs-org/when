@@ -1,0 +1,90 @@
+name: "Envalid"
+description: "Validate .env files against a schema — type safety for environment variables"
+branding:
+  icon: "shield"
+  color: "green"
+
+inputs:
+  schema:
+    description: "Path to .env.schema file"
+    required: false
+    default: ".env.schema"
+  env-file:
+    description: "Path to .env file to validate"
+    required: false
+    default: ".env"
+  environment:
+    description: "Target environment (e.g. production, staging)"
+    required: false
+  format:
+    description: "Output format: terminal, json, markdown"
+    required: false
+    default: "terminal"
+  fail-on-warning:
+    description: "Treat warnings as errors"
+    required: false
+    default: "false"
+  comment-on-pr:
+    description: "Post the validation report as a sticky comment on the PR"
+    required: false
+    default: "false"
+  node-version:
+    description: "Node.js version to use"
+    required: false
+    default: "20"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ inputs.node-version }}
+
+    - name: Build Envalid
+      shell: bash
+      run: |
+        cd ${{ github.action_path }}
+        npm ci && npm run build
+
+    - name: Validate environment
+      id: envalid
+      shell: bash
+      run: |
+        ARGS="validate"
+        ARGS="$ARGS --schema ${{ inputs.schema }}"
+        ARGS="$ARGS --env ${{ inputs.env-file }}"
+        ARGS="$ARGS --format ${{ inputs.format }}"
+
+        if [ -n "${{ inputs.environment }}" ]; then
+          ARGS="$ARGS --environment ${{ inputs.environment }}"
+        fi
+
+        if [ "${{ inputs.fail-on-warning }}" = "true" ]; then
+          ARGS="$ARGS --ci"
+        fi
+
+        set +e
+        REPORT=$(node ${{ github.action_path }}/dist/cli.js $ARGS)
+        STATUS=$?
+        set -e
+        echo "$REPORT"
+        {
+          echo "status=$STATUS"
+          echo "report<<ENVALID_EOF"
+          echo "$REPORT"
+          echo "ENVALID_EOF"
+        } >> "$GITHUB_OUTPUT"
+        exit $STATUS
+
+    - name: Post PR comment
+      if: ${{ always() && inputs.comment-on-pr == 'true' && github.event_name == 'pull_request' }}
+      shell: bash
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
+        GITHUB_REPOSITORY: ${{ github.repository }}
+        GITHUB_REF: ${{ github.ref }}
+        GITHUB_EVENT_PATH: ${{ github.event_path }}
+        ENVALID_REPORT: ${{ steps.envalid.outputs.report }}
+      run: |
+        node ${{ github.action_path }}/scripts/post-pr-comment.mjs

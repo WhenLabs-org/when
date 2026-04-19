@@ -1,0 +1,14 @@
+{
+  "name": "test-mixed",
+  "version": "1.0.0",
+  "dependencies": {
+    "permissive-pkg": "^1.0.0",
+    "gpl-pkg": "^1.0.0",
+    "agpl-pkg": "^1.0.0",
+    "unknown-pkg": "^1.0.0",
+    "dual-license-pkg": "^1.0.0"
+  },
+  "devDependencies": {
+    "dev-gpl-pkg": "^1.0.0"
+  }
+}

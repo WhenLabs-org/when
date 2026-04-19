@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "project": {
+    "name": "rust-cli",
+    "description": "",
+    "architecture": ""
+  },
+  "stack": {
+    "framework": "rust:cli",
+    "language": "rust@1.79",
+    "styling": null,
+    "orm": null,
+    "database": null,
+    "testing": [],
+    "linting": [],
+    "packageManager": "cargo",
+    "monorepo": null,
+    "deployment": null,
+    "auth": null,
+    "apiStyle": null
+  },
+  "conventions": {},
+  "rules": [],
+  "structure": {},
+  "targets": {
+    "claude": true,
+    "cursor": false,
+    "copilot": false,
+    "agents": false
+  },
+  "_meta": {
+    "createdAt": "2026-04-13T23:56:33.995Z",
+    "lastSyncedAt": null,
+    "lastDetectionHash": "0d14e0d11026f468be9f672f72b9be8b",
+    "contextpilotVersion": "0.1.0"
+  }
+}

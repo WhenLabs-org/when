@@ -1,0 +1,7 @@
+{
+  "name": "integration-low-confidence",
+  "version": "1.0.0",
+  "dependencies": {
+    "fuzzy": "^1.0.0"
+  }
+}

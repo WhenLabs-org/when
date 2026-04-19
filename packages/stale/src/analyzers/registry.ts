@@ -1,0 +1,88 @@
+import type { Analyzer, AiAnalyzer, AnalyzerContext, DriftIssue, StaleConfig } from '../types.js';
+import { CommandsAnalyzer } from './static/commands.js';
+import { FilePathsAnalyzer } from './static/file-paths.js';
+import { EnvVarsAnalyzer } from './static/env-vars.js';
+import { UrlsAnalyzer } from './static/urls.js';
+import { PortsAnalyzer } from './static/ports.js';
+import { VersionsAnalyzer } from './static/versions.js';
+import { DependenciesAnalyzer } from './static/dependencies.js';
+import { ApiRoutesAnalyzer } from './static/api-routes.js';
+import { GitStalenessAnalyzer } from './static/git-staleness.js';
+import { CommentStalenessAnalyzer } from './static/comment-staleness.js';
+import { SemanticAnalyzer } from './ai/semantic.js';
+import { CompletenessAnalyzer } from './ai/completeness.js';
+import { ExamplesAnalyzer } from './ai/examples.js';
+
+export function getStaticAnalyzers(config: StaleConfig): Analyzer[] {
+  const analyzers: Analyzer[] = [];
+
+  if (config.checks.commands) analyzers.push(new CommandsAnalyzer());
+  if (config.checks.filePaths) analyzers.push(new FilePathsAnalyzer());
+  if (config.checks.envVars) analyzers.push(new EnvVarsAnalyzer());
+  if (config.checks.urls) {
+    analyzers.push(new UrlsAnalyzer());
+    analyzers.push(new PortsAnalyzer());
+  }
+  if (config.checks.versions) analyzers.push(new VersionsAnalyzer());
+  if (config.checks.dependencies) analyzers.push(new DependenciesAnalyzer());
+  if (config.checks.apiRoutes) analyzers.push(new ApiRoutesAnalyzer());
+  if (config.checks.gitStaleness) analyzers.push(new GitStalenessAnalyzer());
+  if (config.checks.commentStaleness) analyzers.push(new CommentStalenessAnalyzer());
+
+  return analyzers;
+}
+
+export function getAiAnalyzers(config: StaleConfig): AiAnalyzer[] {
+  const analyzers: AiAnalyzer[] = [];
+
+  if (!config.ai.enabled) return analyzers;
+
+  if (config.ai.checks.semantic) analyzers.push(new SemanticAnalyzer());
+  if (config.ai.checks.completeness) analyzers.push(new CompletenessAnalyzer());
+  if (config.ai.checks.examples) analyzers.push(new ExamplesAnalyzer());
+
+  return analyzers;
+}
+
+const DEFAULT_ANALYZER_TIMEOUT_MS = 30_000;
+
+function withTimeout<T>(promise: Promise<T>, ms: number, name: string): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(`Analyzer "${name}" timed out after ${ms}ms`)), ms);
+    promise.then(
+      (value) => { clearTimeout(timer); resolve(value); },
+      (err) => { clearTimeout(timer); reject(err); },
+    );
+  });
+}
+
+export async function runAnalyzers(
+  analyzers: Analyzer[],
+  ctx: AnalyzerContext,
+  options: { timeoutMs?: number } = {},
+): Promise<DriftIssue[]> {
+  const timeoutMs = options.timeoutMs ?? DEFAULT_ANALYZER_TIMEOUT_MS;
+  const results = await Promise.allSettled(
+    analyzers.map((analyzer) => withTimeout(analyzer.analyze(ctx), timeoutMs, analyzer.name)),
+  );
+
+  const issues: DriftIssue[] = [];
+
+  for (let i = 0; i < results.length; i++) {
+    const result = results[i];
+    if (result.status === 'fulfilled') {
+      issues.push(...result.value);
+    } else {
+      console.error(`Analyzer "${analyzers[i].name}" failed: ${result.reason}`);
+    }
+  }
+
+  // Sort by file, then line
+  issues.sort((a, b) => {
+    const fileCompare = a.source.file.localeCompare(b.source.file);
+    if (fileCompare !== 0) return fileCompare;
+    return a.source.line - b.source.line;
+  });
+
+  return issues;
+}

@@ -3,16 +3,30 @@ import {
   disableFederation,
   enableFederation,
   loadConfig,
-  DEFAULT_ENDPOINT,
 } from '../federation/client.js';
 
 export function runFederationCommand(subcommand: string | undefined, rest: string[]): void {
   switch (subcommand) {
     case 'enable': {
-      // Optional `--endpoint URL` override.
       const i = rest.indexOf('--endpoint');
-      const endpoint = i >= 0 && rest[i + 1] ? rest[i + 1] : DEFAULT_ENDPOINT;
-      const cfg = enableFederation(endpoint);
+      const endpoint = i >= 0 && rest[i + 1] ? rest[i + 1] : null;
+      if (!endpoint) {
+        console.error('Error: --endpoint URL is required.');
+        console.error('');
+        console.error('Federation is EXPERIMENTAL. There is no public velocity server yet —');
+        console.error('you must deploy one yourself. See docs/federation-wire-format.md for');
+        console.error('the POST /v1/tasks and GET /v1/priors contract.');
+        console.error('');
+        console.error('Usage: npx velocity-mcp federation enable --endpoint https://your-server.example');
+        process.exit(1);
+      }
+      let cfg;
+      try {
+        cfg = enableFederation(endpoint);
+      } catch (err) {
+        console.error(`Error: ${(err as Error).message}`);
+        process.exit(1);
+      }
       console.log('\n✅ Federation enabled\n');
       console.log(`  endpoint: ${cfg.endpoint}`);
       console.log(`  config:   ${configPath()}`);
@@ -46,7 +60,6 @@ export function runFederationCommand(subcommand: string | undefined, rest: strin
       console.log('\nFederation:', cfg.enabled ? 'ENABLED' : 'disabled');
       console.log(`  endpoint:       ${cfg.endpoint}`);
       console.log(`  salt:           ${cfg.salt.slice(0, 8)}… (${cfg.salt.length / 2} bytes, kept local)`);
-      console.log(`  last upload:    ${cfg.last_upload_at ?? 'never'}`);
       console.log(`  config:         ${configPath()}`);
       console.log();
       return;

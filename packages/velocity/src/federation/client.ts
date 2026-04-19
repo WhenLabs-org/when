@@ -15,7 +15,6 @@ import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
 import type { Category, TaskRow } from '../types.js';
 
-export const DEFAULT_ENDPOINT = 'https://velocity.whenlabs.dev';
 export const CLIENT_VERSION = '0.1.3';
 
 // Fields that may leave the machine. The payload construction asserts that it
@@ -65,7 +64,6 @@ export interface FederationConfig {
   enabled: boolean;
   endpoint: string;
   salt: string;          // hex-encoded random salt used for tag HMAC
-  last_upload_at?: string;
 }
 
 export interface FederationTransport {
@@ -92,7 +90,6 @@ export function loadConfig(path: string = configPath()): FederationConfig | null
       enabled: parsed.enabled,
       endpoint: parsed.endpoint,
       salt: parsed.salt,
-      last_upload_at: typeof parsed.last_upload_at === 'string' ? parsed.last_upload_at : undefined,
     };
   } catch {
     return null;
@@ -109,11 +106,15 @@ export function generateSalt(): string {
 }
 
 /**
- * Enable federation: create config if missing (generates a fresh per-user
- * salt), otherwise flip `enabled` to true. Never regenerates the salt on a
- * re-enable — that would invalidate the server's tag aggregations.
+ * Enable federation. Requires an explicit endpoint — there is no public
+ * default server. Creates the config if missing (with a fresh per-user salt),
+ * otherwise flips `enabled` to true. Never regenerates the salt on re-enable
+ * since that would invalidate any server-side tag aggregations.
  */
-export function enableFederation(endpoint: string = DEFAULT_ENDPOINT, path: string = configPath()): FederationConfig {
+export function enableFederation(endpoint: string, path: string = configPath()): FederationConfig {
+  if (!endpoint || !/^https?:\/\//.test(endpoint)) {
+    throw new Error('endpoint must be an http(s) URL; no public server exists yet');
+  }
   const existing = loadConfig(path);
   const cfg: FederationConfig = existing
     ? { ...existing, enabled: true, endpoint: existing.endpoint || endpoint }
@@ -259,17 +260,15 @@ function cacheKey(q: PriorsQuery): string {
 
 export function clearPriorsCache(): void { priorsCache.clear(); }
 
-/** Fire-and-forget upload. Returns immediately. Errors are swallowed. */
+/** Fire-and-forget upload. Returns immediately. Errors are swallowed.
+ * Intentionally has no filesystem side effects — tests and callers passing
+ * an explicit cfg must not risk writing to the default config path. */
 export function uploadIfEnabled(row: TaskRow, cfg: FederationConfig | null = loadConfig()): void {
   if (!cfg || !cfg.enabled) return;
   const payload = buildUploadPayload(row, cfg.salt);
   if (!payload) return;
   const t = getTransport();
   t.upload(cfg.endpoint, payload, UPLOAD_TIMEOUT_MS)
-    .then(() => {
-      // Track last upload for `federation status`.
-      try { saveConfig({ ...cfg, last_upload_at: new Date().toISOString() }); } catch { /* ignore */ }
-    })
     .catch(() => { /* non-fatal */ });
 }
 

@@ -7,7 +7,6 @@ import { STATUSES, formatDuration, parseTask } from '../types.js';
 import { findSimilarTasks, weightedMedian } from '../matching/similarity.js';
 import { recordResidual } from '../matching/calibration.js';
 import {
-  DEFAULT_EMBEDDING_MODEL,
   getDefaultEmbedder,
   taskEmbeddingText,
   tryEmbed,
@@ -147,10 +146,11 @@ export function registerEndTask(server: McpServer, queries: TaskQueries): void {
 
         // Semantic embedding for Phase 4 similarity. Best-effort; no throw.
         const text = taskEmbeddingText(row.description, parseTask(row).tags);
-        const vec = await tryEmbed(getDefaultEmbedder(), text);
+        const embedder = getDefaultEmbedder();
+        const vec = await tryEmbed(embedder, text);
         if (vec) {
           try {
-            queries.setEmbedding(args.task_id, vectorToBuffer(vec), DEFAULT_EMBEDDING_MODEL);
+            queries.setEmbedding(args.task_id, vectorToBuffer(vec), embedder.modelName);
           } catch { /* ignore */ }
         }
 

@@ -4,6 +4,8 @@ import { formatDuration, median, parseTask } from '../types.js';
 import { readParams } from './plan-model.js';
 import { MIN_CALIBRATION_N } from './calibration.js';
 
+const DAY_NAMES = ['Sundays', 'Mondays', 'Tuesdays', 'Wednesdays', 'Thursdays', 'Fridays', 'Saturdays'];
+
 export type ReflectScope = 'session' | 'day' | 'week';
 
 const SESSION_WINDOW_MS = 4 * 60 * 60 * 1000;  // 4 h
@@ -297,6 +299,147 @@ export function ruleCalibrationStatus(queries: TaskQueries): Insight[] {
   }];
 }
 
+// ---- Rules ported from the old insights.ts (used by velocity_stats) -------
+
+function avgDuration(tasks: Task[]): number {
+  const ds = durations(tasks);
+  return ds.length === 0 ? 0 : ds.reduce((s, d) => s + d, 0) / ds.length;
+}
+
+export function ruleOverallCategoryComparison(tasks: Task[]): Insight[] {
+  const done = completed(tasks);
+  const byCat = groupByCategory(done);
+  const eligible = [...byCat.entries()].filter(([, v]) => v.length >= MIN_TASKS_PER_BUCKET);
+  if (eligible.length < 2) return [];
+  const ranked = eligible
+    .map(([c, list]) => ({ c, avg: avgDuration(list), n: list.length }))
+    .filter(r => r.avg > 0)
+    .sort((a, b) => a.avg - b.avg);
+  if (ranked.length < 2) return [];
+  const fast = ranked[0];
+  const slow = ranked[ranked.length - 1];
+  const ratio = slow.avg / fast.avg;
+  if (ratio < 1.3) return [];
+  return [{
+    type: 'comparison',
+    message: `${slow.c} tasks take ${ratio.toFixed(1)}× longer than ${fast.c} tasks on average (${formatDuration(slow.avg)} vs ${formatDuration(fast.avg)}).`,
+    confidence: Math.min(fast.n, slow.n) >= 10 ? 'high' : Math.min(fast.n, slow.n) >= 5 ? 'medium' : 'low',
+  }];
+}
+
+export function ruleOverallTagComparison(tasks: Task[]): Insight[] {
+  const done = completed(tasks);
+  const byTag = new Map<string, Task[]>();
+  for (const t of done) {
+    for (const tag of t.tags) {
+      const arr = byTag.get(tag) ?? [];
+      arr.push(t);
+      byTag.set(tag, arr);
+    }
+  }
+  const eligible = [...byTag.entries()].filter(([, v]) => v.length >= MIN_TASKS_PER_BUCKET);
+  if (eligible.length < 2) return [];
+  const ranked = eligible
+    .map(([tag, list]) => ({ tag, avg: avgDuration(list), n: list.length }))
+    .filter(r => r.avg > 0)
+    .sort((a, b) => a.avg - b.avg);
+  if (ranked.length < 2) return [];
+  const fast = ranked[0];
+  const slow = ranked[ranked.length - 1];
+  if (fast.avg === 0) return [];
+  const pctDiff = ((slow.avg - fast.avg) / fast.avg) * 100;
+  if (pctDiff < 20) return [];
+  return [{
+    type: 'comparison',
+    message: `'${fast.tag}' tasks are ${Math.round(pctDiff)}% faster than '${slow.tag}' tasks (${formatDuration(fast.avg)} vs ${formatDuration(slow.avg)} avg).`,
+    confidence: Math.min(fast.n, slow.n) >= 10 ? 'high' : Math.min(fast.n, slow.n) >= 5 ? 'medium' : 'low',
+  }];
+}
+
+export function ruleDayOfWeekPattern(tasks: Task[]): Insight[] {
+  const done = completed(tasks);
+  const byDay = new Map<number, Task[]>();
+  for (const t of done) {
+    const day = new Date(t.started_at).getDay();
+    const arr = byDay.get(day) ?? [];
+    arr.push(t);
+    byDay.set(day, arr);
+  }
+  const eligible = [...byDay.entries()].filter(([, v]) => v.length >= MIN_TASKS_PER_BUCKET);
+  if (eligible.length < 2) return [];
+  const ranked = eligible
+    .map(([day, list]) => ({ day, avg: avgDuration(list), n: list.length }))
+    .filter(r => r.avg > 0)
+    .sort((a, b) => a.avg - b.avg);
+  if (ranked.length < 2) return [];
+  const fast = ranked[0];
+  const overall = avgDuration(done);
+  if (overall === 0) return [];
+  const pctFaster = ((overall - fast.avg) / overall) * 100;
+  if (pctFaster < 10) return [];
+  return [{
+    type: 'pattern',
+    message: `Most productive on ${DAY_NAMES[fast.day]} — tasks ${Math.round(pctFaster)}% faster than the overall average.`,
+    confidence: fast.n >= 10 ? 'high' : fast.n >= 5 ? 'medium' : 'low',
+  }];
+}
+
+export function ruleTimeOfDayPattern(tasks: Task[]): Insight[] {
+  const done = completed(tasks);
+  const buckets: Record<'morning' | 'afternoon' | 'evening' | 'night', Task[]> = {
+    morning: [], afternoon: [], evening: [], night: [],
+  };
+  for (const t of done) {
+    const hour = new Date(t.started_at).getHours();
+    if (hour >= 6 && hour < 12) buckets.morning.push(t);
+    else if (hour >= 12 && hour < 18) buckets.afternoon.push(t);
+    else if (hour >= 18) buckets.evening.push(t);
+    else buckets.night.push(t);
+  }
+  const eligible = (Object.entries(buckets) as Array<[keyof typeof buckets, Task[]]>)
+    .filter(([, v]) => v.length >= MIN_TASKS_PER_BUCKET);
+  if (eligible.length < 2) return [];
+  const ranked = eligible
+    .map(([period, list]) => ({ period, avg: avgDuration(list), n: list.length }))
+    .filter(r => r.avg > 0)
+    .sort((a, b) => a.avg - b.avg);
+  if (ranked.length < 2) return [];
+  const fast = ranked[0];
+  const slow = ranked[ranked.length - 1];
+  if (fast.avg === 0) return [];
+  const pctDiff = ((slow.avg - fast.avg) / fast.avg) * 100;
+  if (pctDiff < 15) return [];
+  return [{
+    type: 'pattern',
+    message: `${fast.period} tasks are ${Math.round(pctDiff)}% faster than ${slow.period} tasks (${formatDuration(fast.avg)} vs ${formatDuration(slow.avg)} avg).`,
+    confidence: Math.min(fast.n, slow.n) >= 10 ? 'high' : Math.min(fast.n, slow.n) >= 5 ? 'medium' : 'low',
+  }];
+}
+
+export function ruleFileCountCorrelation(tasks: Task[]): Insight[] {
+  const done = completed(tasks).filter(t => (t.files_actual ?? t.files_changed ?? t.files_estimated) != null);
+  if (done.length < MIN_TASKS_PER_BUCKET * 2) return [];
+  const small = done.filter(t => {
+    const fc = t.files_actual ?? t.files_changed ?? t.files_estimated ?? 0;
+    return fc >= 1 && fc <= 2;
+  });
+  const large = done.filter(t => {
+    const fc = t.files_actual ?? t.files_changed ?? t.files_estimated ?? 0;
+    return fc >= 5;
+  });
+  if (small.length < MIN_TASKS_PER_BUCKET || large.length < MIN_TASKS_PER_BUCKET) return [];
+  const smallAvg = avgDuration(small);
+  const largeAvg = avgDuration(large);
+  if (smallAvg === 0) return [];
+  const ratio = largeAvg / smallAvg;
+  if (ratio < 1.3) return [];
+  return [{
+    type: 'pattern',
+    message: `Tasks touching 5+ files take ${ratio.toFixed(1)}× longer than 1-2 file tasks (${formatDuration(largeAvg)} vs ${formatDuration(smallAvg)} avg).`,
+    confidence: Math.min(small.length, large.length) >= 10 ? 'high' : Math.min(small.length, large.length) >= 5 ? 'medium' : 'low',
+  }];
+}
+
 export function rulePlanModelStatus(queries: TaskQueries): Insight[] {
   const params = readParams(queries);
   if (params.n_observations < 5) return [];
@@ -320,18 +463,41 @@ export interface ReflectOptions {
   now?: Date;
 }
 
+function runAllRules(tasks: Task[], queries: TaskQueries, scope: ReflectScope, now: Date): Insight[] {
+  const out: Insight[] = [];
+  const safe = (fn: () => Insight[]): void => { try { out.push(...fn()); } catch { /* never fatal */ } };
+  // Rules driven by rich telemetry (Phase 2+).
+  safe(() => ruleCategoryTagSlowdown(tasks));
+  safe(() => ruleContextTokensImpact(tasks));
+  safe(() => ruleTestsFirstTry(tasks));
+  safe(() => ruleRetryHeavyTag(tasks));
+  safe(() => ruleFailureCluster(tasks));
+  safe(() => ruleModelComparison(tasks));
+  safe(() => ruleVelocityTrend(tasks, scope, now));
+  // Rules ported from the old insights.ts.
+  safe(() => ruleOverallCategoryComparison(tasks));
+  safe(() => ruleOverallTagComparison(tasks));
+  safe(() => ruleDayOfWeekPattern(tasks));
+  safe(() => ruleTimeOfDayPattern(tasks));
+  safe(() => ruleFileCountCorrelation(tasks));
+  // Rules that need the queries handle directly.
+  safe(() => ruleCalibrationStatus(queries));
+  safe(() => rulePlanModelStatus(queries));
+  return out;
+}
+
 export function generateReflectInsights(queries: TaskQueries, opts: ReflectOptions): Insight[] {
   const now = opts.now ?? new Date();
   const tasks = tasksInScope(queries, opts.scope, opts.project ?? null, now);
-  const insights: Insight[] = [];
-  try { insights.push(...ruleCategoryTagSlowdown(tasks)); } catch { /* rule failures are never fatal */ }
-  try { insights.push(...ruleContextTokensImpact(tasks)); } catch { /* ignore */ }
-  try { insights.push(...ruleTestsFirstTry(tasks)); } catch { /* ignore */ }
-  try { insights.push(...ruleRetryHeavyTag(tasks)); } catch { /* ignore */ }
-  try { insights.push(...ruleFailureCluster(tasks)); } catch { /* ignore */ }
-  try { insights.push(...ruleModelComparison(tasks)); } catch { /* ignore */ }
-  try { insights.push(...ruleVelocityTrend(tasks, opts.scope, now)); } catch { /* ignore */ }
-  try { insights.push(...ruleCalibrationStatus(queries)); } catch { /* ignore */ }
-  try { insights.push(...rulePlanModelStatus(queries)); } catch { /* ignore */ }
-  return insights;
+  return runAllRules(tasks, queries, opts.scope, now);
+}
+
+/** Same rules, but over a caller-supplied task set (e.g. `velocity_stats`'s
+ *  already-filtered list). Scope defaults to 'week' for trend-style rules. */
+export function generateReflectInsightsFromTasks(
+  tasks: Task[],
+  queries: TaskQueries,
+  opts: { scope?: ReflectScope; now?: Date } = {},
+): Insight[] {
+  return runAllRules(tasks, queries, opts.scope ?? 'week', opts.now ?? new Date());
 }

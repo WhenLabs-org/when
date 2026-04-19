@@ -136,6 +136,12 @@ export class TaskQueries {
         ORDER BY started_at DESC
         LIMIT ?
       `),
+      getRecentEmbeddedTasks: db.prepare(`
+        SELECT * FROM tasks
+        WHERE status = 'completed' AND embedding IS NOT NULL
+        ORDER BY started_at DESC
+        LIMIT ?
+      `),
       planSiblingSummary: db.prepare(`
         SELECT
           COUNT(*)                                              AS total,
@@ -324,6 +330,51 @@ export class TaskQueries {
 
   getTasksMissingEmbedding(limit: number): TaskRow[] {
     return this.stmts.getTasksMissingEmbedding.all(limit) as TaskRow[];
+  }
+
+  /** Recent completed tasks that already have an embedding — used by the
+   *  cross-category classifier to vote on a new task's likely category. */
+  getRecentEmbeddedTasks(limit: number): TaskRow[] {
+    return this.stmts.getRecentEmbeddedTasks.all(limit) as TaskRow[];
+  }
+
+  /** Every task row (no filter). Used by `velocity-mcp export`. */
+  getAllTasks(): TaskRow[] {
+    return this.db.prepare('SELECT * FROM tasks ORDER BY started_at ASC').all() as TaskRow[];
+  }
+
+  /** Every plan_run row. Used by `velocity-mcp export`. */
+  getAllPlanRuns(): PlanRunRow[] {
+    return this.db.prepare('SELECT * FROM plan_runs ORDER BY created_at ASC').all() as PlanRunRow[];
+  }
+
+  /** All meta rows (schema_version etc.). Used by `velocity-mcp export`. */
+  getAllMeta(): Array<{ key: string; value: string }> {
+    return this.db.prepare('SELECT key, value FROM meta ORDER BY key').all() as Array<{ key: string; value: string }>;
+  }
+
+  /** Raw insert of a task row — used only by `velocity-mcp import`. Requires
+   *  all existing columns; nulls the rest. Throws on PK collision. */
+  insertRawTask(row: TaskRow): void {
+    const cols = [
+      'id', 'category', 'tags', 'description', 'project', 'started_at', 'ended_at',
+      'duration_seconds', 'status', 'files_estimated', 'files_actual', 'notes',
+      'lines_added', 'lines_removed', 'files_changed', 'git_diff_stat',
+      'predicted_duration_seconds', 'predicted_p25_seconds', 'predicted_p75_seconds',
+      'predicted_confidence', 'model_id', 'context_tokens', 'tools_used',
+      'tool_call_count', 'turn_count', 'first_edit_offset_seconds', 'retry_count',
+      'tests_passed_first_try', 'embedding', 'embedding_model', 'paused_seconds',
+      'parent_task_id', 'parent_plan_id',
+    ];
+    const placeholders = cols.map(() => '?').join(', ');
+    const values = cols.map(c => (row as unknown as Record<string, unknown>)[c] ?? null);
+    this.db.prepare(`INSERT INTO tasks (${cols.join(', ')}) VALUES (${placeholders})`).run(...values);
+  }
+
+  insertRawPlanRun(row: PlanRunRow): void {
+    this.db.prepare(
+      'INSERT INTO plan_runs (id, created_at, plan_json, model_id, total_predicted_seconds, total_actual_seconds, completed_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+    ).run(row.id, row.created_at, row.plan_json, row.model_id, row.total_predicted_seconds, row.total_actual_seconds, row.completed_at);
   }
 
   getPlanSiblingSummary(planId: string): { total: number; active: number; total_duration: number } {

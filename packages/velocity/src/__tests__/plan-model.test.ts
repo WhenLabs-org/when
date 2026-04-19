@@ -10,6 +10,7 @@ import {
   computePlanTotal,
   debugTailSeconds,
   DEFAULT_PARAMS,
+  detectPlanCycles,
   fitParams,
   maybeCompletePlan,
   MIN_FITS_FOR_MODEL,
@@ -94,6 +95,31 @@ describe('criticalPathSeconds', () => {
     const r = criticalPathSeconds(items);
     expect(Number.isFinite(r)).toBe(true);
     expect(r).toBeGreaterThan(0);
+  });
+});
+
+describe('detectPlanCycles', () => {
+  it('returns empty for an acyclic DAG', () => {
+    const items: PlanTaskInput[] = [
+      { seconds: 100, category: 'implement' },
+      { seconds: 200, category: 'implement', depends_on: [0] },
+      { seconds: 50, category: 'test', depends_on: [1] },
+    ];
+    expect(detectPlanCycles(items)).toEqual([]);
+  });
+
+  it('finds a simple 2-node cycle', () => {
+    const items: PlanTaskInput[] = [
+      { seconds: 100, category: 'implement', depends_on: [1] },
+      { seconds: 200, category: 'implement', depends_on: [0] },
+    ];
+    const cycles = detectPlanCycles(items);
+    expect(cycles.length).toBeGreaterThan(0);
+  });
+
+  it('ignores self-loops (d == i) as cycle candidates — criticalPathSeconds already skips them', () => {
+    const items: PlanTaskInput[] = [{ seconds: 100, category: 'implement', depends_on: [0] }];
+    expect(detectPlanCycles(items)).toEqual([]);
   });
 });
 

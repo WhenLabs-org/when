@@ -59,11 +59,12 @@
   "author": "WhenLabs",
   "repository": {
     "type": "git",
-    "url": "https://github.com/WhenLabs-org/envalid.git"
+    "url": "https://github.com/WhenLabs-org/when.git",
+    "directory": "packages/envalid"
   },
-  "homepage": "https://github.com/WhenLabs-org/envalid",
+  "homepage": "https://github.com/WhenLabs-org/when/tree/main/packages/envalid",
   "bugs": {
-    "url": "https://github.com/WhenLabs-org/envalid/issues"
+    "url": "https://github.com/WhenLabs-org/when/issues"
   },
   "engines": {
     "node": ">=20"

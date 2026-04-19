@@ -56,5 +56,11 @@
     "dependency",
     "scanner"
   ],
-  "license": "MIT"
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/WhenLabs-org/when.git",
+    "directory": "packages/vow"
+  },
+  "homepage": "https://github.com/WhenLabs-org/when/tree/main/packages/vow"
 }

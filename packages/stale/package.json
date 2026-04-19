@@ -69,5 +69,11 @@
     "tsx": "^4.19.0",
     "vitest": "^3.1.0",
     "@types/mdast": "^4.0.0"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/WhenLabs-org/when.git",
+    "directory": "packages/stale"
+  },
+  "homepage": "https://github.com/WhenLabs-org/when/tree/main/packages/stale"
 }

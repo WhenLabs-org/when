@@ -1,0 +1,28 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`TerminalReporter > matches the canonical snapshot (ANSI-stripped) 1`] = `
+"
+Scanning project: /tmp/project/
+Analyzing: README.md
+
+── Static Checks ──────────────────────────────────────────
+
+FILE PATHS (checking against filesystem)
+  ✗ README.md:10 — References \`src/db.js\` — file does not exist
+    Update to \`src/db.ts\`
+
+COMMANDS (checking against package.json scripts)
+  ⚠ README.md:20 — \`npm run dev\` — script "dev" not found in package.json
+
+ENVIRONMENT VARIABLES (checking against codebase usage)
+  ℹ README.md:30 — Env var \`API_URL\` documented but not used in code
+
+╭ Summary ─────────────────────────────────────────────╮
+│                                                      │
+│   1 error (docs contradict codebase)                 │
+│   1 warning (potential issues, needs human review)   │
+│   7 checks passed                                    │
+│                                                      │
+╰──────────────────────────────────────────────────────╯
+"
+`;

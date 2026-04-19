@@ -1,0 +1,79 @@
+name: 'WhenLabs CI Check'
+description: 'Run documentation drift, env validation, and license checks'
+branding:
+  icon: 'check-circle'
+  color: 'orange'
+inputs:
+  tools:
+    description: 'Comma-separated tools to run (stale, envalid, vow)'
+    default: 'stale,envalid,vow'
+  checks:
+    description: 'Alias for tools — select which checks to run (stale, envalid, vow)'
+    default: ''
+  fail_on:
+    description: 'Fail on: error, warning, or none'
+    default: 'error'
+  comment:
+    description: 'Post results as a PR comment when running on a pull request'
+    default: 'false'
+runs:
+  using: 'composite'
+  steps:
+    - uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+
+    - name: Cache npm
+      uses: actions/cache@v4
+      with:
+        path: ~/.npm
+        key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+        restore-keys: |
+          ${{ runner.os }}-node-
+
+    - name: Run WhenLabs checks
+      id: whenlabs_check
+      run: |
+        SELECTED="${{ inputs.checks != '' && inputs.checks || inputs.tools }}"
+        WHENLABS_TOOLS="$SELECTED" npx @whenlabs/when ci --ci 2>&1 | tee /tmp/whenlabs-output.txt
+        echo "exit_code=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
+      shell: bash
+
+    - name: Post PR comment
+      if: ${{ inputs.comment == 'true' && github.event_name == 'pull_request' }}
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const fs = require('fs');
+          const output = fs.readFileSync('/tmp/whenlabs-output.txt', 'utf8');
+          const exitCode = '${{ steps.whenlabs_check.outputs.exit_code }}';
+          const status = exitCode === '0' ? '✅ All checks passed' : '❌ Issues found';
+          const body = [
+            '## WhenLabs CI Check',
+            '',
+            status,
+            '',
+            '<details><summary>Full output</summary>',
+            '',
+            '```',
+            output.trim(),
+            '```',
+            '',
+            '</details>',
+          ].join('\n');
+          await github.rest.issues.createComment({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            issue_number: context.issue.number,
+            body,
+          });
+
+    - name: Fail if issues found
+      if: ${{ inputs.fail_on != 'none' }}
+      run: |
+        EXIT="${{ steps.whenlabs_check.outputs.exit_code }}"
+        if [ "$EXIT" != "0" ]; then
+          echo "WhenLabs checks found issues. Set fail_on: none to suppress this failure."
+          exit 1
+        fi
+      shell: bash

@@ -1,0 +1,66 @@
+{
+  "name": "@whenlabs/vow",
+  "version": "0.2.0",
+  "description": "Scan dependency trees and validate licenses against plain-English policies",
+  "type": "module",
+  "bin": {
+    "vow": "./dist/cli.js"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist",
+    "data"
+  ],
+  "scripts": {
+    "build": "tsup src/cli.ts src/index.ts --format esm --dts --clean",
+    "dev": "tsup src/cli.ts src/index.ts --format esm --dts --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "tsc --noEmit",
+    "prepublishOnly": "npm run build"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.39.0",
+    "@whenlabs/core": "workspace:^",
+    "chalk": "^5.3.0",
+    "cli-table3": "^0.6.5",
+    "commander": "^12.1.0",
+    "ora": "^8.1.1",
+    "spdx-expression-parse": "^4.0.0",
+    "spdx-license-ids": "^3.0.20",
+    "spdx-license-list": "^6.9.0",
+    "spdx-satisfies": "^5.0.1",
+    "yaml": "^2.6.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "tsup": "^8.3.5",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [
+    "license",
+    "audit",
+    "compliance",
+    "spdx",
+    "dependency",
+    "scanner"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/WhenLabs-org/when.git",
+    "directory": "packages/vow"
+  },
+  "homepage": "https://github.com/WhenLabs-org/when/tree/main/packages/vow"
+}

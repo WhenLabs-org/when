@@ -167,6 +167,7 @@ describe('evaluatePolicy', () => {
       graph: new Map(),
       summary: { total: 3, byLicense: new Map(), byCategory: new Map(), unknown: 0, custom: 0 },
       ecosystems: ['npm'],
+      workspaces: [],
     };
 
     const result = evaluatePolicy(scanResult, policy);
@@ -175,6 +176,157 @@ describe('evaluatePolicy', () => {
     expect(result.summary.blocked).toBe(1); // GPL
     expect(result.summary.warnings).toBe(1); // Apache-2.0 (catch-all warn)
     expect(result.passed).toBe(false);
+  });
+
+  describe('confidence condition', () => {
+    const lowConfPkg: PackageInfo = {
+      name: 'fuzzy',
+      version: '1.0.0',
+      license: {
+        spdxExpression: 'MIT',
+        source: 'license-file',
+        confidence: 0.72,
+        category: 'permissive',
+      },
+      dependencyType: 'production',
+    };
+
+    const highConfPkg: PackageInfo = {
+      name: 'sharp',
+      version: '1.0.0',
+      license: {
+        spdxExpression: 'MIT',
+        source: 'package-metadata',
+        confidence: 1,
+        category: 'permissive',
+      },
+      dependencyType: 'production',
+    };
+
+    it('matches when license confidence < threshold', () => {
+      const rule: ParsedPolicyRule = {
+        id: 'conf',
+        action: 'warn',
+        condition: { type: 'confidence', values: [], threshold: 0.8 },
+        originalText: 'Warn when confidence < 0.8',
+      };
+
+      const low = evaluatePackage(lowConfPkg, [rule], 'allow');
+      expect(low.action).toBe('warn');
+      expect(low.matchedRule?.id).toBe('conf');
+
+      const high = evaluatePackage(highConfPkg, [rule], 'allow');
+      expect(high.action).toBe('allow');
+      expect(high.matchedRule).toBeNull();
+    });
+
+    it('accepts numeric threshold via pattern string for backward compat', () => {
+      const rule: ParsedPolicyRule = {
+        id: 'conf',
+        action: 'block',
+        condition: { type: 'confidence', values: [], pattern: '0.9' },
+        originalText: 'Block when confidence < 0.9',
+      };
+
+      const low = evaluatePackage(lowConfPkg, [rule], 'allow');
+      expect(low.action).toBe('block');
+    });
+
+    it('ignores condition when no valid threshold provided', () => {
+      const rule: ParsedPolicyRule = {
+        id: 'conf',
+        action: 'block',
+        condition: { type: 'confidence', values: [] },
+        originalText: 'malformed',
+      };
+
+      const low = evaluatePackage(lowConfPkg, [rule], 'allow');
+      expect(low.action).toBe('allow');
+    });
+
+    it('fires BEFORE license-id rules (first-match-wins)', () => {
+      const confRule: ParsedPolicyRule = {
+        id: 'conf',
+        action: 'warn',
+        condition: { type: 'confidence', values: [], threshold: 0.9 },
+        originalText: 'Warn when confidence < 0.9',
+      };
+      const allowMit: ParsedPolicyRule = {
+        id: 'mit',
+        action: 'allow',
+        condition: { type: 'license-id', values: ['MIT'] },
+        originalText: 'Allow MIT',
+      };
+
+      const result = evaluatePackage(lowConfPkg, [confRule, allowMit], 'block');
+      expect(result.action).toBe('warn');
+      expect(result.matchedRule?.id).toBe('conf');
+    });
+  });
+
+  describe('ignore patterns', () => {
+    const gplPkg: PackageInfo = {
+      name: '@internal/gpl-tool',
+      version: '1.0.0',
+      license: {
+        spdxExpression: 'GPL-3.0-only',
+        source: 'package-metadata',
+        confidence: 1,
+        category: 'strongly-copyleft',
+      },
+      dependencyType: 'production',
+    };
+
+    it('ignore pattern short-circuits a block rule', () => {
+      const policy: ParsedPolicy = {
+        rules: [makeRule('r1', 'block', 'license-id', ['GPL-3.0-only'])],
+        sourceHash: 'test',
+        parsedAt: new Date().toISOString(),
+        defaultAction: 'allow',
+      };
+
+      const scanResult: ScanResult = {
+        timestamp: new Date().toISOString(),
+        project: { name: 'test', version: '1.0.0', path: '/test' },
+        packages: [gplPkg],
+        graph: new Map(),
+        summary: { total: 1, byLicense: new Map(), byCategory: new Map(), unknown: 0, custom: 0 },
+        ecosystems: ['npm'],
+        workspaces: [],
+      };
+
+      const result = evaluatePolicy(scanResult, policy, {
+        ignorePatterns: ['@internal/*'],
+      });
+
+      expect(result.blocked).toHaveLength(0);
+      expect(result.allowed).toHaveLength(1);
+      expect(result.allowed[0]!.explanation).toContain('Ignored by pattern');
+      expect(result.passed).toBe(true);
+    });
+
+    it('package not matching any ignore pattern is still blocked', () => {
+      const policy: ParsedPolicy = {
+        rules: [makeRule('r1', 'block', 'license-id', ['GPL-3.0-only'])],
+        sourceHash: 'test',
+        parsedAt: new Date().toISOString(),
+        defaultAction: 'allow',
+      };
+      const scanResult: ScanResult = {
+        timestamp: new Date().toISOString(),
+        project: { name: 'test', version: '1.0.0', path: '/test' },
+        packages: [{ ...gplPkg, name: 'public-gpl' }],
+        graph: new Map(),
+        summary: { total: 1, byLicense: new Map(), byCategory: new Map(), unknown: 0, custom: 0 },
+        ecosystems: ['npm'],
+        workspaces: [],
+      };
+
+      const result = evaluatePolicy(scanResult, policy, {
+        ignorePatterns: ['@internal/*'],
+      });
+      expect(result.blocked).toHaveLength(1);
+    });
   });
 
   it('applies overrides', () => {
@@ -192,6 +344,7 @@ describe('evaluatePolicy', () => {
       graph: new Map(),
       summary: { total: 1, byLicense: new Map(), byCategory: new Map(), unknown: 0, custom: 0 },
       ecosystems: ['npm'],
+      workspaces: [],
     };
 
     const result = evaluatePolicy(scanResult, policy, [

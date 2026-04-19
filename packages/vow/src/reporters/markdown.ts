@@ -1,5 +1,14 @@
-import type { ScanResult } from '../types.js';
+import type { PackageInfo, ScanResult } from '../types.js';
 import type { CheckResult } from '../policy/types.js';
+
+function formatLicenseForMarkdown(pkg: PackageInfo): string {
+  const expr = pkg.license.spdxExpression ?? 'UNKNOWN';
+  const confidence = pkg.license.confidence;
+  if (confidence > 0 && confidence < 0.9) {
+    return `${expr}, confidence ${confidence.toFixed(2)}`;
+  }
+  return expr;
+}
 
 export function toMarkdown(result: ScanResult): string {
   const lines: string[] = [];
@@ -86,8 +95,7 @@ export function toMarkdownCheckResult(result: CheckResult): string {
     lines.push('### Blocked');
     lines.push('');
     for (const item of result.blocked) {
-      const license = item.pkg.license.spdxExpression ?? 'UNKNOWN';
-      lines.push(`- :x: **${item.pkg.name}@${item.pkg.version}** (${license})`);
+      lines.push(`- :x: **${item.pkg.name}@${item.pkg.version}** (${formatLicenseForMarkdown(item.pkg)})`);
       if (item.matchedRule) {
         lines.push(`  - Rule: _"${item.matchedRule.originalText}"_`);
       }
@@ -102,8 +110,7 @@ export function toMarkdownCheckResult(result: CheckResult): string {
     lines.push('### Warnings');
     lines.push('');
     for (const item of result.warnings) {
-      const license = item.pkg.license.spdxExpression ?? 'UNKNOWN';
-      lines.push(`- :warning: **${item.pkg.name}@${item.pkg.version}** (${license})`);
+      lines.push(`- :warning: **${item.pkg.name}@${item.pkg.version}** (${formatLicenseForMarkdown(item.pkg)})`);
       if (item.matchedRule) {
         lines.push(`  - Rule: _"${item.matchedRule.originalText}"_`);
       }

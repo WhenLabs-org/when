@@ -8,6 +8,14 @@ export interface JsonPolicyFile {
   deny?: string[];
   warn?: string[];
   require_attribution?: boolean;
+  /**
+   * Flag any resolved license whose confidence is below this threshold (0..1).
+   * Compiles to a first-match-wins rule at the TOP of the rule list, so it
+   * applies before license-id checks. Action: 'warn' by default, or 'block'
+   * if `min_confidence_action` is set to "block".
+   */
+  min_confidence?: number;
+  min_confidence_action?: 'warn' | 'block';
 }
 
 export async function loadJsonPolicy(projectPath: string): Promise<{ policy: ParsedPolicy; raw: JsonPolicyFile } | null> {
@@ -27,6 +35,21 @@ export async function loadJsonPolicy(projectPath: string): Promise<{ policy: Par
 export function jsonPolicyToParsedPolicy(config: JsonPolicyFile): ParsedPolicy {
   const rules: ParsedPolicyRule[] = [];
   let ruleIndex = 0;
+
+  // Confidence gate (first-match-wins, so placed at the top)
+  if (typeof config.min_confidence === 'number') {
+    const action: PolicyAction = config.min_confidence_action === 'block' ? 'block' : 'warn';
+    rules.push({
+      id: `json-rule-${++ruleIndex}`,
+      action,
+      condition: {
+        type: 'confidence',
+        values: [],
+        threshold: config.min_confidence,
+      },
+      originalText: `${action === 'block' ? 'Block' : 'Warn'} when license confidence < ${config.min_confidence}`,
+    });
+  }
 
   // Allow rules
   if (config.allow) {

@@ -3,9 +3,17 @@ import type { PackageInfo, DependencyType } from '../types.js';
 export type PolicyAction = 'allow' | 'block' | 'warn';
 
 export interface PolicyCondition {
-  type: 'license-id' | 'license-category' | 'license-pattern' | 'package-name' | 'any';
+  type:
+    | 'license-id'
+    | 'license-category'
+    | 'license-pattern'
+    | 'package-name'
+    | 'confidence'
+    | 'any';
   values: string[];
   pattern?: string;
+  /** Numeric threshold for type='confidence': matches when pkg confidence < threshold. */
+  threshold?: number;
   negate?: boolean;
 }
 

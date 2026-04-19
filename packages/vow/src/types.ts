@@ -35,6 +35,8 @@ export interface PackageInfo {
   dependencyType: DependencyType;
   path?: string;
   rawLicense?: string;
+  /** Source ecosystem: 'npm', 'cargo', 'pip'. Used for PURL generation in SBOM. */
+  ecosystem?: string;
 }
 
 export interface DepGraphNode {
@@ -52,6 +54,12 @@ export interface LicenseSummary {
   custom: number;
 }
 
+export interface WorkspaceSummary {
+  name: string;
+  path: string;
+  directDependencies: string[];
+}
+
 export interface ScanResult {
   timestamp: string;
   project: { name: string; version: string; path: string };
@@ -59,6 +67,7 @@ export interface ScanResult {
   graph: Map<string, DepGraphNode>;
   summary: LicenseSummary;
   ecosystems: string[];
+  workspaces: WorkspaceSummary[];
 }
 
 export interface ScanResultJSON {
@@ -79,6 +88,7 @@ export interface ScanResultJSON {
     custom: number;
   };
   ecosystems: string[];
+  workspaces: WorkspaceSummary[];
 }
 
 export function pkgKey(name: string, version: string): string {
@@ -109,5 +119,6 @@ export function scanResultToJSON(result: ScanResult): ScanResultJSON {
       custom: result.summary.custom,
     },
     ecosystems: result.ecosystems,
+    workspaces: result.workspaces,
   };
 }

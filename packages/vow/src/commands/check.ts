@@ -7,6 +7,10 @@ import { executeScan } from './scan.js';
 import { parsePolicy } from '../policy/parser.js';
 import { evaluatePolicy } from '../policy/evaluator.js';
 import { loadJsonPolicy } from '../policy/json-policy.js';
+import { loadMatchingLockfile, POLICY_LOCKFILE_NAME, readPolicyLockfile } from '../policy/lockfile.js';
+import { hashPolicyText } from '../policy/cache.js';
+import { loadIgnoreFile } from '../policy/ignore.js';
+import { VowError } from '../errors.js';
 import type { PolicyConfig } from '../policy/types.js';
 import type { ParsedPolicy, PolicyOverride } from '../policy/types.js';
 import { reportCheckResult } from '../reporters/terminal.js';
@@ -19,9 +23,11 @@ interface CheckOptions {
   ci: boolean;
   failOn: string;
   apiKey?: string;
+  offline: boolean;
   format: string;
   production: boolean;
   output?: string;
+  ignore?: string[];
 }
 
 export function registerCheckCommand(program: Command): void {
@@ -33,6 +39,8 @@ export function registerCheckCommand(program: Command): void {
     .option('--ci', 'CI mode: exit code 1 on violations', false)
     .option('--fail-on <level>', 'Fail on: block or warn', 'block')
     .option('--api-key <key>', 'Anthropic API key')
+    .option('--offline', `Require a committed ${POLICY_LOCKFILE_NAME}; never call the Claude API`, false)
+    .option('--ignore <pattern>', 'Glob pattern to exclude packages from policy eval (repeatable)', (val, acc: string[] = []) => [...acc, val], [] as string[])
     .option('-f, --format <fmt>', 'Output format: terminal, json, github, markdown', 'terminal')
     .option('--production', 'Skip devDependencies', false)
     .option('-o, --output <file>', 'Write output to file')
@@ -50,7 +58,12 @@ export function registerCheckCommand(program: Command): void {
           const result = await loadJsonPolicyFromPath(policyPath);
           parsedPolicy = result.policy;
         } else {
-          const result = await loadYamlPolicy(policyPath, opts.apiKey);
+          const result = await loadYamlPolicy(
+            projectPath,
+            policyPath,
+            opts.apiKey,
+            opts.offline,
+          );
           parsedPolicy = result.policy;
           overrides = result.overrides;
         }
@@ -63,16 +76,10 @@ export function registerCheckCommand(program: Command): void {
         } else {
           // Fall back to .vow.yml
           const yamlPath = path.resolve(projectPath, '.vow.yml');
-          try {
-            const result = await loadYamlPolicy(yamlPath, opts.apiKey);
-            parsedPolicy = result.policy;
-            overrides = result.overrides;
-            console.log(chalk.gray('Using policy from .vow.yml'));
-          } catch {
-            console.error(chalk.red('Error: No policy file found (.vow.json or .vow.yml)'));
-            console.error(chalk.gray('Run `vow init` to create one.'));
-            process.exit(2);
-          }
+          const result = await loadYamlPolicy(projectPath, yamlPath, opts.apiKey, opts.offline);
+          parsedPolicy = result.policy;
+          overrides = result.overrides;
+          console.log(chalk.gray('Using policy from .vow.yml'));
         }
       }
 
@@ -83,12 +90,16 @@ export function registerCheckCommand(program: Command): void {
         format: 'terminal',
       });
 
+      // Load ignore patterns from .vowignore + CLI
+      const fileIgnores = await loadIgnoreFile(projectPath);
+      const cliIgnores = opts.ignore ?? [];
+      const ignorePatterns = [...fileIgnores, ...cliIgnores];
+
       // Evaluate
-      const checkResult = evaluatePolicy(
-        scanResult,
-        parsedPolicy,
+      const checkResult = evaluatePolicy(scanResult, parsedPolicy, {
         overrides,
-      );
+        ignorePatterns,
+      });
 
       // Output
       let output: string;
@@ -120,7 +131,8 @@ export function registerCheckCommand(program: Command): void {
         : checkResult.blocked.length > 0;
 
       if (shouldFail) {
-        process.exit(1);
+        const detail = `${checkResult.blocked.length} blocked, ${checkResult.warnings.length} warned`;
+        throw new VowError('VOW-E1001', detail);
       }
     });
 }
@@ -130,8 +142,7 @@ async function loadJsonPolicyFromPath(filePath: string): Promise<{ policy: Parse
   try {
     content = await readFile(filePath, 'utf-8');
   } catch {
-    console.error(chalk.red(`Error: Could not read policy file: ${filePath}`));
-    process.exit(2);
+    throw new VowError('VOW-E2003', filePath);
   }
 
   const { jsonPolicyToParsedPolicy } = await import('../policy/json-policy.js');
@@ -140,23 +151,50 @@ async function loadJsonPolicyFromPath(filePath: string): Promise<{ policy: Parse
 }
 
 async function loadYamlPolicy(
+  projectPath: string,
   policyPath: string,
-  apiKey?: string,
+  apiKey: string | undefined,
+  offline: boolean,
 ): Promise<{ policy: ParsedPolicy; overrides: PolicyOverride[] }> {
   let policyConfig: PolicyConfig;
   try {
     const content = await readFile(policyPath, 'utf-8');
     policyConfig = YAML.parse(content) as PolicyConfig;
   } catch {
-    throw new Error(`Could not read policy file: ${policyPath}`);
+    throw new VowError('VOW-E2001');
   }
 
   if (!policyConfig.policy || typeof policyConfig.policy !== 'string') {
-    console.error(chalk.red('Error: Policy file must contain a "policy" field with text.'));
-    process.exit(2);
+    throw new VowError('VOW-E2002', policyPath);
   }
 
-  const parsedPolicy = await parsePolicy(policyConfig.policy, { apiKey });
+  // Try a committed lockfile first (offline-safe, hash-pinned).
+  const fromLockfile = await loadMatchingLockfile(projectPath, policyConfig.policy);
+  if (fromLockfile) {
+    console.log(
+      chalk.gray(`Using pre-parsed policy from ${POLICY_LOCKFILE_NAME} (${fromLockfile.rules.length} rules)`),
+    );
+    return { policy: fromLockfile, overrides: policyConfig.overrides ?? [] };
+  }
+
+  if (offline) {
+    const stale = await readPolicyLockfile(projectPath);
+    const detail = stale
+      ? `${POLICY_LOCKFILE_NAME} is stale (sourceHash ${stale.sourceHash} ≠ ${hashPolicyText(policyConfig.policy)})`
+      : `${POLICY_LOCKFILE_NAME} not found in project root`;
+    throw new VowError('VOW-E2005', detail);
+  }
+
+  let parsedPolicy: ParsedPolicy;
+  try {
+    parsedPolicy = await parsePolicy(policyConfig.policy, { apiKey });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (/api key/i.test(msg) || /ANTHROPIC_API_KEY/i.test(msg)) {
+      throw new VowError('VOW-E2004');
+    }
+    throw err;
+  }
   console.log(chalk.gray(`Policy parsed: ${parsedPolicy.rules.length} rules`));
 
   return {

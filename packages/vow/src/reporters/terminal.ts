@@ -129,13 +129,22 @@ function formatViolation(item: PackageCheckResult, level: 'block' | 'warn'): str
 
 function formatLicenseWithSource(pkg: import('../types.js').PackageInfo): string {
   const expr = pkg.license.spdxExpression;
+  const confidence = pkg.license.confidence;
+  const confidenceNote = confidence > 0 && confidence < 0.9
+    ? ` ${chalk.gray(`[conf: ${confidence.toFixed(2)}]`)}`
+    : '';
+
   if (!expr) {
-    return pkg.license.source === 'none' ? 'UNKNOWN (no license found)' : 'UNKNOWN';
+    const base = pkg.license.source === 'none' ? 'UNKNOWN (no license found)' : 'UNKNOWN';
+    return `${base}${confidenceNote}`;
   }
   if (pkg.license.source === 'license-file') {
-    return `${expr} (resolved from LICENSE file)`;
+    return `${expr} (resolved from LICENSE file)${confidenceNote}`;
   }
-  return expr;
+  if (pkg.license.source === 'registry-api') {
+    return `${expr} (resolved from npm registry)${confidenceNote}`;
+  }
+  return `${expr}${confidenceNote}`;
 }
 
 export function reportFixSuggestions(suggestions: FixSuggestion[]): string {

@@ -3,866 +3,561 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>when — Six tools. One install.</title>
-<meta name="description" content="A unified developer toolkit for AI-assisted workflows. Six purpose-built tools, one install command.">
+<title>WhenLabs — an independent studio by Siddharth Nigam</title>
+<meta name="description" content="WhenLabs is an independent studio for small tools, open-source software, and research on language models — by Siddharth Nigam.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;1,9..144,300;1,9..144,400&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-:root{
-  --bg:#e0e0e0;
-  --surface:#e0e0e0;
-  --surface-2:#d4d4d4;
-  --border:transparent;
-  --text:#1a1a18;
-  --text-dim:#6e6e68;
-  --accent:#c46a1a;
-  --accent-dim:#9e5515;
-  --accent-glow:rgba(196,106,26,0.08);
-  --red:#c44a3a;
-  --blue:#3a6fa0;
-  --orange:#c46a1a;
-  --purple:#7a4aa0;
-  --mono:'JetBrains Mono',monospace;
-  --serif:'Instrument Serif',Georgia,serif;
-  /* Neumorphic shadows */
-  --shadow-light:#ffffff;
-  --shadow-dark:rgba(163,163,163,0.7);
-  --neu-out:8px 8px 16px var(--shadow-dark), -8px -8px 16px var(--shadow-light);
-  --neu-out-sm:4px 4px 8px var(--shadow-dark), -4px -4px 8px var(--shadow-light);
-  --neu-in:inset 4px 4px 8px var(--shadow-dark), inset -4px -4px 8px var(--shadow-light);
-  --neu-in-lg:inset 6px 6px 12px var(--shadow-dark), inset -6px -6px 12px var(--shadow-light);
+:root,[data-theme="light"]{
+  --paper:#dde3ec;         /* pale periwinkle / blueprint paper */
+  --paper-2:#cdd4df;
+  --ink:#141820;           /* near-black with cool undertone */
+  --ink-dim:#5a6470;
+  --ink-faint:#9ba4b0;
+  --rule:#b2bac5;
+  --red:#e24a26;
+  --blue:#1f4d7a;
+  --lime:#c7d33a;
+  --plum:#5e2a60;
+  --hover:rgba(20,24,32,0.035);
+  --dot:rgba(20,24,32,0.24);
+  --glow-a:rgba(226,74,38,0.07);
+  --glow-b:rgba(31,77,122,0.06);
+  --serif:'Fraunces','Iowan Old Style',Georgia,serif;
+  --mono:'JetBrains Mono',ui-monospace,Menlo,monospace;
+}
+[data-theme="dark"]{
+  --paper:#121418;         /* graphite w/ cool undertone */
+  --paper-2:#1a1d22;
+  --ink:#e8ecf2;           /* cool off-white ink */
+  --ink-dim:#868c96;
+  --ink-faint:#383c44;
+  --rule:#2a2d33;
+  --red:#ff6a47;
+  --blue:#7aa7d2;
+  --lime:#d6e046;
+  --plum:#b07ab4;
+  --hover:rgba(236,230,210,0.04);
+  --dot:rgba(236,230,210,0.14);
+  --glow-a:rgba(255,106,71,0.08);
+  --glow-b:rgba(122,167,210,0.06);
 }
 html{scroll-behavior:smooth;font-size:16px}
 body{
-  background:var(--bg);
-  color:var(--text);
-  font-family:var(--mono);
-  line-height:1.65;
-  overflow-x:hidden;
+  background:var(--paper);
+  color:var(--ink);
+  font-family:var(--serif);
+  line-height:1.55;
   -webkit-font-smoothing:antialiased;
+  overflow-x:hidden;
+  position:relative;
+  transition:background .35s ease,color .35s ease;
 }
 
-/* --- TEXTURE (disabled for neumorphic) --- */
-
-/* --- REDUCED MOTION --- */
-@media(prefers-reduced-motion:reduce){
-  *,*::before,*::after{
-    animation-duration:0.01ms !important;
-    animation-iteration-count:1 !important;
-    transition-duration:0.01ms !important;
-  }
-  .hero-reveal{display:none !important}
+/* Dot grid / paper texture */
+body::before{
+  content:"";
+  position:fixed;inset:0;
+  background-image:radial-gradient(circle,var(--dot) 0.6px,transparent 0.6px);
+  background-size:22px 22px;
+  opacity:0.7;
+  pointer-events:none;
+  z-index:0;
 }
+/* Ambient glow */
+body::after{
+  content:"";
+  position:fixed;inset:0;
+  background:radial-gradient(1200px 800px at 85% -10%,var(--glow-a),transparent 60%),
+             radial-gradient(900px 700px at -10% 110%,var(--glow-b),transparent 55%);
+  pointer-events:none;
+  z-index:0;
+}
+
+main,nav,footer{position:relative;z-index:1}
+
+/* --- COLOR STRIP (risograph-style) --- */
+.colorstrip{
+  display:flex;gap:0;height:6px;width:100%;
+  position:fixed;top:0;left:0;right:0;z-index:50;
+}
+.colorstrip span{flex:1}
+.colorstrip span:nth-child(1){background:var(--red)}
+.colorstrip span:nth-child(2){background:var(--lime)}
+.colorstrip span:nth-child(3){background:var(--blue)}
+.colorstrip span:nth-child(4){background:var(--plum)}
+.colorstrip span:nth-child(5){background:var(--ink)}
 
 /* --- NAV --- */
 nav{
-  position:fixed;top:0;left:0;right:0;z-index:100;
-  padding:1rem 2rem;
-  display:flex;justify-content:space-between;align-items:center;
-  background:var(--bg);
-  box-shadow:0 4px 8px var(--shadow-dark), 0 -2px 6px var(--shadow-light);
+  padding:2.2rem 2.5rem 0.5rem;
+  display:flex;justify-content:space-between;align-items:baseline;
+  max-width:1200px;margin:0 auto;
 }
-.nav-logo{font-size:0.85rem;font-weight:700;letter-spacing:-0.02em;color:var(--accent)}
-.nav-links{display:flex;gap:1.5rem}
+.mark{
+  font-family:var(--serif);
+  font-size:1.05rem;font-weight:500;letter-spacing:-0.015em;
+  color:var(--ink);text-decoration:none;
+  display:inline-flex;align-items:baseline;gap:0.4rem;
+}
+.mark .dot{
+  width:8px;height:8px;border-radius:50%;background:var(--red);
+  display:inline-block;transform:translateY(-2px);
+  animation:blink 2.4s ease-in-out infinite;
+}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
+.mark em{font-style:italic;color:var(--red);font-weight:400}
+.nav-links{display:flex;gap:1.75rem;align-items:baseline}
 .nav-links a{
-  color:var(--text-dim);text-decoration:none;font-size:0.75rem;text-transform:uppercase;letter-spacing:0.08em;
-  padding:0.3rem 0.7rem;border-radius:8px;transition:all .2s;
+  font-family:var(--mono);
+  font-size:0.72rem;color:var(--ink-dim);
+  text-transform:uppercase;letter-spacing:0.12em;
+  text-decoration:none;
+  position:relative;
+  padding:0.25rem 0;
+  transition:color .15s ease;
 }
-.nav-links a:hover{color:var(--accent);box-shadow:var(--neu-in)}
+.nav-links a:hover{color:var(--red)}
+.nav-links a::after{
+  content:"";position:absolute;left:0;right:0;bottom:-2px;
+  height:1px;background:currentColor;
+  transform:scaleX(0);transform-origin:left;
+  transition:transform .25s ease;
+}
+.nav-links a:hover::after{transform:scaleX(1)}
+
+.theme-toggle{
+  background:transparent;
+  border:1px solid var(--rule);
+  border-radius:999px;
+  padding:0.3rem 0.7rem 0.3rem 0.6rem;
+  font-family:var(--mono);
+  font-size:0.62rem;
+  color:var(--ink-dim);
+  text-transform:uppercase;letter-spacing:0.14em;
+  cursor:pointer;
+  display:inline-flex;align-items:center;gap:0.4rem;
+  transition:color .2s ease,border-color .2s ease,background .2s ease;
+  line-height:1;
+}
+.theme-toggle:hover{color:var(--red);border-color:var(--red)}
+.theme-toggle .icon{
+  font-size:0.9rem;line-height:1;
+  transform:translateY(-1px);
+  transition:transform .45s ease;
+}
+.theme-toggle:hover .icon{transform:translateY(-1px) rotate(20deg)}
+.theme-toggle .in-dark,.theme-toggle .in-light{display:none}
+[data-theme="light"] .theme-toggle .in-light{display:inline-flex;align-items:center;gap:0.4rem}
+[data-theme="dark"] .theme-toggle .in-dark{display:inline-flex;align-items:center;gap:0.4rem}
+
+/* --- LAYOUT --- */
+.shell{
+  max-width:1080px;margin:0 auto;
+  padding:3rem 2.5rem 6rem;
+}
 
 /* --- HERO --- */
 .hero{
-  min-height:100vh;
-  display:flex;flex-direction:column;justify-content:center;align-items:center;
-  text-align:center;
-  padding:8rem 2rem 4rem;
-  position:relative;
-  overflow:hidden;
+  display:grid;
+  grid-template-columns:minmax(0,1fr);
+  gap:0;
+  padding-top:4rem;padding-bottom:5rem;
+  border-bottom:1px solid var(--rule);
 }
-
-/* Cursor-reveal image layer — masked by SVG blob */
-.hero-reveal{
-  position:absolute;top:0;left:0;width:100%;height:100%;
-  pointer-events:none;z-index:1;
-  background:url('hero-bg.svg') calc(50% + 40px) center / cover no-repeat;
-  opacity:0.85;
-  -webkit-mask:url(#blob-mask);
-  mask:url(#blob-mask);
+.eyebrow{
+  font-family:var(--mono);
+  font-size:0.7rem;color:var(--ink-dim);
+  text-transform:uppercase;letter-spacing:0.18em;
+  display:flex;align-items:center;gap:1rem;
+  margin-bottom:2.5rem;
 }
-.hero-mask-svg{position:absolute;width:0;height:0;overflow:hidden}
-/* Warm amber glow that follows cursor */
-.hero-glow{
-  position:absolute;top:0;left:0;width:100%;height:100%;
-  pointer-events:none;z-index:0;
-  opacity:0;
-  transition:opacity 0.3s ease;
-  background:radial-gradient(circle 250px at 50% 50%,rgba(196,106,26,0.12),transparent 70%);
+.eyebrow .rule{flex:0 0 48px;height:1px;background:var(--ink-dim)}
+.eyebrow .tag{
+  background:var(--lime);color:var(--ink);
+  padding:0.15rem 0.5rem;border-radius:2px;
+  font-weight:500;letter-spacing:0.1em;
+  transform:rotate(-1.2deg);display:inline-block;
 }
-.hero-glow.active{opacity:1}
-
-.hero>*:not(.hero-reveal):not(.hero-glow){position:relative;z-index:2}
-
-.hero-badge{
-  display:inline-flex;align-items:center;gap:0.5rem;
-  padding:0.35rem 0.85rem;
-  border:none;border-radius:100px;
-  font-size:0.7rem;color:var(--text-dim);
-  margin-bottom:2rem;
-  text-transform:uppercase;letter-spacing:0.1em;
-  background:var(--bg);
-  box-shadow:var(--neu-out-sm);
-}
-.hero-badge .dot{width:6px;height:6px;border-radius:50%;background:var(--accent);animation:pulse 2s infinite}
-@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
 .hero h1{
   font-family:var(--serif);
-  font-size:clamp(2.8rem,7vw,5.5rem);
-  font-weight:400;
-  line-height:1.05;
-  letter-spacing:-0.03em;
-  max-width:800px;
-  margin-bottom:1.5rem;
-}
-.hero h1 em{font-style:italic;color:var(--accent)}
-.hero-sub{
-  font-size:0.95rem;color:var(--text-dim);
-  max-width:540px;line-height:1.7;
-  margin-bottom:3rem;
-}
-.hero-install{
-  background:var(--bg);
-  border:none;
-  border-radius:12px;
-  padding:0.75rem 1.5rem;
-  font-family:var(--mono);font-size:0.85rem;
-  color:var(--text);
-  display:flex;align-items:center;gap:1rem;
-  cursor:pointer;
-  position:relative;
-  box-shadow:var(--neu-out);
-  transition:box-shadow .25s ease;
-}
-.hero-install:hover{box-shadow:var(--neu-in)}
-.hero-install:active{box-shadow:var(--neu-in)}
-.hero-install .prompt{color:var(--accent)}
-.hero-install .copy-hint{
-  font-size:0.65rem;color:var(--text-dim);
-  text-transform:uppercase;letter-spacing:0.1em;
-  padding:0.25rem 0.6rem;
-  border:none;border-radius:8px;
-  background:var(--bg);
-  box-shadow:var(--neu-out-sm);
-  transition:all .15s ease;
-}
-.hero-install .copy-hint.copied{color:var(--accent);border-color:var(--accent-dim)}
-
-/* --- SECTION SHARED --- */
-section{padding:6rem 2rem}
-.container{max-width:960px;margin:0 auto}
-.section-label{
-  font-size:0.65rem;text-transform:uppercase;letter-spacing:0.15em;
-  color:var(--accent);margin-bottom:1.5rem;
-}
-.section-title{
-  font-family:var(--serif);font-size:clamp(1.8rem,4vw,2.8rem);
-  font-weight:400;letter-spacing:-0.02em;
-  margin-bottom:1rem;line-height:1.15;
-}
-
-/* --- TOOL GRID --- */
-.tools{background:var(--bg);position:relative}
-.tools-grid{
-  display:grid;grid-template-columns:1fr 1fr 1fr;gap:1.25rem;
-  margin-top:3rem;
-}
-
-/* SVG turbulence filter — shared, hidden */
-.glass-filters{position:absolute;width:0;height:0;overflow:hidden}
-
-.tool-card{
-  padding:1.75rem;
-  display:flex;flex-direction:column;gap:0.6rem;
-  cursor:default;
-  position:relative;
-  border-radius:16px;
-  overflow:hidden;
-
-  /* Neumorphic */
-  background:var(--bg);
-  border:none;
-  box-shadow:var(--neu-out);
-
-  transform:translateY(0);
-  transition:transform 0.3s ease, box-shadow 0.3s ease;
-}
-
-.tool-card:hover{
-  transform:translateY(-4px);
-  box-shadow:10px 10px 20px var(--shadow-dark), -10px -10px 20px var(--shadow-light);
-}
-
-.tool-card>*{position:relative;z-index:1}
-
-.tool-header{display:flex;align-items:center;gap:0.6rem;margin-bottom:0.2rem}
-.tool-name{
-  font-size:0.9rem;font-weight:700;color:var(--text);
-  font-family:var(--mono);letter-spacing:-0.01em;
-}
-.tool-badge{
-  font-size:0.55rem;font-weight:500;
-  padding:0.2rem 0.5rem;border-radius:6px;
-  text-transform:uppercase;letter-spacing:0.08em;
-  border:none;
-  box-shadow:inset 2px 2px 4px var(--shadow-dark), inset -2px -2px 4px var(--shadow-light);
-}
-.tool-badge.mcp{color:var(--accent);background:var(--bg)}
-.tool-badge.cli{color:var(--blue);background:var(--bg)}
-.tool-desc{font-size:0.78rem;color:var(--text-dim);line-height:1.6}
-.tool-cmd{
-  margin-top:auto;padding-top:0.75rem;
-  font-size:0.72rem;color:var(--text-dim);
-  background:var(--bg);border:none;border-radius:8px;
-  padding:0.45rem 0.7rem;
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
-  box-shadow:inset 3px 3px 6px var(--shadow-dark), inset -3px -3px 6px var(--shadow-light);
-}
-.tool-cmd .prompt{color:var(--accent-dim)}
-
-/* --- HOW IT WORKS --- */
-.how-it-works .steps{
-  margin-top:3rem;
-  display:flex;flex-direction:column;gap:0;
-}
-.step{
-  display:grid;grid-template-columns:60px 1fr;gap:1.5rem;
-  padding:1.75rem;
+  font-size:clamp(4rem,14vw,11rem);
+  font-weight:300;
+  line-height:0.92;
+  letter-spacing:-0.045em;
   margin-bottom:1.25rem;
-  border-radius:16px;
-  background:var(--bg);
-  box-shadow:var(--neu-out);
 }
-.step:first-child{border-top:none}
-.step-num{
-  font-family:var(--serif);font-size:1.8rem;font-style:italic;
-  color:var(--accent-dim);line-height:1;
-  width:50px;height:50px;
-  display:flex;align-items:center;justify-content:center;
-  border-radius:50%;
-  background:var(--bg);
-  box-shadow:var(--neu-out-sm);
+.hero h1 .when{color:var(--ink)}
+.hero h1 .labs{
+  font-style:italic;font-weight:400;
+  color:var(--red);
+  display:inline-block;
+  position:relative;
 }
-.step h3{font-size:0.9rem;font-weight:700;margin-bottom:0.4rem}
-.step p{font-size:0.8rem;color:var(--text-dim);line-height:1.6}
+.hero h1 .labs::after{
+  content:"·";color:var(--ink);font-style:normal;
+  margin-left:0.05em;
+}
+.tagline{
+  font-family:var(--serif);
+  font-size:clamp(1.15rem,2.1vw,1.5rem);
+  font-weight:300;
+  line-height:1.45;
+  color:var(--ink);
+  max-width:640px;
+  margin-top:1rem;
+}
+.tagline .rotator{
+  display:inline-block;
+  color:var(--red);
+  font-style:italic;
+  min-width:6ch;
+  text-align:left;
+}
+.tagline .rotator::after{
+  content:"|";
+  color:var(--red);
+  margin-left:2px;
+  animation:caret 1s steps(2,end) infinite;
+  opacity:0.6;
+  font-style:normal;
+}
+@keyframes caret{50%{opacity:0}}
 
-/* --- TERMINAL PREVIEW --- */
-.terminal-section{background:var(--bg)}
-.output-terminal{
-  margin-top:3rem;
-  background:#111114;
-  border:none;border-radius:16px;
-  overflow:hidden;
-  box-shadow:var(--neu-in-lg);
+/* Hero meta line */
+.hero-meta{
+  margin-top:3.25rem;
+  font-family:var(--mono);
+  font-size:0.72rem;color:var(--ink-dim);
+  text-transform:uppercase;letter-spacing:0.12em;
+  display:flex;flex-wrap:wrap;gap:1.5rem 2.25rem;
 }
-.output-titlebar{
-  display:flex;align-items:center;gap:0.5rem;
-  padding:0.75rem 1rem;
-  background:#1a1a1e;border-bottom:1px solid #2a2a30;
-}
-.output-dot{width:10px;height:10px;border-radius:50%}
-.output-dot.r{background:#ff5f57}
-.output-dot.y{background:#febc2e}
-.output-dot.g{background:#28c840}
-.output-titlebar-label{
-  margin-left:0.5rem;font-size:0.7rem;color:#777780;
-  letter-spacing:0.05em;
-}
-.output-body{
-  padding:1.5rem;
-  font-size:0.78rem;line-height:1.9;
-  overflow-x:auto;
-  background:#0a0a0c;
-  color:#e8e6e3;
-}
-.output-body .prompt-line{color:#777780}
-.output-body .prompt-char{color:#e8943a;font-weight:700}
-.output-body .result{color:#e8e6e3}
-.output-body .dim{color:#777780}
-.output-body .ok{color:#e8943a}
-.output-body .info{color:#5b9cf7}
-.output-body .warn{color:#f7a44a}
-.output-body .sub{color:#777780;padding-left:1.5rem}
+.hero-meta span b{color:var(--ink);font-weight:500}
 
-/* --- TERMINAL TABS --- */
-.terminal-tabs{
-  display:flex;gap:0;margin-top:3rem;margin-bottom:-1px;position:relative;z-index:2;
+/* --- ARTIFACTS --- */
+.artifacts{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:0;
+  margin-top:4rem;
+  border-top:1px solid var(--rule);
+  border-left:1px solid var(--rule);
 }
-.terminal-tab{
-  padding:0.5rem 1.25rem;
-  font-family:var(--mono);font-size:0.72rem;
-  color:var(--text-dim);background:var(--bg);
-  border:none;
-  border-radius:10px 10px 0 0;
-  cursor:pointer;transition:all .2s;
-  box-shadow:4px -4px 8px var(--shadow-dark), -4px -4px 8px var(--shadow-light);
-}
-.terminal-tab:hover{color:var(--text)}
-.terminal-tab.active{
-  background:#111114;color:#e8943a;
-  box-shadow:inset 3px 3px 6px rgba(0,0,0,0.5), inset -3px -3px 6px rgba(40,40,40,0.3);
-}
-.tab-panel{display:none}
-.tab-panel.active{display:block}
-
-/* --- PROACTIVE --- */
-.proactive{background:var(--bg)}
-.proactive-grid{
-  display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;
-}
-.proactive-card{
-  padding:1.25rem 1.5rem;
-  background:var(--bg);border:none;border-radius:14px;
-  box-shadow:var(--neu-out);
-  transition:box-shadow .25s ease, transform .25s ease;
-}
-.proactive-card:hover{box-shadow:var(--neu-in);transform:translateY(-2px)}
-.proactive-indicator{
-  font-family:var(--mono);font-size:0.85rem;font-weight:700;
-  margin-bottom:0.5rem;
-}
-.proactive-detail{font-size:0.78rem;color:var(--text-dim);line-height:1.6;margin-bottom:0.5rem}
-.proactive-interval{font-size:0.65rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.08em}
-
-/* --- SCROLL ANIMATIONS --- */
-.fade-in{opacity:0;transform:translateY(24px);transition:opacity 0.6s ease,transform 0.6s ease}
-.fade-in.visible{opacity:1;transform:translateY(0)}
-
-/* --- SETUP --- */
-.setup .setup-options{
-  margin-top:3rem;
+.artifact{
+  padding:2.5rem 2.25rem 2.25rem;
+  border-right:1px solid var(--rule);
+  border-bottom:1px solid var(--rule);
+  text-decoration:none;color:var(--ink);
   display:flex;flex-direction:column;gap:1rem;
+  min-height:340px;
+  position:relative;
+  background:transparent;
+  transition:background .25s ease;
 }
-.setup-option{
-  background:var(--bg);border:none;border-radius:14px;
-  padding:1.5rem;
-  box-shadow:var(--neu-out);
+.artifact:hover{background:var(--hover)}
+.artifact:hover .arrow{transform:translateX(6px)}
+.artifact:hover .index{color:var(--red)}
+.artifact:hover .title{color:var(--red)}
+.artifact .top{
+  display:flex;justify-content:space-between;align-items:flex-start;
+  margin-bottom:0.75rem;
 }
-.setup-option h3{font-size:0.8rem;font-weight:700;margin-bottom:0.75rem;display:flex;align-items:center;gap:0.5rem}
-.setup-option h3 .badge{
-  font-size:0.6rem;color:var(--accent);
-  border:none;border-radius:6px;
-  padding:0.15rem 0.5rem;font-weight:400;
-  background:var(--bg);
-  box-shadow:inset 2px 2px 4px var(--shadow-dark), inset -2px -2px 4px var(--shadow-light);
+.artifact .index{
+  font-family:var(--mono);
+  font-size:0.72rem;
+  color:var(--ink-dim);
+  letter-spacing:0.12em;
+  transition:color .2s ease;
 }
-.setup-option pre{
-  background:#0a0a0c;border:none;border-radius:10px;
-  padding:0.75rem 1rem;font-size:0.75rem;overflow-x:auto;
-  color:#999;line-height:1.7;
-  box-shadow:inset 4px 4px 8px rgba(0,0,0,0.5), inset -4px -4px 8px rgba(40,40,40,0.2);
+.artifact .kind{
+  font-family:var(--mono);
+  font-size:0.62rem;color:var(--ink);
+  text-transform:uppercase;letter-spacing:0.15em;
+  padding:0.2rem 0.55rem;
+  border:1px solid var(--ink);border-radius:1px;
+  background:var(--paper);
 }
-.setup-option pre .cmd{color:#e8943a}
-.setup-option pre .key{color:#5b9cf7}
-.setup-option pre .str{color:#e8e6e3}
+.artifact .kind.paper{border-color:var(--blue);color:var(--blue)}
+.artifact .kind.code{border-color:var(--red);color:var(--red)}
+.artifact .title{
+  font-family:var(--serif);
+  font-size:2rem;font-weight:400;
+  line-height:1.05;letter-spacing:-0.025em;
+  transition:color .2s ease;
+}
+.artifact .title em{font-style:italic}
+.artifact .desc{
+  font-family:var(--serif);
+  font-size:1rem;font-weight:300;
+  line-height:1.5;
+  color:var(--ink-dim);
+  max-width:32ch;
+}
+.artifact .foot{
+  margin-top:auto;padding-top:1.5rem;
+  display:flex;justify-content:space-between;align-items:flex-end;
+  font-family:var(--mono);font-size:0.7rem;
+  color:var(--ink-dim);text-transform:uppercase;letter-spacing:0.1em;
+}
+.artifact .cta{
+  color:var(--ink);font-weight:500;
+  display:inline-flex;align-items:center;gap:0.4rem;
+}
+.arrow{display:inline-block;transition:transform .25s ease}
+
+/* --- MANIFESTO --- */
+.manifesto{
+  margin-top:6rem;
+  display:grid;
+  grid-template-columns:120px 1fr;
+  gap:2rem;
+  padding:0 0.5rem;
+}
+.manifesto .label{
+  font-family:var(--mono);
+  font-size:0.7rem;color:var(--ink-dim);
+  text-transform:uppercase;letter-spacing:0.15em;
+}
+.manifesto .label .asterisk{
+  font-size:1.4rem;color:var(--red);
+  display:block;transform:rotate(14deg);margin-bottom:0.5rem;
+  line-height:1;
+}
+.manifesto .body{
+  font-family:var(--serif);
+  font-size:clamp(1.05rem,1.6vw,1.25rem);
+  font-weight:300;
+  line-height:1.65;
+  color:var(--ink);
+  max-width:62ch;
+}
+.manifesto .body p+p{margin-top:1.25rem}
+.manifesto .body em{color:var(--red);font-style:italic}
+.manifesto .body .ul{
+  text-decoration:underline;
+  text-decoration-color:var(--lime);
+  text-decoration-thickness:6px;
+  text-underline-offset:-2px;
+  text-decoration-skip-ink:none;
+}
 
 /* --- FOOTER --- */
 footer{
-  padding:2rem;
-  display:flex;justify-content:space-between;align-items:center;
-  font-size:0.7rem;color:var(--text-dim);
+  border-top:1px solid var(--rule);
+  margin-top:6rem;
+  padding:2rem 2.5rem;
+  max-width:1200px;margin-left:auto;margin-right:auto;
+  display:flex;justify-content:space-between;align-items:baseline;
   flex-wrap:wrap;gap:1rem;
-  box-shadow:0 -4px 8px var(--shadow-dark), 0 2px 6px var(--shadow-light);
+  font-family:var(--mono);
+  font-size:0.7rem;color:var(--ink-dim);
+  text-transform:uppercase;letter-spacing:0.12em;
 }
-footer a{color:var(--text-dim);text-decoration:none}
-footer a:hover{color:var(--accent)}
-.footer-links{display:flex;gap:1.5rem}
+footer a{color:var(--ink-dim);text-decoration:none;transition:color .15s ease}
+footer a:hover{color:var(--red)}
+footer .left{display:flex;gap:1.5rem;flex-wrap:wrap}
+footer .sig{color:var(--ink);font-weight:500}
 
 /* --- RESPONSIVE --- */
-@media(max-width:800px){
-  .tools-grid{grid-template-columns:1fr 1fr;gap:1rem}
+@media (max-width:760px){
+  nav{padding:2rem 1.25rem 0.5rem}
+  .nav-links{gap:1.1rem}
+  .shell{padding:2rem 1.25rem 4rem}
+  .hero{padding-top:2rem;padding-bottom:3rem}
+  .hero h1{font-size:clamp(3.5rem,18vw,7rem)}
+  .eyebrow{margin-bottom:1.75rem}
+  .artifacts{grid-template-columns:1fr;margin-top:2.5rem}
+  .artifact{min-height:auto;padding:2rem 1.5rem}
+  .manifesto{grid-template-columns:1fr;gap:1rem;margin-top:3.5rem}
+  .manifesto .label{display:flex;align-items:center;gap:0.75rem}
+  .manifesto .label .asterisk{display:inline-block;margin-bottom:0}
+  footer{padding:1.75rem 1.25rem;flex-direction:column;align-items:flex-start}
 }
-@media(max-width:560px){
-  .tools-grid{grid-template-columns:1fr;gap:0.85rem}
-  .proactive-grid{grid-template-columns:1fr}
-  .step{grid-template-columns:40px 1fr;gap:1rem}
-  nav{padding:0.75rem 1rem}
-  .nav-links{gap:1rem}
-  footer{flex-direction:column;align-items:flex-start}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:0.01ms!important;transition-duration:0.01ms!important}
 }
-
-/* --- ANIMATIONS --- */
-@keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
-.hero h1,.hero-sub,.hero-install,.hero-badge{animation:fadeUp 0.6s ease both}
-.hero-badge{animation-delay:0s}
-.hero h1{animation-delay:0.1s}
-.hero-sub{animation-delay:0.2s}
-.hero-install{animation-delay:0.3s}
-
-
 </style>
+<script>
+// Early theme init — runs before paint to avoid flash.
+(function(){
+  try{
+    var saved=localStorage.getItem('whenlabs-theme');
+    var sys=window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';
+    document.documentElement.setAttribute('data-theme',saved||sys);
+  }catch(e){document.documentElement.setAttribute('data-theme','light')}
+})();
+</script>
 </head>
 <body>
 
+<div class="colorstrip" aria-hidden="true">
+  <span></span><span></span><span></span><span></span><span></span>
+</div>
+
 <nav>
-  <div class="nav-logo">@whenlabs/when</div>
+  <a class="mark" href="/">
+    <span class="dot"></span>
+    <span>when<em>labs</em></span>
+  </a>
   <div class="nav-links">
-    <a href="#tools">Tools</a>
-    <a href="#how">How</a>
-    <a href="#terminal">Preview</a>
-    <a href="#proactive">Proactive</a>
-    <a href="#setup">Setup</a>
-    <a href="/blog/">Blog</a>
-    <a href="/research/">Research</a>
-    <a href="https://github.com/WhenLabs-org/when">GitHub</a>
+    <a href="research/">Research</a>
+    <a href="https://github.com/WhenLabs-org">GitHub</a>
+    <button class="theme-toggle" id="themeToggle" type="button" aria-label="Toggle color scheme">
+      <span class="in-light"><span class="icon">☾</span><span>Dark</span></span>
+      <span class="in-dark"><span class="icon">☀</span><span>Light</span></span>
+    </button>
   </div>
 </nav>
 
-<!-- HERO -->
-<section class="hero">
-  <!-- Cursor-revealed hero image -->
-  <div class="hero-reveal" aria-hidden="true"></div>
-  <!-- SVG mask with turbulence-distorted blob -->
-  <svg class="hero-mask-svg" aria-hidden="true" width="0" height="0">
-    <defs>
-      <filter id="blob-warp" x="-40%" y="-40%" width="180%" height="180%">
-        <feTurbulence id="blob-turb" type="fractalNoise" baseFrequency="0.015" numOctaves="4" seed="3" result="noise"/>
-        <feDisplacementMap in="SourceGraphic" in2="noise" scale="45" xChannelSelector="R" yChannelSelector="G"/>
-      </filter>
-      <mask id="blob-mask">
-        <rect width="100%" height="100%" fill="black"/>
-        <circle id="blob-circle" cx="-200" cy="-200" r="110" fill="white" filter="url(#blob-warp)"/>
-      </mask>
-    </defs>
-  </svg>
+<div class="shell">
 
-  <!-- Warm glow that follows cursor -->
-  <div class="hero-glow" aria-hidden="true"></div>
-
-  <div class="hero-badge"><span class="dot"></span> v0.10.0 &middot; Free &amp; open source &middot; MIT</div>
-  <h1>Six tools.<br><em>One install.</em></h1>
-  <p class="hero-sub">A unified developer toolkit for AI-assisted workflows. Task timing, doc drift detection, env validation, secret scanning, port conflict resolution, AI context generation, and license auditing — one MCP server, one install.</p>
-  <div class="hero-install" onclick="copyInstall(this)" role="button" tabindex="0" onkeydown="if(event.key==='Enter')copyInstall(this)">
-    <span><span class="prompt">$</span> npx @whenlabs/when install</span>
-    <span class="copy-hint">Click to copy</span>
-  </div>
-</section>
-
-<!-- TOOL GRID -->
-<section class="tools" id="tools">
-  <!-- SVG filter for liquid glass turbulence -->
-  <svg class="glass-filters" aria-hidden="true">
-    <defs>
-      <filter id="glass-turbulence" x="-10%" y="-10%" width="120%" height="120%">
-        <feTurbulence type="fractalNoise" baseFrequency="0.015" numOctaves="3" seed="2" result="noise"/>
-        <feDisplacementMap in="SourceGraphic" in2="noise" scale="6" xChannelSelector="R" yChannelSelector="G"/>
-      </filter>
-    </defs>
-  </svg>
-  <div class="container">
-    <div class="section-label">The toolkit</div>
-    <div class="section-title">Everything your agent needs</div>
-    <p style="color:var(--text-dim);font-size:0.85rem;max-width:560px;line-height:1.7">Six purpose-built tools for modern developer workflows. Each one does one thing well.</p>
-    <div class="tools-grid">
-
-      <div class="tool-card">
-        <div class="tool-header">
-          <div class="tool-name">velocity</div>
-          <span class="tool-badge mcp">MCP</span>
-          <span class="tool-badge cli" style="color:var(--purple)">EMBEDDED</span>
-        </div>
-        <div class="tool-desc">Task timing, estimation, and performance insights. Always-on via embedded SQLite &mdash; your agent learns its own speed, spots productivity patterns, and gives data-backed ETAs.</div>
-        <div class="tool-cmd"><span class="prompt">$</span> velocity_start_task &middot; velocity_estimate</div>
-      </div>
-
-      <div class="tool-card">
-        <div class="tool-header">
-          <div class="tool-name">stale</div>
-          <span class="tool-badge mcp">MCP</span>
-          <span class="tool-badge cli">CLI</span>
-        </div>
-        <div class="tool-desc">Detect and auto-fix documentation drift. Catches wrong file paths, dead links, phantom env vars, and outdated scripts. One-shot <em>stale_auto_fix</em> scans and applies fixes in a single call.</div>
-        <div class="tool-cmd"><span class="prompt">$</span> when stale scan</div>
-      </div>
-
-      <div class="tool-card">
-        <div class="tool-header">
-          <div class="tool-name">envalid</div>
-          <span class="tool-badge mcp">MCP</span>
-          <span class="tool-badge cli">CLI</span>
-        </div>
-        <div class="tool-desc">Validate .env files against typed schemas &mdash; or generate schemas from code analysis. Cross-env sync checks, secret leak scanning, and auto-detection of undocumented env vars.</div>
-        <div class="tool-cmd"><span class="prompt">$</span> when envalid validate</div>
-      </div>
-
-      <div class="tool-card">
-        <div class="tool-header">
-          <div class="tool-name">berth</div>
-          <span class="tool-badge mcp">MCP</span>
-          <span class="tool-badge cli">CLI</span>
-        </div>
-        <div class="tool-desc">Detect, predict, and auto-resolve port conflicts. Scans .env, docker-compose, and package.json to find collisions. One-shot <em>berth_auto_resolve</em> detects and fixes in a single call.</div>
-        <div class="tool-cmd"><span class="prompt">$</span> when berth status</div>
-      </div>
-
-      <div class="tool-card">
-        <div class="tool-header">
-          <div class="tool-name">aware</div>
-          <span class="tool-badge mcp">MCP</span>
-          <span class="tool-badge cli">CLI</span>
-        </div>
-        <div class="tool-desc">Auto-detect your stack and generate AI context files for Claude Code, Cursor, GitHub Copilot, and AGENTS.md. Watches config files and auto-syncs on changes.</div>
-        <div class="tool-cmd"><span class="prompt">$</span> when aware init --targets all</div>
-      </div>
-
-      <div class="tool-card">
-        <div class="tool-header">
-          <div class="tool-name">vow</div>
-          <span class="tool-badge mcp">MCP</span>
-          <span class="tool-badge cli">CLI</span>
-        </div>
-        <div class="tool-desc">Scan dependency licenses and validate against policies. Generate attribution files, find compliant replacements, and install pre-commit hooks to block violations.</div>
-        <div class="tool-cmd"><span class="prompt">$</span> when vow scan</div>
-      </div>
-
+  <!-- HERO -->
+  <section class="hero">
+    <div class="eyebrow">
+      <span class="rule"></span>
+      <span>Est. 2026</span>
+      <span class="tag">Independent studio</span>
+      <span>Arlington, Texas</span>
     </div>
-  </div>
-</section>
 
-<!-- HOW IT WORKS -->
-<section class="how-it-works" id="how">
-  <div class="container">
-    <div class="section-label">How it works</div>
-    <div class="section-title">Install once. Use everywhere.</div>
-    <p style="color:var(--text-dim);font-size:0.85rem;max-width:550px;line-height:1.7;margin-bottom:0">
-      One package registers a single MCP server with 40+ tools. Works with Claude Code, Cursor, VS Code, and Windsurf. Also installs a standalone CLI.
+    <h1>
+      <span class="when">When</span><span class="labs">labs</span>
+    </h1>
+
+    <p class="tagline">
+      A one-person studio for small tools, open-source software, and
+      papers about <span class="rotator" data-words="language models.|self-knowledge.|attention.|curiosity.|what machines say.|the slow web.">language&nbsp;models.</span>
     </p>
-    <div class="steps">
-      <div class="step">
-        <div class="step-num">1</div>
-        <div>
-          <h3>Install</h3>
-          <p>One command registers a single MCP server (<em>whenlabs</em>) and writes CLAUDE.md instructions. All six tools — including velocity — are available immediately as <code style="color:var(--accent);background:var(--surface-2);border:none;border-radius:6px;padding:0.15rem 0.4rem;font-size:0.8rem;box-shadow:inset 2px 2px 4px var(--shadow-dark), inset -2px -2px 4px var(--shadow-light)">when &lt;tool&gt;</code> subcommands and as MCP tools your agent calls automatically.</p>
-        </div>
-      </div>
-      <div class="step">
-        <div class="step-num">2</div>
-        <div>
-          <h3>Use</h3>
-          <p>Your agent calls the right tool at the right time. After a refactor, it runs <em>stale scan</em> to catch doc drift. Before a release, <em>vow check</em> validates licenses. Before starting dev, <em>berth check</em> finds port conflicts. Run <code style="color:var(--accent);background:var(--surface-2);border:none;border-radius:6px;padding:0.15rem 0.4rem;font-size:0.8rem;box-shadow:inset 2px 2px 4px var(--shadow-dark), inset -2px -2px 4px var(--shadow-light)">when doctor</code> for a unified health report.</p>
-        </div>
-      </div>
-      <div class="step">
-        <div class="step-num">3</div>
-        <div>
-          <h3>Improve</h3>
-          <p>Background scans run on a schedule and surface issues in your status line. Every timed task builds your velocity profile so your agent can estimate future plans. The whole toolkit compounds over sessions — zero maintenance.</p>
-        </div>
-      </div>
+
+    <div class="hero-meta">
+      <span><b>01</b> · Research</span>
+      <span><b>02</b> · Code</span>
+      <span>by Siddharth&nbsp;Nigam</span>
     </div>
-  </div>
-</section>
+  </section>
 
-<!-- TERMINAL PREVIEW -->
-<section class="terminal-section" id="terminal">
-  <div class="container">
-    <div class="section-label">Terminal preview</div>
-    <div class="section-title">See it in action</div>
+  <!-- ARTIFACTS -->
+  <section class="artifacts">
 
-    <!-- Tab switcher -->
-    <div class="terminal-tabs">
-      <button class="terminal-tab active" data-tab="tab-install">install</button>
-      <button class="terminal-tab" data-tab="tab-doctor">doctor</button>
-      <button class="terminal-tab" data-tab="tab-init">init</button>
+    <a class="artifact" href="research/">
+      <div class="top">
+        <span class="index">01 / Research</span>
+        <span class="kind paper">Preprint</span>
+      </div>
+      <div class="title">The Introspective <em>Gap</em>.</div>
+      <div class="desc">
+        When AI answer engines misdescribe their own source
+        selection — a simulation-calibrated framework for AEO,
+        GEO, and the study of LLM self-knowledge.
+      </div>
+      <div class="foot">
+        <span class="cta">Read paper <span class="arrow">→</span></span>
+        <span>April 2026</span>
+      </div>
+    </a>
+
+    <a class="artifact" href="https://github.com/WhenLabs-org">
+      <div class="top">
+        <span class="index">02 / Code</span>
+        <span class="kind code">Open source</span>
+      </div>
+      <div class="title">The <em>workshop</em>.</div>
+      <div class="desc">
+        Small, opinionated developer tools and experiments.
+        Everything lives under the WhenLabs GitHub org — MIT,
+        take what's useful.
+      </div>
+      <div class="foot">
+        <span class="cta">Browse GitHub <span class="arrow">→</span></span>
+        <span>github.com/WhenLabs-org</span>
+      </div>
+    </a>
+
+  </section>
+
+  <!-- MANIFESTO -->
+  <section class="manifesto">
+    <div class="label">
+      <span class="asterisk">*</span>
+      Note
     </div>
-
-    <div class="output-terminal">
-      <div class="output-titlebar">
-        <div class="output-dot r"></div>
-        <div class="output-dot y"></div>
-        <div class="output-dot g"></div>
-        <span class="output-titlebar-label">zsh</span>
-      </div>
-
-      <!-- Tab: install -->
-      <div class="output-body tab-panel active" id="tab-install">
-<span class="prompt-line"><span class="prompt-char">$</span> npx @whenlabs/when install</span>
-<br>
-<span class="result"><span class="ok">when</span>  WhenLabs toolkit installer</span>
-<span class="result"></span>
-<span class="result">  <span class="ok">&#10003;</span> MCP server registered: whenlabs (all 6 tools)</span>
-<span class="result">  <span class="ok">&#10003;</span> CLAUDE.md instructions written</span>
-<span class="result"></span>
-<span class="result"><span class="dim">Installation complete. Run</span> when status <span class="dim">to verify.</span></span>
-      </div>
-
-      <!-- Tab: doctor -->
-      <div class="output-body tab-panel" id="tab-doctor">
-<span class="prompt-line"><span class="prompt-char">$</span> when doctor</span>
-<br>
-<span class="result" style="font-weight:700">  WhenLabs Health Report</span>
-<span class="result"><span class="dim">  ─────────────────────────────────────────</span></span>
-<span class="result">  <span class="ok">&#10003;</span>  stale scan           <span class="ok">No documentation drift detected</span></span>
-<span class="result">  <span class="ok">&#10003;</span>  envalid validate     <span class="ok">.env is valid</span></span>
-<span class="result">  <span style="color:#ef4444">&#10007;</span>  berth check          <span style="color:#ef4444">2 port conflict(s)</span></span>
-<span class="result">  <span class="ok">&#10003;</span>  vow scan             <span class="ok">147 packages, all permissive</span></span>
-<span class="result">  <span class="dim">-</span>  aware doctor         <span class="dim">No .aware.json found — run aware init</span></span>
-<span class="result"><span class="dim">  ─────────────────────────────────────────</span></span>
-<span class="result" style="color:#ef4444;font-weight:700">  2 issue(s), 0 warning(s) found</span>
-      </div>
-
-      <!-- Tab: init -->
-      <div class="output-body tab-panel" id="tab-init">
-<span class="prompt-line"><span class="prompt-char">$</span> when init</span>
-<br>
-<span class="result"><span class="ok">when</span>  Project onboarding</span>
-<span class="result"></span>
-<span class="result">  <span class="info">Project:</span>  my-saas-app</span>
-<span class="result">  <span class="info">Stack:</span>    Node.js + TypeScript + React</span>
-<span class="result">  <span class="info">Package:</span>  npm (347 deps)</span>
-<span class="result"></span>
-<span class="result"><span class="dim">  Bootstrap</span></span>
-<span class="result">  <span class="ok">+</span> Created .env.schema</span>
-<span class="result">  <span class="ok">+</span> Created .vow.json <span class="dim">(opensource)</span></span>
-<span class="result">  <span class="ok">+</span> Created .stale.yml</span>
-<span class="result">  <span class="ok">+</span> Generated .whenlabs.yml</span>
-<span class="result"></span>
-<span class="result"><span class="dim">  Scan</span></span>
-<span class="result">  <span class="ok">&#10003;</span> stale     <span class="dim">No doc drift</span></span>
-<span class="result">  <span class="warn">!</span> envalid   <span class="warn">2 undocumented env vars</span></span>
-<span class="result">  <span class="ok">&#10003;</span> berth     <span class="dim">No port conflicts</span></span>
-<span class="result">  <span class="ok">&#10003;</span> vow       <span class="dim">All licenses permissive</span></span>
-<span class="result">  <span class="ok">&#10003;</span> aware     <span class="dim">Generated CLAUDE.md, .cursorrules</span></span>
-<span class="result"></span>
-<span class="result"><span class="dim">Run</span> when install <span class="dim">to connect MCP tools to your editor.</span></span>
-      </div>
+    <div class="body">
+      <p>
+        WhenLabs is the studio name for everything I make. It's not a
+        company and it isn't raising — it's a room where small, precise
+        things get built and written about. Sometimes that's a CLI. Sometimes
+        it's a paper. Occasionally it's a <span class="ul">strange half-thing</span>
+        that doesn't have a category yet.
+      </p>
+      <p>
+        The bet is that the most useful work right now sits at the seam
+        between software and research on how machines talk — so the studio
+        keeps both on the same shelf. If any of it is useful to you, good.
+        If you want to write, <em>siddharth@whenlabs.org</em>.
+      </p>
     </div>
-  </div>
-</section>
+  </section>
 
-<!-- PROACTIVE SCANS -->
-<section class="proactive" id="proactive">
-  <div class="container">
-    <div class="section-label">Always watching</div>
-    <div class="section-title">Background scans, zero noise</div>
-    <p style="color:var(--text-dim);font-size:0.85rem;max-width:560px;line-height:1.7;margin-bottom:2.5rem">
-      Once installed, tools run silently in the background and report findings in your editor's status line. Only problems surface — if everything is clean, you see nothing.
-    </p>
-    <div class="proactive-grid">
-      <div class="proactive-card">
-        <div class="proactive-indicator"><span style="color:var(--red)">stale:3</span></div>
-        <div class="proactive-detail">3 docs have drifted from code. Claude offers to fix them.</div>
-        <div class="proactive-interval">Every 30 min</div>
-      </div>
-      <div class="proactive-card">
-        <div class="proactive-indicator"><span style="color:var(--red)">env:1</span></div>
-        <div class="proactive-detail">Missing API_KEY in .env. Claude flags it before you hit a runtime crash.</div>
-        <div class="proactive-interval">Every 30 min</div>
-      </div>
-      <div class="proactive-card">
-        <div class="proactive-indicator"><span style="color:var(--red)">ports:2</span></div>
-        <div class="proactive-detail">Two port conflicts found. Claude suggests which process to kill.</div>
-        <div class="proactive-interval">Every 15 min</div>
-      </div>
-      <div class="proactive-card">
-        <div class="proactive-indicator"><span style="color:#eab308">lic:4?</span></div>
-        <div class="proactive-detail">4 packages with unknown licenses. Claude runs a deep scan.</div>
-        <div class="proactive-interval">Every 60 min</div>
-      </div>
-      <div class="proactive-card">
-        <div class="proactive-indicator"><span style="color:#eab308">aware:stale</span></div>
-        <div class="proactive-detail">AI context files are outdated. Claude regenerates them from current stack.</div>
-        <div class="proactive-interval">Every 60 min</div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- SETUP -->
-<section class="setup" id="setup">
-  <div class="container">
-    <div class="section-label">Setup</div>
-    <div class="section-title">60 seconds to ready</div>
-    <div class="setup-options">
-
-      <div class="setup-option">
-        <h3>Claude Code <span class="badge">recommended</span></h3>
-        <pre><span class="cmd">npx @whenlabs/when install</span>
-
-<span class="dim"># Registers one MCP server with all 6 tools and updates your CLAUDE.md.</span></pre>
-      </div>
-
-      <div class="setup-option">
-        <h3>Cursor</h3>
-        <pre><span class="cmd">npx @whenlabs/when install --cursor</span>
-
-<span class="dim"># Writes MCP config to ~/.cursor/mcp.json</span></pre>
-      </div>
-
-      <div class="setup-option">
-        <h3>VS Code / Windsurf</h3>
-        <pre><span class="cmd">npx @whenlabs/when install --vscode</span>
-<span class="cmd">npx @whenlabs/when install --windsurf</span>
-<span class="cmd">npx @whenlabs/when install --all</span>      <span class="dim"># All editors at once</span></pre>
-      </div>
-
-      <div class="setup-option">
-        <h3>CLI only (no MCP)</h3>
-        <pre><span class="cmd">npm install -g @whenlabs/when</span>
-
-<span class="dim"># All six tools available globally as: when stale / when berth / when vow / ...</span></pre>
-      </div>
-
-      <div class="setup-option">
-        <h3>CI/CD <span class="badge">GitHub Actions</span></h3>
-        <pre><span class="dim"># .github/workflows/ci.yml</span>
-<span class="key">- name:</span> <span class="str">WhenLabs checks</span>
-  <span class="key">uses:</span> <span class="str">WhenLabs-org/when@main</span>
-
-<span class="dim"># Or run directly: exits 1 on issues</span>
-<span class="cmd">npx @whenlabs/when ci</span></pre>
-      </div>
-
-    </div>
-  </div>
-</section>
+</div>
 
 <footer>
-  <span>Built by <a href="https://github.com/Caissaisdead">Siddharth</a> &middot; MIT License</span>
-  <div class="footer-links">
-    <a href="mailto:siddharth@whenlabs.org">Contact</a>
-    <a href="https://patreon.com/WhenSid">Patreon</a>
-    <a href="https://github.com/WhenLabs-org/when">GitHub</a>
+  <div class="left">
+    <span class="sig">WhenLabs · MMXXVI</span>
+    <a href="https://github.com/Caissaisdead">Siddharth Nigam</a>
+    <a href="mailto:siddharth@whenlabs.org">siddharth@whenlabs.org</a>
   </div>
+  <div>whenlabs.org</div>
 </footer>
 
 <script>
-// Copy install command
-function copyInstall(el){
-  navigator.clipboard.writeText('npx @whenlabs/when install');
-  var hint=el.querySelector('.copy-hint');
-  hint.textContent='Copied!';
-  hint.classList.add('copied');
-  setTimeout(function(){hint.textContent='Click to copy';hint.classList.remove('copied')},2000);
-}
-
-// Terminal tab switching
-document.querySelectorAll('.terminal-tab').forEach(function(tab){
-  tab.addEventListener('click',function(){
-    document.querySelectorAll('.terminal-tab').forEach(function(t){t.classList.remove('active')});
-    document.querySelectorAll('.tab-panel').forEach(function(p){p.classList.remove('active')});
-    tab.classList.add('active');
-    document.getElementById(tab.dataset.tab).classList.add('active');
-  });
-});
-
-// Scroll-triggered fade-in
+// Theme toggle
 (function(){
-  var els=document.querySelectorAll('.tool-card,.step,.setup-option,.proactive-card');
-  els.forEach(function(el){el.classList.add('fade-in')});
-  var observer=new IntersectionObserver(function(entries){
-    entries.forEach(function(e){
-      if(e.isIntersecting){e.target.classList.add('visible');observer.unobserve(e.target)}
+  var btn=document.getElementById('themeToggle');
+  if(!btn)return;
+  btn.addEventListener('click',function(){
+    var cur=document.documentElement.getAttribute('data-theme')||'light';
+    var next=cur==='light'?'dark':'light';
+    document.documentElement.setAttribute('data-theme',next);
+    try{localStorage.setItem('whenlabs-theme',next)}catch(e){}
+  });
+  // Follow system changes if user hasn't set a preference
+  var mq=window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)');
+  if(mq&&mq.addEventListener){
+    mq.addEventListener('change',function(e){
+      try{if(localStorage.getItem('whenlabs-theme'))return}catch(_){}
+      document.documentElement.setAttribute('data-theme',e.matches?'dark':'light');
     });
-  },{threshold:0.15,rootMargin:'0px 0px -40px 0px'});
-  els.forEach(function(el){observer.observe(el)});
+  }
 })();
 
-// Flowing blob cursor reveal + scroll fade
+// Word rotator — academic-funky tagline
 (function(){
-  var hero=document.querySelector('.hero');
-  var reveal=document.querySelector('.hero-reveal');
-  var glow=document.querySelector('.hero-glow');
-  var circle=document.getElementById('blob-circle');
-  var turb=document.getElementById('blob-turb');
-  if(!reveal||!hero||!circle||!turb)return;
-
-  var heroH=window.innerHeight;
-  var scrollTicking=false;
-  var mouseIn=false;
-  var mx=-200,my=-200; // current blob position
-  var tx=-200,ty=-200; // target (actual mouse)
-  var time=0;
-  var animating=false;
-
-  // Smooth lerp + sine-wave frequency morph for organic flow
-  function animate(){
-    if(!mouseIn&&Math.abs(mx-tx)<1&&Math.abs(my-ty)<1){animating=false;return;}
-
-    // Ease toward target (lerp)
-    mx+=(tx-mx)*0.12;
-    my+=(ty-my)*0.12;
-
-    // Move the SVG mask circle
-    circle.setAttribute('cx',mx);
-    circle.setAttribute('cy',my);
-
-    // Smoothly oscillate baseFrequency for organic morphing — no frame jumps
-    time+=0.008;
-    var freq=0.015+Math.sin(time)*0.004+Math.sin(time*1.7)*0.002;
-    turb.setAttribute('baseFrequency',freq.toFixed(5));
-
-    requestAnimationFrame(animate);
+  var el=document.querySelector('.rotator');
+  if(!el)return;
+  var words=(el.dataset.words||'').split('|').filter(Boolean);
+  if(words.length<2)return;
+  var i=0,typing=false;
+  function type(word,cb){
+    var n=0;el.textContent='';
+    var iv=setInterval(function(){
+      el.textContent=word.slice(0,++n);
+      if(n>=word.length){clearInterval(iv);cb&&cb();}
+    },42);
   }
-
-  function startAnim(){
-    if(!animating){animating=true;animate();}
+  function erase(cb){
+    var txt=el.textContent;var n=txt.length;
+    var iv=setInterval(function(){
+      el.textContent=txt.slice(0,--n);
+      if(n<=0){clearInterval(iv);cb&&cb();}
+    },28);
   }
-
-  hero.addEventListener('mouseenter',function(){
-    mouseIn=true;
-    glow.classList.add('active');
-    startAnim();
-  });
-
-  hero.addEventListener('mouseleave',function(){
-    mouseIn=false;
-    glow.classList.remove('active');
-    tx=-200;ty=-200;
-    startAnim();
-  });
-
-  hero.addEventListener('mousemove',function(e){
-    var rect=hero.getBoundingClientRect();
-    tx=e.clientX-rect.left;
-    ty=e.clientY-rect.top;
-    glow.style.background='radial-gradient(circle 230px at '+tx+'px '+ty+'px,rgba(196,106,26,0.08),transparent 70%)';
-    startAnim();
-  },{passive:true});
-
-  // Scroll fade
-  function onScroll(){
-    if(!scrollTicking){
-      requestAnimationFrame(function(){
-        var progress=Math.min(window.scrollY/heroH,1);
-        reveal.style.opacity=0.85*(1-progress);
-        scrollTicking=false;
-      });
-      scrollTicking=true;
-    }
+  function loop(){
+    i=(i+1)%words.length;
+    erase(function(){type(words[i],function(){setTimeout(loop,2600);});});
   }
-  window.addEventListener('scroll',onScroll,{passive:true});
-  onScroll();
-
-  // Touch support
-  hero.addEventListener('touchstart',function(){
-    mouseIn=true;
-    glow.classList.add('active');
-    startAnim();
-  },{passive:true});
-
-  hero.addEventListener('touchmove',function(e){
-    var t=e.touches[0],rect=hero.getBoundingClientRect();
-    tx=t.clientX-rect.left;
-    ty=t.clientY-rect.top;
-    glow.style.background='radial-gradient(circle 230px at '+tx+'px '+ty+'px,rgba(196,106,26,0.08),transparent 70%)';
-  },{passive:true});
-
-  hero.addEventListener('touchend',function(){
-    mouseIn=false;
-    glow.classList.remove('active');
-    tx=-200;ty=-200;
-    startAnim();
-  });
+  setTimeout(loop,2400);
 })();
 </script>
 

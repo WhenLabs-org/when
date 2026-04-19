@@ -9,11 +9,52 @@ import type {
   DockerPort,
   Conflict,
   Resolution,
+  ProcessAncestry,
 } from '../types.js';
 import { WELL_KNOWN_PORTS } from '../utils/ports.js';
 
+export function formatAncestry(anc: ProcessAncestry): string {
+  const parts: string[] = [];
+  if (anc.terminal) {
+    const label = anc.terminal.kind;
+    if (anc.terminal.pane) {
+      parts.push(`${label} pane ${anc.terminal.pane}`);
+    } else if (anc.terminal.windowTitle) {
+      parts.push(`${label} "${anc.terminal.windowTitle}"`);
+    } else {
+      parts.push(label);
+    }
+  } else if (anc.parents.length > 0) {
+    parts.push(`parent ${anc.parents[0].command} (PID ${anc.parents[0].pid})`);
+  }
+  if (anc.startedAt) {
+    const d = new Date(anc.startedAt);
+    if (!Number.isNaN(d.getTime())) {
+      parts.push(`started ${d.toLocaleTimeString()}`);
+    }
+  }
+  if (parts.length === 0) return '';
+  return chalk.dim(`    → ${parts.join(' · ')}`);
+}
+
 export function renderStatus(output: StatusOutput): string {
   const lines: string[] = [];
+
+  if (output.environment && output.environment.kind !== 'host') {
+    const env = output.environment;
+    const detail = env.detail ? ` (${env.detail})` : '';
+    const advisory =
+      env.kind === 'wsl2'
+        ? ' · Windows host ports not shown; pass --windows-host to peek.'
+        : env.kind === 'docker-container'
+          ? " · inside a container; host ports aren't visible."
+          : env.kind === 'ssh'
+            ? " · ports are the remote's view."
+            : env.kind === 'devcontainer'
+              ? ' · inside a devcontainer.'
+              : '';
+    lines.push(chalk.dim(`Environment: ${env.kind}${detail}${advisory}`));
+  }
 
   // Active Ports
   if (output.active.length > 0) {
@@ -26,6 +67,7 @@ export function renderStatus(output: StatusOutput): string {
       style: { head: [], border: [] },
       chars: tableChars(),
     });
+    const ancestryLines: Array<{ afterPort: number; line: string }> = [];
     for (const p of output.active.sort((a, b) => a.port - b.port)) {
       const dp = dockerPortMap.get(p.port);
       const typeLabel = dp
@@ -39,8 +81,13 @@ export function renderStatus(output: StatusOutput): string {
         p.project || portLabel(p.port),
         chalk.dim(p.address),
       ]);
+      if (p.ancestry) {
+        const rendered = formatAncestry(p.ancestry);
+        if (rendered) ancestryLines.push({ afterPort: p.port, line: rendered });
+      }
     }
     lines.push(table.toString());
+    for (const entry of ancestryLines) lines.push(entry.line);
   }
 
   // Docker Ports

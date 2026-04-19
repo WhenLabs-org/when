@@ -4,6 +4,7 @@ import { detectAllActive } from '../detectors/index.js';
 import { gracefulKill, isDevProcess } from '../utils/process.js';
 import type { KillOutput, Registry } from '../types.js';
 import { getProjectByName } from '../registry/project.js';
+import { invalidateCache } from '../utils/cache.js';
 
 export async function killPortProcess(port: number): Promise<KillOutput> {
   const { ports: activePorts } = await detectAllActive();
@@ -19,6 +20,10 @@ export async function killPortProcess(port: number): Promise<KillOutput> {
     } else {
       failed.push({ pid: proc.pid, port: proc.port, error: 'Failed to kill process (permission denied or already dead)' });
     }
+  }
+
+  if (killed.length > 0) {
+    await invalidateCache('active-ports').catch(() => {});
   }
 
   return { killed, failed, freedPorts: killed.map((k) => k.port) };

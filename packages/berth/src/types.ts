@@ -9,7 +9,31 @@ export type PortSourceType =
   | 'docker-compose'
   | 'procfile'
   | 'makefile'
-  | 'framework-default';
+  | 'framework-default'
+  | 'berthrc';
+
+export type TerminalHostKind =
+  | 'tmux'
+  | 'screen'
+  | 'vscode'
+  | 'iterm'
+  | 'kitty'
+  | 'apple-terminal'
+  | 'windows-terminal'
+  | 'unknown';
+
+export interface TerminalHost {
+  kind: TerminalHostKind;
+  pane?: string;
+  windowTitle?: string;
+}
+
+export interface ProcessAncestry {
+  pid: number;
+  startedAt?: string;
+  parents: Array<{ pid: number; command: string; args?: string }>;
+  terminal?: TerminalHost;
+}
 
 export interface ActivePort {
   port: number;
@@ -21,6 +45,7 @@ export interface ActivePort {
   address: string;
   source: 'lsof' | 'netstat' | 'ss';
   project?: string;
+  ancestry?: ProcessAncestry;
 }
 
 export interface DockerPort {
@@ -86,9 +111,99 @@ export interface RegisteredProject {
   updatedAt: string;
 }
 
+export interface Reservation {
+  port: number;
+  project: string;
+  reason?: string;
+  createdAt: string;
+  expiresAt?: string;
+  source: 'manual' | 'berthrc' | 'team';
+}
+
 export interface Registry {
+  version: 2;
+  projects: Record<string, RegisteredProject>;
+  reservations: Reservation[];
+  meta?: { lastMigratedFrom?: number };
+}
+
+export interface RegistryV1 {
   version: 1;
   projects: Record<string, RegisteredProject>;
+}
+
+export interface BerthConfigPortEntry {
+  port: number;
+  required?: boolean;
+  description?: string;
+}
+
+export interface BerthConfig {
+  projectName?: string;
+  ports?: Record<string, number | BerthConfigPortEntry>;
+  aliases?: Record<string, string>;
+  reservedRanges?: Array<{ from: number; to: number; reason?: string }>;
+  frameworks?: {
+    disable?: string[];
+    override?: Record<string, number>;
+  };
+  plugins?: string[];
+  extends?: string;
+  apiVersion?: 1;
+}
+
+export interface LoadedConfig {
+  config: BerthConfig;
+  filePath: string;
+  format: 'js' | 'mjs' | 'cjs' | 'json' | 'rc' | 'package-json';
+}
+
+export interface TeamAssignment {
+  port: number;
+  project: string;
+  role?: string;
+  owner?: string;
+}
+
+export interface TeamReservedRange {
+  from: number;
+  to: number;
+  purpose: string;
+}
+
+export interface TeamForbidden {
+  port: number;
+  reason: string;
+}
+
+export interface TeamPolicy {
+  killBlockingProcesses?: 'never' | 'devOnly' | 'always';
+  onConflict?: 'warn' | 'error';
+}
+
+export interface TeamConfig {
+  version: 1;
+  assignments: TeamAssignment[];
+  reservedRanges?: TeamReservedRange[];
+  forbidden?: TeamForbidden[];
+  policies?: TeamPolicy;
+}
+
+export interface LoadedTeamConfig {
+  config: TeamConfig;
+  filePath: string;
+}
+
+export type EnvironmentKind =
+  | 'host'
+  | 'wsl2'
+  | 'devcontainer'
+  | 'docker-container'
+  | 'ssh';
+
+export interface EnvironmentInfo {
+  kind: EnvironmentKind;
+  detail?: string;
 }
 
 export interface StatusOutput {
@@ -96,6 +211,7 @@ export interface StatusOutput {
   docker: DockerPort[];
   configured: ConfiguredPort[];
   conflicts: Conflict[];
+  environment?: EnvironmentInfo;
   summary: {
     activePorts: number;
     dockerPorts: number;

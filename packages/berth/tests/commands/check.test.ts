@@ -3,6 +3,11 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 vi.mock('../../src/detectors/index.js', () => ({
   detectAllActive: vi.fn(),
   detectAllConfigured: vi.fn(),
+  createDefaultRegistry: vi.fn(() => ({})),
+}));
+vi.mock('../../src/config/loader.js', () => ({ loadConfig: vi.fn(async () => null) }));
+vi.mock('../../src/registry/store.js', () => ({
+  loadRegistry: vi.fn(async () => ({ version: 2, projects: {}, reservations: [] })),
 }));
 
 import { checkCommand } from '../../src/commands/check.js';

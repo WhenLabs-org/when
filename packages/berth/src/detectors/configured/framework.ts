@@ -1,14 +1,15 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import type { ConfiguredPort } from '../../types.js';
+import type { BerthConfig, ConfiguredPort } from '../../types.js';
 import { FRAMEWORK_DEFAULTS } from '../../utils/ports.js';
 
 export async function detectFrameworkDefaults(
   dir: string,
   alreadyFoundPorts: Set<number>,
+  config?: BerthConfig,
 ): Promise<ConfiguredPort[]> {
   const ports: ConfiguredPort[] = [];
-  const projectName = path.basename(dir);
+  const projectName = config?.projectName ?? path.basename(dir);
 
   // Read package.json for dependency detection
   let pkg: Record<string, unknown> | null = null;
@@ -24,8 +25,13 @@ export async function detectFrameworkDefaults(
     ...((pkg?.devDependencies as Record<string, unknown>) || {}),
   };
 
+  const disabled = new Set(config?.frameworks?.disable ?? []);
+  const overrides = config?.frameworks?.override ?? {};
+
   for (const framework of FRAMEWORK_DEFAULTS) {
-    if (alreadyFoundPorts.has(framework.defaultPort)) continue;
+    if (disabled.has(framework.name)) continue;
+    const effectivePort = overrides[framework.name] ?? framework.defaultPort;
+    if (alreadyFoundPorts.has(effectivePort)) continue;
 
     let detected = false;
 
@@ -55,16 +61,19 @@ export async function detectFrameworkDefaults(
     }
 
     if (detected) {
+      const overridden = effectivePort !== framework.defaultPort;
       ports.push({
-        port: framework.defaultPort,
+        port: effectivePort,
         source: 'framework-default',
         sourceFile: path.join(dir, 'package.json'),
-        context: `${framework.name} default port`,
+        context: overridden
+          ? `${framework.name} default port (overridden via berth.config)`
+          : `${framework.name} default port`,
         projectDir: dir,
         projectName,
         confidence: 'low',
       });
-      alreadyFoundPorts.add(framework.defaultPort);
+      alreadyFoundPorts.add(effectivePort);
     }
   }
 

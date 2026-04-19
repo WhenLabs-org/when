@@ -2,10 +2,12 @@ import chalk from 'chalk';
 import type { GlobalOptions } from '../types.js';
 import { loadRegistry } from '../registry/store.js';
 import { getProjectByName } from '../registry/project.js';
+import { activeReservations } from '../registry/reservations.js';
 import { detectAllActive, detectAllConfigured } from '../detectors/index.js';
-import { detectConflicts } from '../resolver/conflicts.js';
+import { detectAllConflicts } from '../resolver/conflicts.js';
 import { suggestResolutions } from '../resolver/suggestions.js';
 import { killPortProcess, reassignPort } from '../resolver/actions.js';
+import { buildScanContext } from './_context.js';
 
 import { formatJson } from '../reporters/json.js';
 
@@ -24,12 +26,25 @@ export async function startCommand(projectName: string, options: StartOptions): 
     return;
   }
 
+  const ctx = await buildScanContext(project.directory, { skipRegistry: true });
   const [{ ports: active, docker }, { ports: configured }] = await Promise.all([
-    detectAllActive(),
-    detectAllConfigured(project.directory),
+    detectAllActive({ registry: ctx.detectorRegistry, config: ctx.config }),
+    detectAllConfigured(project.directory, { registry: ctx.detectorRegistry, config: ctx.config }),
   ]);
 
-  const conflicts = detectConflicts(active, docker, configured);
+  const reservations = activeReservations(registry);
+  for (const tr of ctx.reservations) {
+    if (tr.source === 'team' && !reservations.some((r) => r.port === tr.port)) {
+      reservations.push(tr);
+    }
+  }
+  const conflicts = detectAllConflicts({
+    active,
+    docker,
+    configured,
+    reservations,
+    team: ctx.team,
+  });
 
   if (conflicts.length === 0) {
     if (options.json) {

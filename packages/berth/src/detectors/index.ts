@@ -1,14 +1,16 @@
 import { getCurrentPlatform } from '../utils/platform.js';
-import { detectActivePorts as detectLsof } from './active/lsof.js';
-import { detectActivePorts as detectNetstat } from './active/netstat.js';
-import { detectDockerPorts } from './active/docker.js';
-import { detectFromDotenv } from './configured/dotenv.js';
-import { detectFromPackageJson } from './configured/package-json.js';
-import { detectFromDockerCompose } from './configured/docker-compose.js';
-import { detectFromProcfile } from './configured/procfile.js';
-import { detectFromMakefile } from './configured/makefile.js';
-import { detectFrameworkDefaults } from './configured/framework.js';
-import type { ActivePort, DockerPort, ConfiguredPort } from '../types.js';
+import { shellExec } from '../utils/platform.js';
+import { resolveAncestries } from '../utils/ancestry.js';
+import { DetectorRegistry } from './registry.js';
+import { registerBuiltins, runFrameworkDefaults } from './builtins.js';
+import type { DetectContext, DetectLogger } from './api.js';
+import type {
+  ActivePort,
+  BerthConfig,
+  ConfiguredPort,
+  DockerPort,
+  Platform,
+} from '../types.js';
 
 export interface ActiveDetectionResult {
   ports: ActivePort[];
@@ -21,57 +23,125 @@ export interface ConfiguredDetectionResult {
   warnings: string[];
 }
 
-export async function detectAllActive(): Promise<ActiveDetectionResult> {
+const silentLogger: DetectLogger = {
+  warn: () => {},
+  debug: () => {},
+};
+
+/**
+ * Build a registry pre-populated with built-in detectors. Intended for callers
+ * that want to add plugins on top (e.g. `buildScanContext`).
+ */
+export function createDefaultRegistry(): DetectorRegistry {
+  const registry = new DetectorRegistry();
+  registerBuiltins(registry);
+  return registry;
+}
+
+function supportsPlatform(platforms: Platform[] | undefined, current: Platform): boolean {
+  if (!platforms || platforms.length === 0) return true;
+  return platforms.includes(current);
+}
+
+export interface DetectAllActiveOptions {
+  registry?: DetectorRegistry;
+  config?: BerthConfig;
+  logger?: DetectLogger;
+  /**
+   * Resolve parent-process ancestry for each active port. Opt-in because it
+   * fans out `ps` per PID.
+   */
+  trace?: boolean;
+}
+
+export async function detectAllActive(
+  options: DetectAllActiveOptions = {},
+): Promise<ActiveDetectionResult> {
+  const registry = options.registry ?? createDefaultRegistry();
+  const logger = options.logger ?? silentLogger;
+  const ctx: DetectContext = { shellExec, config: options.config, logger };
+  const platform = getCurrentPlatform();
+
   const warnings: string[] = [];
   let ports: ActivePort[] = [];
   let docker: DockerPort[] = [];
 
-  const platform = getCurrentPlatform();
-  const detectFn = platform === 'win32' ? detectNetstat : detectLsof;
+  const activeDetectors = registry
+    .activeDetectors()
+    .filter((d) => supportsPlatform(d.platforms, platform));
+  const dockerDetectors = registry
+    .dockerDetectors()
+    .filter((d) => supportsPlatform(d.platforms, platform));
 
-  const results = await Promise.allSettled([detectFn(), detectDockerPorts()]);
-
-  if (results[0].status === 'fulfilled') {
-    ports = results[0].value;
-  } else {
-    warnings.push(`Active port detection failed: ${results[0].reason}`);
+  const activeResults = await Promise.allSettled(activeDetectors.map((d) => d.detect(ctx)));
+  for (let i = 0; i < activeResults.length; i++) {
+    const result = activeResults[i];
+    const name = activeDetectors[i].name;
+    if (result.status === 'fulfilled') {
+      ports.push(...result.value);
+    } else {
+      warnings.push(`Active detector "${name}" failed: ${result.reason}`);
+    }
   }
 
-  if (results[1].status === 'fulfilled') {
-    docker = results[1].value;
-  } else {
-    warnings.push(`Docker port detection failed: ${results[1].reason}`);
+  const dockerResults = await Promise.allSettled(dockerDetectors.map((d) => d.detect(ctx)));
+  for (let i = 0; i < dockerResults.length; i++) {
+    const result = dockerResults[i];
+    const name = dockerDetectors[i].name;
+    if (result.status === 'fulfilled') {
+      docker.push(...result.value);
+    } else {
+      warnings.push(`Docker detector "${name}" failed: ${result.reason}`);
+    }
+  }
+
+  if (options.trace && ports.length > 0) {
+    try {
+      const ancestries = await resolveAncestries(ports.map((p) => p.pid));
+      ports = ports.map((p) => ({ ...p, ancestry: ancestries.get(p.pid) ?? undefined }));
+    } catch (err) {
+      warnings.push(`Ancestry resolution failed: ${(err as Error).message}`);
+    }
   }
 
   return { ports, docker, warnings };
 }
 
-export async function detectAllConfigured(dir: string): Promise<ConfiguredDetectionResult> {
+export interface DetectAllConfiguredOptions {
+  registry?: DetectorRegistry;
+  config?: BerthConfig;
+  logger?: DetectLogger;
+}
+
+export async function detectAllConfigured(
+  dir: string,
+  options: DetectAllConfiguredOptions = {},
+): Promise<ConfiguredDetectionResult> {
+  const registry = options.registry ?? createDefaultRegistry();
+  const logger = options.logger ?? silentLogger;
+  const ctx = { shellExec, config: options.config, logger, dir };
+
   const warnings: string[] = [];
   const allPorts: ConfiguredPort[] = [];
 
-  const detectors = [
-    { name: 'dotenv', fn: () => detectFromDotenv(dir) },
-    { name: 'package-json', fn: () => detectFromPackageJson(dir) },
-    { name: 'docker-compose', fn: () => detectFromDockerCompose(dir) },
-    { name: 'procfile', fn: () => detectFromProcfile(dir) },
-    { name: 'makefile', fn: () => detectFromMakefile(dir) },
-  ];
+  // Framework-defaults is intentionally not a plain detector — it needs the
+  // set of already-found ports — so we skip it here and run it after.
+  const detectors = registry.configuredDetectors();
 
-  const results = await Promise.allSettled(detectors.map((d) => d.fn()));
-
+  const results = await Promise.allSettled(detectors.map((d) => d.detect(ctx)));
   for (let i = 0; i < results.length; i++) {
-    if (results[i].status === 'fulfilled') {
-      allPorts.push(...(results[i] as PromiseFulfilledResult<ConfiguredPort[]>).value);
+    const result = results[i];
+    const name = detectors[i].name;
+    if (result.status === 'fulfilled') {
+      allPorts.push(...result.value);
     } else {
-      warnings.push(`${detectors[i].name} detection failed: ${(results[i] as PromiseRejectedResult).reason}`);
+      warnings.push(`${name} detection failed: ${result.reason}`);
     }
   }
 
-  // Framework defaults run last, knowing which ports are already found
   const foundPorts = new Set(allPorts.map((p) => p.port));
   try {
-    const frameworkPorts = await detectFrameworkDefaults(dir, foundPorts);
+    const frameworkPorts = await runFrameworkDefaults(dir, foundPorts, options.config);
     allPorts.push(...frameworkPorts);
   } catch (e) {
     warnings.push(`Framework detection failed: ${e}`);

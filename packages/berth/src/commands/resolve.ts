@@ -2,11 +2,14 @@ import path from 'node:path';
 import chalk from 'chalk';
 import type { GlobalOptions, Conflict, Resolution } from '../types.js';
 import { detectAllActive, detectAllConfigured } from '../detectors/index.js';
-import { detectConflicts } from '../resolver/conflicts.js';
+import { detectAllConflicts } from '../resolver/conflicts.js';
 import { suggestResolutions } from '../resolver/suggestions.js';
 import { killPortProcess, reassignPort } from '../resolver/actions.js';
 import { findFreePort } from '../utils/ports.js';
 import { formatJson } from '../reporters/json.js';
+import { buildScanContext } from './_context.js';
+import { appendEvents } from '../history/recorder.js';
+import type { HistoryEvent } from '../history/events.js';
 
 export type Strategy = 'kill' | 'reassign' | 'auto';
 
@@ -75,14 +78,21 @@ function pickResolution(
 
 export async function resolveCommand(options: ResolveOptions): Promise<void> {
   const absDir = path.resolve(options.dir);
-  const projectName = path.basename(absDir);
+  const ctx = await buildScanContext(absDir);
+  const projectName = ctx.config?.projectName ?? path.basename(absDir);
 
   const [{ ports: active, docker }, { ports: configured }] = await Promise.all([
-    detectAllActive(),
-    detectAllConfigured(absDir),
+    detectAllActive({ registry: ctx.detectorRegistry, config: ctx.config }),
+    detectAllConfigured(absDir, { registry: ctx.detectorRegistry, config: ctx.config }),
   ]);
 
-  const conflicts = detectConflicts(active, docker, configured);
+  const conflicts = detectAllConflicts({
+    active,
+    docker,
+    configured,
+    reservations: ctx.reservations,
+    team: ctx.team,
+  });
 
   if (conflicts.length === 0) {
     if (options.json) {
@@ -107,14 +117,22 @@ export async function resolveCommand(options: ResolveOptions): Promise<void> {
   // Track ports we've already decided to reassign to, so we don't double-assign
   const usedPorts: number[] = [];
 
+  // Team policy: killBlockingProcesses overrides the --kill flag.
+  // "never" disables kill entirely; "always" allows it without --kill.
+  const killPolicy = ctx.team?.policies?.killBlockingProcesses;
+  const killAllowed =
+    killPolicy === 'never' ? false : killPolicy === 'always' ? true : options.kill ?? false;
+
   for (const conflict of conflicts) {
     const resolutions = await suggestResolutions(conflict);
-    const chosen = pickResolution(conflict, resolutions, options.strategy, options.kill ?? false);
+    const chosen = pickResolution(conflict, resolutions, options.strategy, killAllowed);
 
     if (!chosen) {
       if (!options.json) {
         console.log(chalk.yellow(`  [skip] Port ${conflict.port} -- cannot auto-resolve: ${conflict.suggestion}`));
-        if (!options.kill && resolutions.some((r) => r.type === 'kill')) {
+        if (killPolicy === 'never' && resolutions.some((r) => r.type === 'kill')) {
+          console.log(chalk.dim(`         Team policy forbids killing blocking processes.`));
+        } else if (!killAllowed && resolutions.some((r) => r.type === 'kill')) {
           console.log(chalk.dim(`         Pass --kill to allow killing blocking processes.`));
         }
       }
@@ -236,6 +254,21 @@ export async function resolveCommand(options: ResolveOptions): Promise<void> {
         `Run with ${chalk.bold('--kill')} or fix manually.`,
       );
     }
+  }
+
+  if (!options.dryRun) {
+    const now = new Date().toISOString();
+    const events: HistoryEvent[] = actions
+      .filter((a) => a.type === 'kill' || a.type === 'reassign')
+      .map((a) => ({
+        type: 'resolution-applied',
+        at: now,
+        port: a.port,
+        action: a.type as 'kill' | 'reassign',
+        detail: a.description,
+        success: a.success,
+      }));
+    if (events.length > 0) await appendEvents(events).catch(() => {});
   }
 
   if (actions.some((a) => !a.success)) {

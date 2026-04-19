@@ -27,7 +27,7 @@ describe('listCommand', () => {
     });
 
     vi.mocked(loadRegistry).mockResolvedValue({
-      version: 1,
+      version: 2,
       projects: {
         'my-app': {
           name: 'my-app',
@@ -44,6 +44,7 @@ describe('listCommand', () => {
           updatedAt: '2024-01-01T00:00:00Z',
         },
       },
+      reservations: [],
     });
 
     const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
@@ -62,7 +63,7 @@ describe('listCommand', () => {
 
   it('should show empty message when no projects registered', async () => {
     vi.mocked(detectAllActive).mockResolvedValue({ ports: [], docker: [], warnings: [] });
-    vi.mocked(loadRegistry).mockResolvedValue({ version: 1, projects: {} });
+    vi.mocked(loadRegistry).mockResolvedValue({ version: 2, projects: {}, reservations: [] });
 
     const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
 

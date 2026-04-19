@@ -1,14 +1,16 @@
 import * as path from "node:path";
 import type { StackItem, PackageJson } from "../types.js";
-import { parsePackageJson, parseToml, getDepVersion, cleanVersion } from "../utils/parsers.js";
+import { loadProjectDeps, parseToml, getDepVersion, cleanVersion } from "../utils/parsers.js";
+import type { LockfileVersionMap } from "../core/lockfile.js";
 import { readFile, fileExists } from "../utils/fs.js";
 import { hasDep } from "./utils.js";
 
 export async function detectFramework(projectRoot: string): Promise<StackItem | null> {
-  // 1. Check package.json deps
-  const pkg = await parsePackageJson(projectRoot);
+  // 1. Check package.json deps — with lockfile-aware version resolution so
+  //    Phase 2's version-range fragment selection sees "15.1.2", not "^15".
+  const { pkg, lockfile } = await loadProjectDeps(projectRoot);
   if (pkg) {
-    const result = await detectJsFramework(projectRoot, pkg);
+    const result = await detectJsFramework(projectRoot, pkg, lockfile);
     if (result) return result;
   }
 
@@ -29,7 +31,11 @@ export async function detectFramework(projectRoot: string): Promise<StackItem | 
   return null;
 }
 
-async function detectJsFramework(projectRoot: string, pkg: PackageJson): Promise<StackItem | null> {
+async function detectJsFramework(
+  projectRoot: string,
+  pkg: PackageJson,
+  lockfile: LockfileVersionMap,
+): Promise<StackItem | null> {
   // Next.js
   if (hasDep(pkg, "next")) {
     const hasAppDir =
@@ -37,7 +43,7 @@ async function detectJsFramework(projectRoot: string, pkg: PackageJson): Promise
       (await fileExists(path.join(projectRoot, "app")));
     return {
       name: "nextjs",
-      version: getDepVersion(pkg, "next"),
+      version: getDepVersion(pkg, "next", lockfile),
       variant: hasAppDir ? "app-router" : "pages-router",
       confidence: 0.95,
       detectedFrom: "package.json",
@@ -49,7 +55,10 @@ async function detectJsFramework(projectRoot: string, pkg: PackageJson): Promise
     const remixDep = "@remix-run/react";
     return {
       name: "remix",
-      version: getDepVersion(pkg, remixDep) ?? getDepVersion(pkg, "@remix-run/node") ?? getDepVersion(pkg, "@remix-run/dev"),
+      version:
+        getDepVersion(pkg, remixDep, lockfile) ??
+        getDepVersion(pkg, "@remix-run/node", lockfile) ??
+        getDepVersion(pkg, "@remix-run/dev", lockfile),
       variant: null,
       confidence: 0.95,
       detectedFrom: "package.json",
@@ -60,7 +69,7 @@ async function detectJsFramework(projectRoot: string, pkg: PackageJson): Promise
   if (hasDep(pkg, "nuxt")) {
     return {
       name: "nuxt",
-      version: getDepVersion(pkg, "nuxt"),
+      version: getDepVersion(pkg, "nuxt", lockfile),
       variant: null,
       confidence: 0.95,
       detectedFrom: "package.json",
@@ -71,7 +80,7 @@ async function detectJsFramework(projectRoot: string, pkg: PackageJson): Promise
   if (hasDep(pkg, "astro")) {
     return {
       name: "astro",
-      version: getDepVersion(pkg, "astro"),
+      version: getDepVersion(pkg, "astro", lockfile),
       variant: null,
       confidence: 0.95,
       detectedFrom: "package.json",
@@ -82,7 +91,7 @@ async function detectJsFramework(projectRoot: string, pkg: PackageJson): Promise
   if (hasDep(pkg, "@sveltejs/kit")) {
     return {
       name: "sveltekit",
-      version: getDepVersion(pkg, "@sveltejs/kit"),
+      version: getDepVersion(pkg, "@sveltejs/kit", lockfile),
       variant: null,
       confidence: 0.90,
       detectedFrom: "package.json",
@@ -91,7 +100,7 @@ async function detectJsFramework(projectRoot: string, pkg: PackageJson): Promise
   if (hasDep(pkg, "svelte")) {
     return {
       name: "svelte",
-      version: getDepVersion(pkg, "svelte"),
+      version: getDepVersion(pkg, "svelte", lockfile),
       variant: null,
       confidence: 0.90,
       detectedFrom: "package.json",
@@ -102,7 +111,7 @@ async function detectJsFramework(projectRoot: string, pkg: PackageJson): Promise
   if (hasDep(pkg, "fastify")) {
     return {
       name: "fastify",
-      version: getDepVersion(pkg, "fastify"),
+      version: getDepVersion(pkg, "fastify", lockfile),
       variant: null,
       confidence: 0.95,
       detectedFrom: "package.json",
@@ -113,7 +122,7 @@ async function detectJsFramework(projectRoot: string, pkg: PackageJson): Promise
   if (hasDep(pkg, "express")) {
     return {
       name: "express",
-      version: getDepVersion(pkg, "express"),
+      version: getDepVersion(pkg, "express", lockfile),
       variant: null,
       confidence: 0.90,
       detectedFrom: "package.json",
@@ -124,7 +133,7 @@ async function detectJsFramework(projectRoot: string, pkg: PackageJson): Promise
   if (hasDep(pkg, "@angular/core")) {
     return {
       name: "angular",
-      version: getDepVersion(pkg, "@angular/core"),
+      version: getDepVersion(pkg, "@angular/core", lockfile),
       variant: null,
       confidence: 0.95,
       detectedFrom: "package.json",
@@ -135,7 +144,7 @@ async function detectJsFramework(projectRoot: string, pkg: PackageJson): Promise
   if (hasDep(pkg, "@nestjs/core")) {
     return {
       name: "nestjs",
-      version: getDepVersion(pkg, "@nestjs/core"),
+      version: getDepVersion(pkg, "@nestjs/core", lockfile),
       variant: null,
       confidence: 0.95,
       detectedFrom: "package.json",
@@ -146,7 +155,7 @@ async function detectJsFramework(projectRoot: string, pkg: PackageJson): Promise
   if (hasDep(pkg, "hono")) {
     return {
       name: "hono",
-      version: getDepVersion(pkg, "hono"),
+      version: getDepVersion(pkg, "hono", lockfile),
       variant: null,
       confidence: 0.90,
       detectedFrom: "package.json",
@@ -157,7 +166,7 @@ async function detectJsFramework(projectRoot: string, pkg: PackageJson): Promise
   if (hasDep(pkg, "vue") && !hasDep(pkg, "nuxt") && !hasDep(pkg, "vite")) {
     return {
       name: "vue",
-      version: getDepVersion(pkg, "vue"),
+      version: getDepVersion(pkg, "vue", lockfile),
       variant: null,
       confidence: 0.80,
       detectedFrom: "package.json",
@@ -168,7 +177,7 @@ async function detectJsFramework(projectRoot: string, pkg: PackageJson): Promise
   if (hasDep(pkg, "vite") && hasDep(pkg, "react")) {
     return {
       name: "vite-react",
-      version: getDepVersion(pkg, "vite"),
+      version: getDepVersion(pkg, "vite", lockfile),
       variant: null,
       confidence: 0.85,
       detectedFrom: "package.json",
@@ -179,7 +188,7 @@ async function detectJsFramework(projectRoot: string, pkg: PackageJson): Promise
   if (hasDep(pkg, "vite") && hasDep(pkg, "vue")) {
     return {
       name: "vite-vue",
-      version: getDepVersion(pkg, "vite"),
+      version: getDepVersion(pkg, "vite", lockfile),
       variant: null,
       confidence: 0.85,
       detectedFrom: "package.json",
@@ -190,7 +199,7 @@ async function detectJsFramework(projectRoot: string, pkg: PackageJson): Promise
   if (hasDep(pkg, "vite")) {
     return {
       name: "vite",
-      version: getDepVersion(pkg, "vite"),
+      version: getDepVersion(pkg, "vite", lockfile),
       variant: null,
       confidence: 0.70,
       detectedFrom: "package.json",
@@ -201,7 +210,7 @@ async function detectJsFramework(projectRoot: string, pkg: PackageJson): Promise
   if (hasDep(pkg, "react")) {
     return {
       name: "react",
-      version: getDepVersion(pkg, "react"),
+      version: getDepVersion(pkg, "react", lockfile),
       variant: null,
       confidence: 0.60,
       detectedFrom: "package.json",

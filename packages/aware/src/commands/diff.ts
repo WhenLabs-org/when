@@ -1,35 +1,43 @@
 import chalk from "chalk";
-import { detectStack, stackToConfig, formatStackSummary } from "../detectors/index.js";
+import { computeDriftReport, exitCodeFor, type DriftSeverity } from "../diff/index.js";
+import type { DriftReport, ContentDrift, StackDrift } from "../diff/index.js";
+import {
+  discoverWorkspace,
+  resolvePackageConfig,
+} from "../monorepo/index.js";
 import { loadConfig } from "../utils/config.js";
-import { log } from "../utils/logger.js";
+import { log, setSilent } from "../utils/logger.js";
 import { confirm } from "../utils/prompts.js";
 import { syncCommand } from "./sync.js";
-import type { StackConfig } from "../types.js";
-
-const KEY_LABELS: Record<string, string> = {
-  framework: "Framework",
-  language: "Language",
-  styling: "Styling",
-  orm: "ORM",
-  database: "Database",
-  testing: "Testing",
-  linting: "Linting",
-  packageManager: "Package Manager",
-  monorepo: "Monorepo",
-  deployment: "Deployment",
-  auth: "Auth",
-  apiStyle: "API Style",
-  stateManagement: "State Mgmt",
-  cicd: "CI/CD",
-  bundler: "Bundler",
-};
+import type { AwareConfig, TargetName } from "../types.js";
 
 interface DiffOptions {
+  /**
+   * CI / script mode: print human output then exit with a code that reflects
+   * the highest severity found (0 no drift, 1 warn, 2 tamper). Non-zero
+   * exit is what makes this command usable as a pre-commit / CI guard.
+   */
+  check?: boolean;
+  /** Emit a machine-readable JSON `DriftReport` to stdout instead of text. */
+  json?: boolean;
+  /** Restrict the content-drift check to a single target. */
+  target?: TargetName;
+  /** Suppress human output under `--check` (still exits with the right code). */
+  quiet?: boolean;
+  /**
+   * Legacy flag, pre-Phase-1: exit 0 / 1 based on stack changes alone.
+   * Superseded by `--check`. Kept so existing scripts don't break.
+   */
   exitCode?: boolean;
 }
 
 export async function diffCommand(options: DiffOptions = {}): Promise<void> {
   const projectRoot = process.cwd();
+
+  // Silence diagnostic logs so `--json` stdout is guaranteed parseable even
+  // if transitive code paths decide to log (migrations, future telemetry).
+  // Errors still go to stderr.
+  if (options.json) setSilent(true);
 
   const config = await loadConfig(projectRoot);
   if (!config) {
@@ -37,117 +45,261 @@ export async function diffCommand(options: DiffOptions = {}): Promise<void> {
     process.exit(1);
   }
 
-  // Re-detect
-  const stack = await detectStack(projectRoot);
-  const newStackConfig = stackToConfig(stack);
-
-  const lastSync = config._meta.lastSyncedAt;
-  const timeAgo = lastSync ? timeSince(new Date(lastSync)) : "never";
-
-  log.header(`\nStack diff (last sync: ${timeAgo})\n`);
-
-  // Compare stack with colored output
-  const oldStack = config.stack;
-  const changes: Array<{ key: string; label: string; old: string; new: string }> = [];
-  const unchanged: string[] = [];
-
-  for (const key of Object.keys(newStackConfig) as (keyof StackConfig)[]) {
-    const oldVal = formatValue(oldStack[key]);
-    const newVal = formatValue(newStackConfig[key]);
-    const label = KEY_LABELS[key] ?? key;
-
-    if (oldVal !== newVal) {
-      changes.push({ key, label, old: oldVal, new: newVal });
-    } else if (oldVal !== "--") {
-      unchanged.push(`${label}: ${oldVal}`);
+  // Monorepo: root declares `packages`. Iterate each package and
+  // aggregate into a single report so `--check` / `--json` stay
+  // usable in CI.
+  if (config.packages && config.packages.length > 0) {
+    const report = await computeMonorepoDriftReport(projectRoot, options.target);
+    if (options.json) {
+      console.log(JSON.stringify(report, null, 2));
+      if (options.check) {
+        process.exit(exitCodeFor(report.severity));
+        return;
+      }
+      return;
     }
-  }
-
-  if (changes.length === 0) {
-    log.success("No stack changes detected.\n");
-    printUnchanged(unchanged);
-    printSuggestions(config);
-    if (options.exitCode) {
-      process.exit(0);
+    renderReport(report, config._meta.lastSyncedAt);
+    if (options.check) {
+      process.exit(exitCodeFor(report.severity));
+      return;
     }
     return;
   }
 
-  // Print changes table
-  const labelWidth = Math.max(...changes.map((c) => c.label.length), 12);
+  const report = await computeDriftReport({
+    projectRoot,
+    config,
+    ...(options.target ? { target: options.target } : {}),
+  });
 
-  for (const change of changes) {
-    const padded = change.label.padEnd(labelWidth);
-
-    if (change.old === "--" && change.new !== "--") {
-      // New addition
-      console.log(`  ${chalk.green("+")} ${padded}  ${chalk.green(change.new)}`);
-    } else if (change.old !== "--" && change.new === "--") {
-      // Removal
-      console.log(`  ${chalk.red("-")} ${padded}  ${chalk.red.strikethrough(change.old)}`);
-    } else {
-      // Change
-      console.log(`  ${chalk.yellow("~")} ${padded}  ${chalk.red(change.old)} ${chalk.dim("→")} ${chalk.green(change.new)}`);
+  if (options.json) {
+    // Deliberately plain `console.log` — stdout must be valid JSON only.
+    console.log(JSON.stringify(report, null, 2));
+    if (options.check) {
+      process.exit(exitCodeFor(report.severity));
+      return;
     }
+    return;
   }
 
-  log.plain("");
-  log.dim(`  ${changes.length} change(s), ${unchanged.length} unchanged`);
+  // Human output is suppressed in any non-interactive exit-code mode
+  // (either `--check` or legacy `--exit-code`) when `--quiet` is set, and
+  // also auto-suppressed for legacy `--exit-code` on its own — scripts
+  // piping that command's output never expected human lines.
+  const suppressHuman =
+    options.quiet === true || (options.exitCode === true && options.check !== true);
 
-  // Print unchanged (collapsed)
-  printUnchanged(unchanged);
+  if (!suppressHuman) {
+    renderReport(report, config._meta.lastSyncedAt);
+  }
 
-  // Suggestions
-  printSuggestions(config);
-
-  // In exit-code mode, exit 1 to signal changes were detected (useful for CI/scripting)
+  if (options.check) {
+    process.exit(exitCodeFor(report.severity));
+    return; // defensive: unreachable in prod, but test environments mock exit()
+  }
   if (options.exitCode) {
-    process.exit(1);
+    // Legacy: 1 iff any stack drift exists (old behavior predates content drift).
+    process.exit(report.hasStackDrift ? 1 : 0);
+    return;
   }
 
-  // Offer to sync
-  log.plain("");
-  const apply = await confirm("Apply changes and sync?");
-  if (apply) {
-    await syncCommand({ dryRun: false });
-  }
-}
-
-function formatValue(val: string | string[] | null | undefined): string {
-  if (val === null || val === undefined) return "--";
-  if (Array.isArray(val)) {
-    return val.length === 0 ? "--" : val.join(", ");
-  }
-  return val;
-}
-
-function printUnchanged(unchanged: string[]): void {
-  if (unchanged.length > 0) {
+  // Interactive: offer to sync when there's drift and no machine-readable mode.
+  if (report.severity !== "none") {
     log.plain("");
-    log.dim(`  Unchanged: ${unchanged.join(", ")}`);
-  }
-}
-
-function printSuggestions(config: { project: { description: string; architecture: string }; rules: string[]; conventions: Record<string, unknown> }): void {
-  const suggestions: string[] = [];
-
-  if (!config.project.description) {
-    suggestions.push("Add a project description (project.description)");
-  }
-  if (!config.project.architecture) {
-    suggestions.push("Add architecture description (project.architecture)");
-  }
-  if (config.rules.length === 0) {
-    suggestions.push("Add project-specific rules (rules array)");
-  }
-
-  if (suggestions.length > 0) {
-    log.plain("");
-    log.header("Suggestions:");
-    for (const s of suggestions) {
-      log.dim(`  - ${s}`);
+    const apply = await confirm("Apply changes and sync?");
+    if (apply) {
+      await syncCommand({ dryRun: false });
     }
   }
+}
+
+function renderReport(report: DriftReport, lastSyncedAt: string | null): void {
+  const when = lastSyncedAt ? timeSince(new Date(lastSyncedAt)) : "never";
+  log.header(`\naware diff  (last sync: ${when})\n`);
+
+  if (report.severity === "none") {
+    log.success("No drift detected — stack, config, and generated files all match.");
+    return;
+  }
+
+  if (report.hasStackDrift) {
+    log.header("Stack drift:");
+    const labelWidth = Math.max(
+      ...report.stackDrifts.map((d) => d.label.length),
+      12,
+    );
+    for (const drift of report.stackDrifts) {
+      renderStackLine(drift, labelWidth);
+    }
+    log.plain("");
+  }
+
+  if (report.hasContentDrift) {
+    log.header("Generated file drift:");
+    for (const drift of report.contentDrifts) {
+      renderContentLine(drift);
+    }
+    log.plain("");
+  }
+
+  renderSummary(report);
+}
+
+function renderStackLine(drift: StackDrift, labelWidth: number): void {
+  const padded = drift.label.padEnd(labelWidth);
+  const prev = drift.previous ?? "--";
+  const curr = drift.current ?? "--";
+
+  switch (drift.kind) {
+    case "added":
+      console.log(`  ${chalk.green("+")} ${padded}  ${chalk.green(curr)}`);
+      break;
+    case "removed":
+      console.log(
+        `  ${chalk.red("-")} ${padded}  ${chalk.red.strikethrough(prev)}`,
+      );
+      break;
+    case "changed":
+      console.log(
+        `  ${chalk.yellow("~")} ${padded}  ${chalk.red(prev)} ${chalk.dim("→")} ${chalk.green(curr)}`,
+      );
+      break;
+  }
+}
+
+function renderContentLine(drift: ContentDrift): void {
+  const colored =
+    drift.kind === "tampered"
+      ? chalk.red
+      : drift.kind === "outdated"
+        ? chalk.yellow
+        : drift.kind === "missing"
+          ? chalk.magenta
+          : chalk.dim;
+  const icon = drift.kind === "tampered" ? "!" : "~";
+  console.log(`  ${colored(icon)} ${colored(drift.kind.padEnd(9))}  ${drift.message}`);
+  if (drift.sections && drift.sections.length > 0) {
+    for (const section of drift.sections) {
+      const marker =
+        section.kind === "added" ? "+" : section.kind === "removed" ? "-" : "~";
+      console.log(`      ${chalk.dim(marker)} ${chalk.dim(section.id)}`);
+    }
+  }
+}
+
+function renderSummary(report: DriftReport): void {
+  const parts: string[] = [];
+  if (report.hasStackDrift) parts.push(`${report.stackDrifts.length} stack change(s)`);
+  if (report.hasContentDrift)
+    parts.push(`${report.contentDrifts.length} file drift(s)`);
+  if (report.hasTamper) parts.push(chalk.red("tampering detected"));
+
+  const summary = parts.join(", ");
+  if (report.severity === "tamper") {
+    log.error(`Summary: ${summary}`);
+  } else {
+    log.warn(`Summary: ${summary}`);
+  }
+  log.dim("Run `aware sync` to reconcile.");
+}
+
+/**
+ * Build a single `DriftReport` that covers every package in a monorepo.
+ * Per-package drifts carry their `packagePath` so the `--json` consumer
+ * can still localize; severity is the max across packages so one
+ * tampered file in one package is enough to fail CI.
+ */
+async function computeMonorepoDriftReport(
+  projectRoot: string,
+  target: TargetName | undefined,
+): Promise<DriftReport> {
+  const discovery = await discoverWorkspace(projectRoot);
+  if (!discovery.isMonorepo) {
+    // Root declares packages but discovery found none — surface as an
+    // empty, clean report rather than crashing. Doctor will flag the
+    // misconfiguration separately.
+    return {
+      stackDrifts: [],
+      contentDrifts: [],
+      severity: "none",
+      hasStackDrift: false,
+      hasContentDrift: false,
+      hasTamper: false,
+    };
+  }
+
+  const aggregate: DriftReport = {
+    stackDrifts: [],
+    contentDrifts: [],
+    severity: "none",
+    hasStackDrift: false,
+    hasContentDrift: false,
+    hasTamper: false,
+  };
+
+  for (const pkg of discovery.packages) {
+    let resolved: AwareConfig | null;
+    try {
+      const r = await resolvePackageConfig(pkg.absolutePath);
+      resolved = r?.config ?? null;
+    } catch (err) {
+      // Log AND escalate severity: a package with a broken .aware.json
+      // (cycle, corrupt JSON, unresolvable extends) must not let CI
+      // pass green. Previously we silently skipped — that hid real
+      // problems behind "all good".
+      log.error(
+        `${pkg.relativePath}: could not resolve config — ${(err as Error).message}`,
+      );
+      aggregate.severity = maxSeverity(aggregate.severity, "warn");
+      aggregate.hasContentDrift = true;
+      aggregate.contentDrifts.push({
+        target: "claude", // placeholder; the drift is about the config, not a target
+        filePath: ".aware.json",
+        packagePath: pkg.relativePath,
+        kind: "unmanaged",
+        message: `${pkg.relativePath}/.aware.json could not be resolved: ${(err as Error).message}`,
+      });
+      continue;
+    }
+    if (!resolved) {
+      log.warn(
+        `${pkg.relativePath}: no .aware.json — run \`aware init\` inside the package.`,
+      );
+      aggregate.severity = maxSeverity(aggregate.severity, "warn");
+      aggregate.hasContentDrift = true;
+      aggregate.contentDrifts.push({
+        target: "claude",
+        filePath: ".aware.json",
+        packagePath: pkg.relativePath,
+        kind: "missing",
+        message: `${pkg.relativePath}/.aware.json is missing`,
+      });
+      continue;
+    }
+
+    const pkgReport = await computeDriftReport({
+      projectRoot: pkg.absolutePath,
+      config: resolved,
+      packagePath: pkg.relativePath,
+      ...(target ? { target } : {}),
+    });
+
+    aggregate.stackDrifts.push(...pkgReport.stackDrifts);
+    aggregate.contentDrifts.push(...pkgReport.contentDrifts);
+    aggregate.hasStackDrift =
+      aggregate.hasStackDrift || pkgReport.hasStackDrift;
+    aggregate.hasContentDrift =
+      aggregate.hasContentDrift || pkgReport.hasContentDrift;
+    aggregate.hasTamper = aggregate.hasTamper || pkgReport.hasTamper;
+    aggregate.severity = maxSeverity(aggregate.severity, pkgReport.severity);
+  }
+
+  return aggregate;
+}
+
+function maxSeverity(a: DriftSeverity, b: DriftSeverity): DriftSeverity {
+  const order: DriftSeverity[] = ["none", "warn", "tamper"];
+  return order.indexOf(a) >= order.indexOf(b) ? a : b;
 }
 
 function timeSince(date: Date): string {

@@ -7,8 +7,8 @@ export class AgentsGenerator extends BaseGenerator {
   readonly filePath: string = TARGETS.agents.file;
 
   generate(context: ComposedContext): GeneratorResult {
-    const sections: string[] = [];
-    sections.push("# AGENTS.md");
+    const blocks: string[] = [];
+    blocks.push("# AGENTS.md");
 
     // Context section: project description + architecture
     const contextParts: string[] = [];
@@ -21,14 +21,15 @@ export class AgentsGenerator extends BaseGenerator {
       }
     }
     if (contextParts.length > 0) {
-      sections.push(`## Context\n${contextParts.join("\n")}`);
+      blocks.push(
+        this.wrapSection("context", `## Context\n${contextParts.join("\n")}`),
+      );
     }
 
     // Tech Stack
     if (context.stackSection) {
-      // Replace "## Tech Stack" heading with "## Tech Stack" (keep consistent)
       const stackBody = context.stackSection.replace(/^##\s*Tech Stack\n?/, "");
-      sections.push(`## Tech Stack\n${stackBody}`);
+      blocks.push(this.wrapSection("stack", `## Tech Stack\n${stackBody}`));
     }
 
     // Conventions: combine fragments + conventions
@@ -37,8 +38,8 @@ export class AgentsGenerator extends BaseGenerator {
       if (fragment.category === "testing") continue; // testing goes in its own section
       if (fragment.content) {
         // Fragment content already includes its own ## heading — strip it and use ### for nesting
-        const body = fragment.content.replace(/^##\s+.+\n?/, "");
-        conventionParts.push(`### ${fragment.title}\n${body}`);
+        const fragmentBody = fragment.content.replace(/^##\s+.+\n?/, "");
+        conventionParts.push(`### ${fragment.title}\n${fragmentBody}`);
       }
     }
     if (context.conventionsSection) {
@@ -52,13 +53,20 @@ export class AgentsGenerator extends BaseGenerator {
       }
     }
     if (conventionParts.length > 0) {
-      sections.push(`## Conventions\n${conventionParts.join("\n\n")}`);
+      blocks.push(
+        this.wrapSection(
+          "conventions",
+          `## Conventions\n${conventionParts.join("\n\n")}`,
+        ),
+      );
     }
 
     // Constraints from rules
     if (context.rulesSection) {
       const rulesBody = context.rulesSection.replace(/^##\s*Rules\n?/, "");
-      sections.push(`## Constraints\n${rulesBody}`);
+      blocks.push(
+        this.wrapSection("constraints", `## Constraints\n${rulesBody}`),
+      );
     }
 
     // Testing: testing fragments only
@@ -69,7 +77,9 @@ export class AgentsGenerator extends BaseGenerator {
       }
     }
     if (testingParts.length > 0) {
-      sections.push(`## Testing\n${testingParts.join("\n\n")}`);
+      blocks.push(
+        this.wrapSection("testing", `## Testing\n${testingParts.join("\n\n")}`),
+      );
     }
 
     // Structure
@@ -78,17 +88,20 @@ export class AgentsGenerator extends BaseGenerator {
         /^##\s*Project Structure\n?/,
         "",
       );
-      sections.push(`## Project Structure\n${structBody}`);
+      blocks.push(
+        this.wrapSection("structure", `## Project Structure\n${structBody}`),
+      );
     }
 
-    const content = sections.join("\n\n") + "\n";
+    const body = blocks.join("\n\n");
+    const content = this.finalize(body, true);
 
     return {
       target: this.target,
       filePath: this.filePath,
       content,
       // Count sections minus the title heading
-      sections: sections.length - 1,
+      sections: blocks.length - 1,
     };
   }
 }

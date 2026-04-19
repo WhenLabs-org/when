@@ -3,10 +3,16 @@ import type {
   AwareConfig,
   Fragment,
   FragmentFunction,
+  FragmentModule,
 } from "../types.js";
+import { FragmentRegistry, defaultRegistry } from "./registry.js";
 
-// Framework fragments
-import { nextjs15Fragment } from "./framework/nextjs-15.js";
+// Framework fragments — version-aware modules for Next.js App Router.
+// Each module declares `appliesTo.versionRange` and the registry picks
+// whichever one matches the detected version; they share the same output
+// id (`nextjs-app-router`) so downstream consumers see a single fragment.
+import { nextjs14Module } from "./framework/nextjs-14.js";
+import { nextjs15Module } from "./framework/nextjs-15.js";
 import { nextjsPagesFragment } from "./framework/nextjs-pages.js";
 import { viteReactFragment } from "./framework/vite-react.js";
 import { expressFragment } from "./framework/express.js";
@@ -25,8 +31,11 @@ import { vueFragment } from "./framework/vue.js";
 import { goWebFragment } from "./framework/go-web.js";
 import { goFragment } from "./framework/go.js";
 
-// Styling fragments
-import { tailwindcssFragment } from "./styling/tailwindcss.js";
+// Styling fragments — Tailwind splits by major. v3 used a JS config file;
+// v4 is CSS-native. Wrong-version guidance tells the AI tool to edit
+// files that don't exist.
+import { tailwind3Module } from "./styling/tailwind-3.js";
+import { tailwind4Module } from "./styling/tailwind-4.js";
 import { styledComponentsFragment } from "./styling/styled-components.js";
 import { cssModulesFragment } from "./styling/css-modules.js";
 
@@ -37,6 +46,7 @@ import { sqlalchemyFragment } from "./orm/sqlalchemy.js";
 import { typeormFragment } from "./orm/typeorm.js";
 import { mongooseFragment } from "./orm/mongoose.js";
 import { kyselyFragment } from "./orm/kysely.js";
+import { sequelizeFragment } from "./orm/sequelize.js";
 
 // Testing fragments
 import { vitestFragment } from "./testing/vitest.js";
@@ -63,6 +73,7 @@ import { clerkFragment } from "./auth/clerk.js";
 import { luciaFragment } from "./auth/lucia.js";
 import { betterAuthFragment } from "./auth/better-auth.js";
 import { supabaseAuthFragment } from "./auth/supabase-auth.js";
+import { passportFragment } from "./auth/passport.js";
 
 // API fragments
 import { trpcFragment } from "./api/trpc.js";
@@ -74,14 +85,28 @@ import { zustandFragment } from "./state-management/zustand.js";
 import { reduxToolkitFragment } from "./state-management/redux-toolkit.js";
 import { jotaiFragment } from "./state-management/jotai.js";
 import { xstateFragment } from "./state-management/xstate.js";
+import { piniaFragment } from "./state-management/pinia.js";
+import { mobxFragment } from "./state-management/mobx.js";
+import { valtioFragment } from "./state-management/valtio.js";
+import { recoilFragment } from "./state-management/recoil.js";
 
 // CI/CD fragments
 import { githubActionsFragment } from "./cicd/github-actions.js";
 import { gitlabCiFragment } from "./cicd/gitlab-ci.js";
+import { circleciFragment } from "./cicd/circleci.js";
+import { jenkinsFragment } from "./cicd/jenkins.js";
+
+// Phase 2 version-aware fragments ship as full FragmentModule manifests.
+// Legacy bare functions continue to register via the compat shim below.
+const coreModules: FragmentModule[] = [
+  nextjs14Module,
+  nextjs15Module,
+  tailwind3Module,
+  tailwind4Module,
+];
 
 const allFragmentFunctions: FragmentFunction[] = [
   // Framework (10-19)
-  nextjs15Fragment,
   nextjsPagesFragment,
   viteReactFragment,
   expressFragment,
@@ -100,8 +125,7 @@ const allFragmentFunctions: FragmentFunction[] = [
   goWebFragment,
   goFragment,
 
-  // Styling (20-29)
-  tailwindcssFragment,
+  // Styling (20-29) — tailwindcssFragment migrated to tailwind-3/4 manifests above.
   styledComponentsFragment,
   cssModulesFragment,
 
@@ -112,6 +136,7 @@ const allFragmentFunctions: FragmentFunction[] = [
   typeormFragment,
   mongooseFragment,
   kyselyFragment,
+  sequelizeFragment,
 
   // API (40-49)
   trpcFragment,
@@ -124,6 +149,7 @@ const allFragmentFunctions: FragmentFunction[] = [
   luciaFragment,
   betterAuthFragment,
   supabaseAuthFragment,
+  passportFragment,
 
   // Testing (60-69)
   vitestFragment,
@@ -142,6 +168,10 @@ const allFragmentFunctions: FragmentFunction[] = [
   reduxToolkitFragment,
   jotaiFragment,
   xstateFragment,
+  piniaFragment,
+  mobxFragment,
+  valtioFragment,
+  recoilFragment,
 
   // Deployment (80-89)
   vercelFragment,
@@ -153,22 +183,47 @@ const allFragmentFunctions: FragmentFunction[] = [
   // CI/CD (86-89)
   githubActionsFragment,
   gitlabCiFragment,
+  circleciFragment,
+  jenkinsFragment,
 ];
+
+// Core fragments register in two waves:
+//   1. Full FragmentModule manifests (Phase 2+): Next.js by major,
+//      Tailwind by major. The registry gates them via `appliesTo` so
+//      only the matching version runs.
+//   2. Legacy bare `FragmentFunction` fragments (pre-Phase-2): each
+//      wraps itself, carrying id/category/priority inside the returned
+//      Fragment. Dup-id protection still applies at resolve time.
+let coreRegistered = false;
+function registerCoreFragments(registry: FragmentRegistry): void {
+  for (const mod of coreModules) {
+    registry.register(mod);
+  }
+  for (const fn of allFragmentFunctions) {
+    registry.registerLegacy(fn);
+  }
+}
+
+function ensureCoreRegistered(): void {
+  if (coreRegistered) return;
+  registerCoreFragments(defaultRegistry);
+  coreRegistered = true;
+}
+
+/** Register a fragment module (core or plugin) with the default registry. */
+export function registerFragmentModule(module: FragmentModule): void {
+  ensureCoreRegistered();
+  defaultRegistry.register(module);
+}
 
 export function resolveFragments(
   stack: DetectedStack,
   config: AwareConfig,
 ): Fragment[] {
-  const fragments: Fragment[] = [];
-
-  for (const fn of allFragmentFunctions) {
-    const result = fn(stack, config);
-    if (result !== null) {
-      fragments.push(result);
-    }
-  }
-
-  fragments.sort((a, b) => a.priority - b.priority);
-
-  return fragments;
+  ensureCoreRegistered();
+  return defaultRegistry.resolve(stack, config);
 }
+
+// Registry internals (FragmentRegistry, defaultRegistry) intentionally
+// not re-exported at module boundary — Phase 5 will settle the plugin
+// API surface. Tests import directly from "./registry.js".

@@ -1,8 +1,17 @@
-# ContextPilot — AI Context File Manager
+# aware — AI Context File Manager
+
+> **Document status.** This is the original product spec, preserved
+> largely as-written. The tool now ships as `aware` (not `ContextPilot`);
+> the config file is `.aware.json`. The command shape is close to this
+> spec but the implementation has grown past it in seven documented
+> phases — version-aware fragments, drift enforcement, convention
+> extraction, monorepo support, a plugin system, and fragment
+> disable/enable. For current feature state see `README.md` and the
+> `next.md` roadmap. For commit-by-commit history see git log.
 
 ## What We're Building
 
-ContextPilot is a CLI tool that initializes, maintains, and syncs AI context files (CLAUDE.md, .cursorrules, .github/copilot-instructions.md, AGENTS.md) from a single source of truth. It auto-detects your stack, generates intelligent starter context, keeps it updated as your project evolves, and ensures all three major AI coding tools get consistent instructions.
+aware is a CLI tool that initializes, maintains, and syncs AI context files (CLAUDE.md, .cursorrules, .github/copilot-instructions.md, AGENTS.md) from a single source of truth. It auto-detects your stack, generates intelligent starter context, keeps it updated as your project evolves, and ensures all three major AI coding tools get consistent instructions.
 
 ---
 
@@ -38,7 +47,7 @@ Every developer using AI coding tools faces these problems:
 ### 1. Initialize — Auto-Detect and Generate
 
 ```bash
-$ contextpilot init
+$ aware init
 
 Detecting project stack...
 
@@ -60,17 +69,17 @@ Generating AI context files...
   ✓ CLAUDE.md (for Claude Code)
   ✓ .cursorrules (for Cursor)
   ✓ .github/copilot-instructions.md (for GitHub Copilot)
-  ✓ .contextpilot.json (source of truth — edit this, sync to others)
+  ✓ .aware.json (source of truth — edit this, sync to others)
 
-Files created. Review and customize, then run `contextpilot sync` after edits.
+Files created. Review and customize, then run `aware sync` after edits.
 ```
 
-### 2. The Source of Truth (`.contextpilot.json`)
+### 2. The Source of Truth (`.aware.json`)
 
 Instead of maintaining three files, you maintain one:
 
 ```jsonc
-// .contextpilot.json
+// .aware.json
 {
   "version": 1,
   "project": {
@@ -157,9 +166,9 @@ Instead of maintaining three files, you maintain one:
 ### 3. Sync — One Source, Multiple Outputs
 
 ```bash
-$ contextpilot sync
+$ aware sync
 
-Syncing from .contextpilot.json...
+Syncing from .aware.json...
 
   ✓ CLAUDE.md — updated (2 changes)
       + Added Drizzle ORM conventions (detected drizzle.config.ts)
@@ -173,18 +182,18 @@ All targets in sync.
 ### 4. Watch — Stay Current Automatically
 
 ```bash
-$ contextpilot watch
+$ aware watch
 
 Watching for project changes...
 
 [14:32:01] Detected: new dependency added (zod@3.23)
-  → Updated .contextpilot.json stack
+  → Updated .aware.json stack
   → Regenerated context files
   → Added Zod validation conventions
 
 [15:10:44] Detected: new directory created (src/workers/)
   → Added to structure map
-  → Suggestion: add description for src/workers/ in .contextpilot.json
+  → Suggestion: add description for src/workers/ in .aware.json
 
 [16:45:22] Detected: vitest.config.ts modified
   → Updated testing configuration in context files
@@ -194,7 +203,7 @@ Watching for project changes...
 
 ```bash
 # List available templates
-$ contextpilot templates
+$ aware templates
 
 POPULAR TEMPLATES:
   nextjs-app-router     Next.js 15 App Router + TypeScript (★ 2,340)
@@ -207,16 +216,16 @@ POPULAR TEMPLATES:
   turborepo             Turborepo monorepo setup (★ 340)
 
 # Initialize from a template
-$ contextpilot init --template nextjs-app-router
+$ aware init --template nextjs-app-router
 
 # Publish your own template
-$ contextpilot publish my-custom-template
+$ aware publish my-custom-template
 ```
 
 ### 6. Diff — See What Changed
 
 ```bash
-$ contextpilot diff
+$ aware diff
 
 Changes since last sync (3 days ago):
 
@@ -232,7 +241,7 @@ SUGGESTED CONTEXT UPDATES:
   3. Document the query client setup in src/lib/query-client.ts
 
 Apply suggestions? (y/n/edit): y
-  ✓ Updated .contextpilot.json
+  ✓ Updated .aware.json
   ✓ Regenerated CLAUDE.md, .cursorrules, copilot-instructions.md
 ```
 
@@ -300,18 +309,18 @@ CLI framework:  Commander.js
 Detection:      Custom file parsers (package.json, toml, yaml, etc.)
 Templates:      Handlebars for fragment composition
 File watching:  chokidar
-Diffing:        fast-json-patch for .contextpilot.json changes
+Diffing:        fast-json-patch for .aware.json changes
 Config:         cosmiconfig
 Package:        npm, homebrew
 Registry:       GitHub-based template registry (JSON index + raw file URLs)
-                or simple npm packages (@contextpilot/template-nextjs)
+                or simple npm packages (@aware/template-nextjs)
 Testing:        Vitest with fixture projects
 ```
 
 ### Project Structure
 
 ```
-contextpilot/
+aware/
 ├── src/
 │   ├── cli.ts
 │   ├── commands/
@@ -321,7 +330,7 @@ contextpilot/
 │   │   ├── diff.ts               # Show what changed since last sync
 │   │   ├── templates.ts          # Browse/apply community templates
 │   │   ├── publish.ts            # Publish a custom template
-│   │   └── validate.ts           # Validate .contextpilot.json
+│   │   └── validate.ts           # Validate .aware.json
 │   ├── detectors/
 │   │   ├── framework.ts          # Detect framework from deps
 │   │   ├── language.ts           # Detect language and version
@@ -384,7 +393,7 @@ contextpilot/
 
 ### Week 2: Sync + Watch + Polish
 
-- Day 1: `.contextpilot.json` schema definition, parser, validator
+- Day 1: `.aware.json` schema definition, parser, validator
 - Day 2: `sync` command — read source of truth, regenerate all targets
 - Day 3: `diff` command — detect project changes since last sync
 - Day 4: `watch` command with chokidar — auto-detect and suggest updates
@@ -396,7 +405,7 @@ contextpilot/
 
 - Day 1-2: Template registry — browse, apply, publish community templates
 - Day 3: GitHub-based template hosting (users publish as repos/gists)
-- Day 4: Team sync — shared .contextpilot.json conventions across org repos
+- Day 4: Team sync — shared .aware.json conventions across org repos
 - Day 5: VS Code extension — sidebar showing current context, one-click sync
 - Day 6-7: Billing for team features, private template hosting
 
@@ -428,9 +437,9 @@ The free tier should be extremely generous. The goal is adoption — become the 
 
 ---
 
-## The Killer Feature: `contextpilot init` Magic
+## The Killer Feature: `aware init` Magic
 
-When a developer runs `contextpilot init` in a mature project and sees:
+When a developer runs `aware init` in a mature project and sees:
 
 ```
 Detected: Next.js 15.1 (App Router) + TypeScript 5.5 + Drizzle ORM + Vitest + Tailwind 4

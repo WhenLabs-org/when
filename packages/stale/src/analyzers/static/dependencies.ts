@@ -1,6 +1,7 @@
 import type { Analyzer, AnalyzerContext, DriftIssue } from '../../types.js';
 import { issueId } from '../../utils/id.js';
 import { findRemovalCommit } from '../../utils/git.js';
+import { depsFor } from '../../utils/workspace-scope.js';
 
 // Maps a dependency name (as mentioned in docs) to npm package patterns
 const DEPENDENCY_PACKAGE_MAP: Record<string, string[]> = {
@@ -41,11 +42,11 @@ export class DependenciesAnalyzer implements Analyzer {
 
   async analyze(ctx: AnalyzerContext): Promise<DriftIssue[]> {
     const issues: DriftIssue[] = [];
-    const allDeps = { ...ctx.codebase.dependencies, ...ctx.codebase.devDependencies };
-    const allDepNames = Object.keys(allDeps);
     const serviceNames = ctx.codebase.dockerCompose?.services ?? [];
 
     for (const doc of ctx.docs) {
+      const { deps, devDeps } = depsFor(doc.filePath, ctx.codebase);
+      const allDeps = { ...deps, ...devDeps };
       for (const claim of doc.dependencyClaims) {
         const depKey = claim.name.toLowerCase();
 

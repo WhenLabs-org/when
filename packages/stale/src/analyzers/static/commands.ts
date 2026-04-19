@@ -1,6 +1,7 @@
 import type { Analyzer, AnalyzerContext, DriftIssue } from '../../types.js';
 import { findSimilar } from '../../utils/similarity.js';
 import { issueId } from '../../utils/id.js';
+import { scriptsFor, depsFor } from '../../utils/workspace-scope.js';
 
 export class CommandsAnalyzer implements Analyzer {
   name = 'commands';
@@ -8,10 +9,12 @@ export class CommandsAnalyzer implements Analyzer {
 
   async analyze(ctx: AnalyzerContext): Promise<DriftIssue[]> {
     const issues: DriftIssue[] = [];
-    const { scripts } = ctx.codebase;
-    const scriptNames = Object.keys(scripts);
 
     for (const doc of ctx.docs) {
+      const scripts = scriptsFor(doc.filePath, ctx.codebase);
+      const scriptNames = Object.keys(scripts);
+      const { deps, devDeps } = depsFor(doc.filePath, ctx.codebase);
+
       for (const block of doc.codeBlocks) {
         for (const cmd of block.commands) {
           if (cmd.manager === 'make') {
@@ -52,8 +55,7 @@ export class CommandsAnalyzer implements Analyzer {
             } else {
               // Script exists — check for tool mismatches
               const scriptValue = scripts[cmd.scriptName];
-              const { dependencies, devDependencies } = ctx.codebase;
-              const allDeps = { ...dependencies, ...devDependencies };
+              const allDeps = { ...deps, ...devDeps };
 
               if (scriptValue.includes('jest') && !('jest' in allDeps) && 'vitest' in allDeps) {
                 issues.push({
@@ -72,7 +74,7 @@ export class CommandsAnalyzer implements Analyzer {
           // npx check
           if (cmd.manager === 'npx') {
             const pkg = cmd.scriptName;
-            const allDeps = { ...ctx.codebase.dependencies, ...ctx.codebase.devDependencies };
+            const allDeps = { ...deps, ...devDeps };
             if (pkg && !(pkg in allDeps)) {
               // npx can run packages not in deps, so just warn
               issues.push({

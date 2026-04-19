@@ -24,6 +24,9 @@ inputs:
     description: 'Output format: terminal, json, markdown, sarif'
     required: false
     default: 'terminal'
+  github-token:
+    description: 'Token used to post PR comments. Defaults to the GITHUB_TOKEN env var if unset.'
+    required: false
 
 runs:
   using: 'node20'

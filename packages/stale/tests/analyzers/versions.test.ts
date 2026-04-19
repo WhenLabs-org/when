@@ -29,6 +29,9 @@ function makeContext(
       existingFiles: new Set(),
       dependencies: {},
       devDependencies: {},
+      configPorts: [],
+      sourceSymbols: new Set(),
+      workspaces: [],
       ...codebase,
     },
     config: DEFAULT_CONFIG,
@@ -70,5 +73,72 @@ describe('VersionsAnalyzer', () => {
 
     const issues = await analyzer.analyze(ctx);
     expect(issues).toHaveLength(0);
+  });
+
+  it('prefers workspace engines.node over root for workspace-owned docs', async () => {
+    const ctx = makeContext(
+      [{
+        filePath: 'packages/api/README.md',
+        versionClaims: [{ runtime: 'node', version: '18', line: 9, rawText: 'Node 18 or higher' }],
+      }],
+      {
+        nodeVersion: { fromEngines: '>=20.0.0' },
+        workspaces: [{
+          name: '@org/api',
+          relativePath: 'packages/api',
+          scripts: {},
+          dependencies: {},
+          devDependencies: {},
+          engines: { node: '>=18.0.0' },
+        }],
+      },
+    );
+    const issues = await analyzer.analyze(ctx);
+    expect(issues).toHaveLength(0);
+  });
+
+  it('falls back to root when workspace has no engines.node', async () => {
+    const ctx = makeContext(
+      [{
+        filePath: 'packages/api/README.md',
+        versionClaims: [{ runtime: 'node', version: '16', line: 9, rawText: 'Node 16 or higher' }],
+      }],
+      {
+        nodeVersion: { fromEngines: '>=20.0.0' },
+        workspaces: [{
+          name: '@org/api',
+          relativePath: 'packages/api',
+          scripts: {},
+          dependencies: {},
+          devDependencies: {},
+        }],
+      },
+    );
+    const issues = await analyzer.analyze(ctx);
+    expect(issues).toHaveLength(1);
+    expect(issues[0].message).toContain('20.0.0');
+  });
+
+  it('attributes the error source to the workspace package.json', async () => {
+    const ctx = makeContext(
+      [{
+        filePath: 'packages/web/README.md',
+        versionClaims: [{ runtime: 'node', version: '16', line: 9, rawText: 'Node 16' }],
+      }],
+      {
+        nodeVersion: { fromEngines: '>=20.0.0' },
+        workspaces: [{
+          name: '@org/web',
+          relativePath: 'packages/web',
+          scripts: {},
+          dependencies: {},
+          devDependencies: {},
+          engines: { node: '>=22.0.0' },
+        }],
+      },
+    );
+    const issues = await analyzer.analyze(ctx);
+    expect(issues).toHaveLength(1);
+    expect(issues[0].message).toContain('packages/web/package.json engines');
   });
 });

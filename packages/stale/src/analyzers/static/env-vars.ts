@@ -2,6 +2,20 @@ import type { Analyzer, AnalyzerContext, DriftIssue } from '../../types.js';
 import { findSimilar } from '../../utils/similarity.js';
 import { issueId } from '../../utils/id.js';
 
+// Env vars provided by runtimes / CI platforms that users don't document
+// in their own READMEs. Flagging these as "undocumented" is always noise.
+const PLATFORM_ENV_VARS = new Set([
+  // GitHub Actions
+  'GITHUB_TOKEN', 'GITHUB_WORKSPACE', 'GITHUB_SHA', 'GITHUB_REF',
+  'GITHUB_ACTOR', 'GITHUB_REPOSITORY', 'GITHUB_EVENT_NAME',
+  'GITHUB_EVENT_PATH', 'GITHUB_HEAD_REF', 'GITHUB_BASE_REF',
+  'GITHUB_RUN_ID', 'GITHUB_RUN_NUMBER', 'GITHUB_JOB', 'GITHUB_ACTIONS',
+  // Generic CI
+  'CI', 'RUNNER_OS', 'RUNNER_TEMP', 'RUNNER_TOOL_CACHE',
+  // OS
+  'HOME', 'PATH', 'USER', 'SHELL', 'PWD', 'TMPDIR', 'LANG', 'LC_ALL', 'TZ',
+]);
+
 export class EnvVarsAnalyzer implements Analyzer {
   name = 'env-vars';
   category = 'env-var' as const;
@@ -52,6 +66,7 @@ export class EnvVarsAnalyzer implements Analyzer {
     // Check codebase vars against docs (undocumented)
     const documentedVarNames = new Set(documentedVars.keys());
     for (const envVar of ctx.codebase.envVarsUsed) {
+      if (PLATFORM_ENV_VARS.has(envVar.name)) continue;
       if (!documentedVarNames.has(envVar.name)) {
         // Only report once per var name — use the first doc file as source
         const firstDoc = ctx.docs[0];

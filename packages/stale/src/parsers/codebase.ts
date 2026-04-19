@@ -1,128 +1,173 @@
-import { readFile } from 'node:fs/promises';
+import { readFile, stat } from 'node:fs/promises';
 import { join } from 'node:path';
 import fg from 'fast-glob';
 import type { CodebaseFacts, CodeEnvVar, CodeRoute, ConfigPort } from '../types.js';
 import type { StaleConfig } from '../types.js';
 import { parsePackageJson, parseDockerCompose, parseVersionFiles } from './config.js';
+import { extractFromTsSource, isTsLikeFile, type TsFileFacts } from './ast/ts-extractor.js';
+import { loadCache, saveCache, type FactCache, type FileFactCacheEntry } from '../utils/cache.js';
+import { detectWorkspaces } from './workspaces.js';
+import type { WorkspaceFact } from '../types.js';
 
-const JS_ENV_REGEX = /process\.env\.([A-Z][A-Z0-9_]+)/g;
-const JS_ENV_BRACKET_REGEX = /process\.env\[['"]([A-Z][A-Z0-9_]+)['"]\]/g;
-const PY_ENV_REGEX = /os\.(?:environ(?:\.get)?|getenv)\(?['"]([A-Z][A-Z0-9_]+)['"]\)?/g;
 const DOTENV_REGEX = /^([A-Z][A-Z0-9_]+)\s*=/gm;
 
 const MAKEFILE_TARGET_REGEX = /^([a-zA-Z_][\w.-]*)\s*:/gm;
 
-async function extractEnvVars(projectPath: string): Promise<CodeEnvVar[]> {
-  const envVars: CodeEnvVar[] = [];
-  const seen = new Map<string, CodeEnvVar>();
+// Handles all common Python env-var access patterns:
+//   os.environ["FOO"], os.environ.get("FOO"), os.getenv("FOO"),
+//   environ["FOO"] (after `from os import environ`),
+//   getenv("FOO")  (after `from os import getenv`).
+// Strings inside comments (# ...) are stripped before matching so we don't
+// flag referenced names in doc strings on the same physical line.
+const PY_ENV_PATTERNS: RegExp[] = [
+  /(?:os\.)?environ(?:\.get)?\s*\(\s*['"]([A-Z][A-Z0-9_]+)['"]/g,
+  /(?:os\.)?environ\s*\[\s*['"]([A-Z][A-Z0-9_]+)['"]\s*\]/g,
+  /(?:os\.)?getenv\s*\(\s*['"]([A-Z][A-Z0-9_]+)['"]/g,
+];
 
-  // Scan source files
-  const sourceFiles = await fg(
-    ['**/*.{ts,tsx,js,jsx,mjs,cjs,py,rb,go}'],
-    { cwd: projectPath, ignore: ['node_modules/**', 'dist/**', '.git/**', 'coverage/**'] },
-  );
+interface PerFileFacts {
+  envVars: CodeEnvVar[];
+  routes: CodeRoute[];
+  symbols: string[];
+}
 
-  for (const file of sourceFiles) {
-    try {
-      const content = await readFile(join(projectPath, file), 'utf-8');
-      const lines = content.split('\n');
+const EMPTY_FACTS: PerFileFacts = { envVars: [], routes: [], symbols: [] };
 
-      for (let i = 0; i < lines.length; i++) {
-        const line = lines[i];
-        const regexes = file.endsWith('.py') ? [PY_ENV_REGEX] : [JS_ENV_REGEX, JS_ENV_BRACKET_REGEX];
-
-        for (const regex of regexes) {
-          regex.lastIndex = 0;
-          let match;
-          while ((match = regex.exec(line)) !== null) {
-            const name = match[1];
-            if (!seen.has(name)) {
-              const envVar = { name, file, line: i + 1 };
-              seen.set(name, envVar);
-              envVars.push(envVar);
-            }
-          }
-        }
-      }
-    } catch {
+function stripPythonComment(line: string): string {
+  // Respects single- and double-quoted strings; anything after a bare `#` is
+  // treated as a comment and removed.
+  let inStr: '"' | "'" | null = null;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (inStr) {
+      if (c === '\\') { i++; continue; }
+      if (c === inStr) inStr = null;
       continue;
     }
+    if (c === '"' || c === "'") { inStr = c; continue; }
+    if (c === '#') return line.slice(0, i);
   }
+  return line;
+}
 
-  // Scan .env.example / .env.sample
+function extractPyFacts(file: string, content: string): PerFileFacts {
+  const envVars: CodeEnvVar[] = [];
+  const seen = new Set<string>();
+  const lines = content.split('\n');
+  for (let i = 0; i < lines.length; i++) {
+    const line = stripPythonComment(lines[i]);
+    for (const pattern of PY_ENV_PATTERNS) {
+      pattern.lastIndex = 0;
+      let match;
+      while ((match = pattern.exec(line)) !== null) {
+        const key = `${match[1]}:${i}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        envVars.push({ name: match[1], file, line: i + 1 });
+      }
+    }
+  }
+  return { envVars, routes: [], symbols: [] };
+}
+
+function extractPyRoutes(file: string, content: string): CodeRoute[] {
+  const routes: CodeRoute[] = [];
+  const flaskRegex = /@(?:app|blueprint|bp)\.route\s*\(\s*['"]([^'"]+)['"]\s*(?:,\s*methods\s*=\s*\[([^\]]+)\])?/g;
+  const lines = content.split('\n');
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    flaskRegex.lastIndex = 0;
+    let match;
+    while ((match = flaskRegex.exec(line)) !== null) {
+      const path = match[1];
+      const methods = match[2] ? match[2].replace(/['"\s]/g, '').split(',') : ['GET'];
+      for (const method of methods) {
+        routes.push({ method: method.toUpperCase(), path, file, line: i + 1, framework: 'flask' });
+      }
+    }
+  }
+  return routes;
+}
+
+async function extractFileFacts(file: string, content: string): Promise<PerFileFacts> {
+  if (isTsLikeFile(file)) {
+    const r: TsFileFacts = extractFromTsSource(file, content);
+    return { envVars: r.envVars, routes: r.routes, symbols: r.symbols };
+  }
+  if (file.endsWith('.py')) {
+    const envFacts = extractPyFacts(file, content);
+    const routes = extractPyRoutes(file, content);
+    return { ...envFacts, routes };
+  }
+  return EMPTY_FACTS;
+}
+
+async function extractSourceFacts(
+  projectPath: string,
+  config: StaleConfig,
+  cache: FactCache | null,
+): Promise<{ perFile: Map<string, PerFileFacts>; cacheEntries: Map<string, FileFactCacheEntry> }> {
+  const sourceFiles = await fg(
+    ['**/*.{ts,tsx,js,jsx,mjs,cjs,mts,cts,py}'],
+    {
+      cwd: projectPath,
+      ignore: [
+        'node_modules/**', 'dist/**', '.git/**', 'coverage/**',
+        '**/*.test.*', '**/*.spec.*',
+        ...(config.ignore ?? []),
+      ],
+    },
+  );
+
+  const perFile = new Map<string, PerFileFacts>();
+  const cacheEntries = new Map<string, FileFactCacheEntry>();
+
+  await Promise.all(sourceFiles.map(async (file) => {
+    try {
+      const abs = join(projectPath, file);
+      const st = await stat(abs);
+      const mtime = st.mtimeMs;
+      const size = st.size;
+
+      const cached = cache?.files[file];
+      if (cached && cached.mtimeMs === mtime && cached.size === size) {
+        perFile.set(file, cached.facts);
+        cacheEntries.set(file, cached);
+        return;
+      }
+
+      const content = await readFile(abs, 'utf-8');
+      const facts = await extractFileFacts(file, content);
+      perFile.set(file, facts);
+      cacheEntries.set(file, { mtimeMs: mtime, size, facts });
+    } catch {
+      // skip unreadable files
+    }
+  }));
+
+  return { perFile, cacheEntries };
+}
+
+async function extractDotenvVars(projectPath: string): Promise<CodeEnvVar[]> {
+  const out: CodeEnvVar[] = [];
+  const seen = new Set<string>();
   for (const envFile of ['.env.example', '.env.sample']) {
     try {
       const content = await readFile(join(projectPath, envFile), 'utf-8');
-      let match;
       DOTENV_REGEX.lastIndex = 0;
+      let match;
       while ((match = DOTENV_REGEX.exec(content)) !== null) {
         const name = match[1];
         if (!seen.has(name)) {
-          const envVar = { name, file: envFile, line: content.slice(0, match.index).split('\n').length };
-          seen.set(name, envVar);
-          envVars.push(envVar);
+          seen.add(name);
+          out.push({ name, file: envFile, line: content.slice(0, match.index).split('\n').length });
         }
       }
     } catch {
       continue;
     }
   }
-
-  return envVars;
-}
-
-async function extractRoutes(projectPath: string): Promise<CodeRoute[]> {
-  const routes: CodeRoute[] = [];
-  const sourceFiles = await fg(
-    ['**/*.{ts,tsx,js,jsx,mjs,cjs,py}'],
-    { cwd: projectPath, ignore: ['node_modules/**', 'dist/**', '.git/**', 'coverage/**', '**/*.test.*', '**/*.spec.*'] },
-  );
-
-  for (const file of sourceFiles) {
-    try {
-      const content = await readFile(join(projectPath, file), 'utf-8');
-      const lines = content.split('\n');
-
-      for (let i = 0; i < lines.length; i++) {
-        const line = lines[i];
-
-        // Express/Fastify/Koa/Hono pattern
-        const routeRegex = /(?:app|router|server|fastify|hono)\.(get|post|put|patch|delete|head|options)\s*\(\s*['"`](\/[^'"`]*?)['"`]/gi;
-        let match;
-        while ((match = routeRegex.exec(line)) !== null) {
-          const framework = content.includes('fastify') ? 'fastify'
-            : content.includes('express') ? 'express'
-            : content.includes('koa') ? 'koa'
-            : content.includes('hono') ? 'hono'
-            : 'unknown';
-
-          routes.push({
-            method: match[1].toUpperCase(),
-            path: match[2],
-            file,
-            line: i + 1,
-            framework: framework as CodeRoute['framework'],
-          });
-        }
-
-        // Flask pattern
-        const flaskRegex = /@(?:app|blueprint|bp)\.route\s*\(\s*['"]([^'"]+)['"]\s*(?:,\s*methods\s*=\s*\[([^\]]+)\])?/gi;
-        while ((match = flaskRegex.exec(line)) !== null) {
-          const path = match[1];
-          const methods = match[2]
-            ? match[2].replace(/['"\s]/g, '').split(',')
-            : ['GET'];
-          for (const method of methods) {
-            routes.push({ method: method.toUpperCase(), path, file, line: i + 1, framework: 'flask' });
-          }
-        }
-      }
-    } catch {
-      continue;
-    }
-  }
-
-  return routes;
+  return out;
 }
 
 async function extractMakeTargets(projectPath: string): Promise<string[]> {
@@ -209,43 +254,6 @@ async function extractConfigPorts(projectPath: string): Promise<ConfigPort[]> {
   return ports;
 }
 
-const SYMBOL_REGEX = /(?:function|const|let|var|class|type|interface|enum|export\s+(?:default\s+)?(?:function|const|let|var|class|type|interface|enum))\s+([a-zA-Z_$][\w$]*)/g;
-const METHOD_REGEX = /^\s*(?:async\s+)?([a-zA-Z_$][\w$]*)\s*\(/gm;
-
-async function extractSourceSymbols(projectPath: string): Promise<Set<string>> {
-  const symbols = new Set<string>();
-
-  const sourceFiles = await fg(
-    ['**/*.{ts,tsx,js,jsx,mjs,cjs}'],
-    { cwd: projectPath, ignore: ['node_modules/**', 'dist/**', '.git/**', 'coverage/**'] },
-  );
-
-  for (const file of sourceFiles) {
-    try {
-      const content = await readFile(join(projectPath, file), 'utf-8');
-
-      SYMBOL_REGEX.lastIndex = 0;
-      let match;
-      while ((match = SYMBOL_REGEX.exec(content)) !== null) {
-        symbols.add(match[1]);
-      }
-
-      METHOD_REGEX.lastIndex = 0;
-      while ((match = METHOD_REGEX.exec(content)) !== null) {
-        const name = match[1];
-        // Skip common keywords that look like methods
-        if (!['if', 'for', 'while', 'switch', 'catch', 'return', 'throw', 'new', 'delete', 'typeof', 'void', 'import', 'export', 'require'].includes(name)) {
-          symbols.add(name);
-        }
-      }
-    } catch {
-      continue;
-    }
-  }
-
-  return symbols;
-}
-
 export async function parseCodebase(projectPath: string, config: StaleConfig): Promise<CodebaseFacts> {
   const allFiles = await fg(['**/*'], {
     cwd: projectPath,
@@ -254,15 +262,62 @@ export async function parseCodebase(projectPath: string, config: StaleConfig): P
   });
 
   const existingFiles = new Set(allFiles);
-  const packageJson = await parsePackageJson(projectPath);
-  const dockerCompose = await parseDockerCompose(projectPath);
-  const versionFiles = await parseVersionFiles(projectPath);
-  const envVarsUsed = await extractEnvVars(projectPath);
-  const routes = await extractRoutes(projectPath);
-  const makeTargets = await extractMakeTargets(projectPath);
-  const configPorts = await extractConfigPorts(projectPath);
-  const needSymbols = config.checks.commentStaleness;
-  const sourceSymbols = needSymbols ? await extractSourceSymbols(projectPath) : new Set<string>();
+  const cache = await loadCache(projectPath, config);
+
+  const [packageJson, dockerCompose, versionFiles, makeTargets, configPorts, dotenvVars, sourceResult, wsLayout] =
+    await Promise.all([
+      parsePackageJson(projectPath),
+      parseDockerCompose(projectPath),
+      parseVersionFiles(projectPath),
+      extractMakeTargets(projectPath),
+      extractConfigPorts(projectPath),
+      extractDotenvVars(projectPath),
+      extractSourceFacts(projectPath, config, cache),
+      detectWorkspaces(projectPath),
+    ]);
+
+  const workspaces: WorkspaceFact[] = wsLayout.workspaces.map((w) => {
+    const pkg = w.packageJson as {
+      scripts?: Record<string, string>;
+      dependencies?: Record<string, string>;
+      devDependencies?: Record<string, string>;
+      engines?: Record<string, string>;
+    };
+    return {
+      name: w.name,
+      relativePath: w.relativePath,
+      scripts: pkg.scripts ?? {},
+      dependencies: pkg.dependencies ?? {},
+      devDependencies: pkg.devDependencies ?? {},
+      engines: pkg.engines,
+    };
+  });
+
+  const envVarsSeen = new Set<string>();
+  const envVarsUsed: CodeEnvVar[] = [];
+  const routes: CodeRoute[] = [];
+  const sourceSymbols = new Set<string>();
+
+  for (const [, facts] of sourceResult.perFile) {
+    for (const ev of facts.envVars) {
+      if (!envVarsSeen.has(ev.name)) {
+        envVarsSeen.add(ev.name);
+        envVarsUsed.push(ev);
+      }
+    }
+    for (const r of facts.routes) routes.push(r);
+    if (config.checks.commentStaleness) {
+      for (const s of facts.symbols) sourceSymbols.add(s);
+    }
+  }
+  for (const ev of dotenvVars) {
+    if (!envVarsSeen.has(ev.name)) {
+      envVarsSeen.add(ev.name);
+      envVarsUsed.push(ev);
+    }
+  }
+
+  await saveCache(projectPath, config, sourceResult.cacheEntries);
 
   const nodeVersion = { ...versionFiles };
   if (packageJson?.engines?.node) {
@@ -282,5 +337,6 @@ export async function parseCodebase(projectPath: string, config: StaleConfig): P
     devDependencies: packageJson?.devDependencies ?? {},
     configPorts,
     sourceSymbols,
+    workspaces,
   };
 }

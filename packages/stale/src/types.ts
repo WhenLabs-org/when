@@ -207,6 +207,15 @@ export interface ConfigPort {
   source: string;
 }
 
+export interface WorkspaceFact {
+  name: string;
+  relativePath: string;
+  scripts: Record<string, string>;
+  dependencies: Record<string, string>;
+  devDependencies: Record<string, string>;
+  engines?: Record<string, string>;
+}
+
 export interface CodebaseFacts {
   packageJson?: PackageJsonFacts;
   scripts: Record<string, string>;
@@ -220,6 +229,7 @@ export interface CodebaseFacts {
   devDependencies: Record<string, string>;
   configPorts: ConfigPort[];
   sourceSymbols: Set<string>;
+  workspaces: WorkspaceFact[];
 }
 
 // --- Analyzer Interface ---

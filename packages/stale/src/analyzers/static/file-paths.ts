@@ -1,6 +1,8 @@
 import type { Analyzer, AnalyzerContext, DriftIssue } from '../../types.js';
 import { findSimilar } from '../../utils/similarity.js';
 import { issueId } from '../../utils/id.js';
+import { findRenameTarget } from '../../utils/git.js';
+import { resolveFileForDoc, workspaceForDoc } from '../../utils/workspace-scope.js';
 
 const EXTENSION_TRANSFORMS: Record<string, string[]> = {
   '.js': ['.ts', '.tsx', '.mjs', '.cjs'],
@@ -48,16 +50,24 @@ export class FilePathsAnalyzer implements Analyzer {
   async analyze(ctx: AnalyzerContext): Promise<DriftIssue[]> {
     const issues: DriftIssue[] = [];
     const files = Array.from(ctx.codebase.existingFiles);
+    const renameCache = new Map<string, Awaited<ReturnType<typeof findRenameTarget>>>();
 
     for (const doc of ctx.docs) {
       for (const ref of doc.filePaths) {
         const normalizedPath = ref.path.replace(/^\.\//, '');
 
-        if (ctx.codebase.existingFiles.has(normalizedPath)) continue;
+        // Try root-scoped, then workspace-scoped resolution
+        const resolved = resolveFileForDoc(doc.filePath, ref.path, ctx.codebase.existingFiles, ctx.codebase.workspaces);
+        if (resolved) continue;
 
-        // Check known alternatives
-        const alternatives = generateAlternatives(normalizedPath);
-        const foundAlt = alternatives.find((a) => ctx.codebase.existingFiles.has(a));
+        // Check known alternatives (both root-scoped and workspace-scoped)
+        const ws = workspaceForDoc(doc.filePath, ctx.codebase.workspaces);
+        const altCandidates = generateAlternatives(normalizedPath);
+        if (ws) {
+          const prefix = ws.relativePath.endsWith('/') ? ws.relativePath : ws.relativePath + '/';
+          for (const a of generateAlternatives(normalizedPath)) altCandidates.push(prefix + a);
+        }
+        const foundAlt = altCandidates.find((a) => ctx.codebase.existingFiles.has(a));
 
         if (foundAlt) {
           issues.push({
@@ -68,6 +78,26 @@ export class FilePathsAnalyzer implements Analyzer {
             message: `References \`${ref.path}\` — file does not exist`,
             suggestion: `Similar: \`${foundAlt}\` (renamed?)`,
             evidence: { expected: ref.path, actual: foundAlt },
+          });
+          continue;
+        }
+
+        // Look for git rename history — strongest signal
+        let rename = renameCache.get(normalizedPath);
+        if (rename === undefined) {
+          rename = await findRenameTarget(normalizedPath, ctx.projectPath, ctx.codebase.existingFiles);
+          renameCache.set(normalizedPath, rename);
+        }
+        if (rename) {
+          issues.push({
+            id: issueId('file-path', doc.filePath, ref.line),
+            category: 'file-path',
+            severity: ctx.config.severity.missingFile,
+            source: { file: doc.filePath, line: ref.line, text: ref.path },
+            message: `References \`${ref.path}\` — renamed to \`${rename.to}\` in ${rename.commit.slice(0, 7)}`,
+            suggestion: `Update to \`${rename.to}\``,
+            evidence: { expected: ref.path, actual: rename.to },
+            gitInfo: { commitHash: rename.commit },
           });
           continue;
         }

@@ -1,18 +1,38 @@
 #!/usr/bin/env node
 
 import { Command } from 'commander';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
 import { scanCommand } from './commands/scan.js';
 import { initCommand } from './commands/init.js';
 import { watchCommand } from './commands/watch.js';
 import { fixCommand } from './commands/fix.js';
 import chalk from 'chalk';
 
+const __dirname = dirname(fileURLToPath(import.meta.url));
+
+function readVersion(): string {
+  // Built from src/cli.ts → dist/src/cli.js, so walk up two dirs.
+  // In dev (tsx) we're still at src/, so one dir up works. Try both.
+  for (const rel of ['../../package.json', '../package.json']) {
+    try {
+      const raw = readFileSync(join(__dirname, rel), 'utf-8');
+      return (JSON.parse(raw) as { version: string }).version;
+    } catch {
+      // try next candidate
+    }
+  }
+  return '0.0.0';
+}
+const pkg = { version: readVersion() };
+
 const program = new Command();
 
 program
   .name('stale')
   .description('Detect documentation drift in your codebase')
-  .version('0.1.0')
+  .version(pkg.version)
   .option('--no-color', 'Disable colored output');
 
 program

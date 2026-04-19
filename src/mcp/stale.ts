@@ -2,28 +2,24 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { createTool as createStaleTool } from '@whenlabs/stale';
 import { runCli, formatOutput, writeCache, deriveProject, checkTriggers } from './run-cli.js';
-import { formatScanResult } from './format-scan.js';
+import { registerScanTool } from './register-scan-tool.js';
 
 export function registerStaleTools(server: McpServer): void {
   const stale = createStaleTool();
 
-  server.tool(
-    'stale_scan',
-    'Scan for documentation drift — detect when docs say one thing and code says another',
-    {
-      path: z.string().optional().describe('Project directory to scan (defaults to cwd)'),
+  registerScanTool(server, {
+    name: 'stale_scan',
+    description: 'Scan for documentation drift — detect when docs say one thing and code says another',
+    tool: stale,
+    cacheName: 'stale',
+    formatValues: ['terminal', 'json', 'markdown', 'sarif'],
+    coerceFormat: (f) => (f === 'sarif' ? 'json' : (f as 'terminal' | 'json' | 'markdown' | undefined)),
+    extraSchema: {
       deep: z.coerce.boolean().optional().describe('Enable AI-powered deep analysis'),
       git: z.coerce.boolean().optional().describe('Enable git history staleness checks'),
-      format: z.enum(['terminal', 'json', 'markdown', 'sarif']).optional().describe('Output format'),
     },
-    async ({ path, deep, git, format }) => {
-      const scan = await stale.scan({ cwd: path, options: { deep, git } });
-      const output = formatScanResult(scan, format === 'sarif' ? 'json' : format);
-      writeCache('stale', deriveProject(path), output, scan.ok ? 0 : 1);
-      const extras = await checkTriggers('stale_scan', { stdout: output, stderr: '', code: scan.ok ? 0 : 1 }, path);
-      return { content: [{ type: 'text' as const, text: output + extras.join('') }] };
-    },
-  );
+    buildOptions: ({ deep, git }) => ({ deep, git }),
+  });
 
   server.tool(
     'stale_fix',

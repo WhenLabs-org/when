@@ -1,13 +1,13 @@
 import { spawn } from 'node:child_process';
 import { join } from 'node:path';
-import { existsSync, mkdirSync, writeFileSync, readFileSync, readdirSync } from 'node:fs';
-import { homedir } from 'node:os';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { findBin } from '../utils/find-bin.js';
 import {
   detectProjectDirName,
   readAwareProjectName,
 } from '../utils/detect-project.js';
 import { getToolConfig, WhenlabsConfig } from '../config/whenlabs-config.js';
+import { entriesDir, writeEntry } from '../utils/cache.js';
 import type { SuggestionRule, TriggerContext } from '@whenlabs/core';
 
 export { findBin };
@@ -32,16 +32,10 @@ export function runCli(bin: string, args: string[], cwd?: string): Promise<{ std
   });
 }
 
-export const CACHE_DIR = join(homedir(), '.whenlabs', 'cache');
+export const CACHE_DIR = entriesDir();
 
 export function writeCache(tool: string, project: string, output: string, code: number): void {
-  try {
-    mkdirSync(CACHE_DIR, { recursive: true });
-    const file = join(CACHE_DIR, `${tool}_${project}.json`);
-    writeFileSync(file, JSON.stringify({ timestamp: Date.now(), output, code }));
-  } catch {
-    // best-effort
-  }
+  writeEntry(tool, project, output, code);
 }
 
 export function formatOutput(result: { stdout: string; stderr: string; code: number }): string {

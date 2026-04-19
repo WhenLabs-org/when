@@ -1,13 +1,9 @@
 import { Command } from 'commander';
-import { join } from 'node:path';
-import { homedir } from 'node:os';
-import { mkdirSync, writeFileSync } from 'node:fs';
 import { type ToolResult, runAllChecks } from '../utils/tool-runner.js';
-import { type WatchStatus, type ToolStatus, getStatusPath } from '../utils/status-provider.js';
+import { getStatusPath } from '../utils/status-provider.js';
+import { writeStatus, type CacheToolStatus } from '../utils/cache.js';
 
-const STATUS_DIR = join(homedir(), '.whenlabs');
-
-function toolResultToStatus(r: ToolResult): ToolStatus {
+function toolResultToStatus(r: ToolResult): CacheToolStatus {
   const count = r.issues + r.warnings;
   if (r.status === 'error') {
     return { status: 'error', count, detail: r.detail };
@@ -31,13 +27,11 @@ function buildSummary(results: ToolResult[]): string {
   return `${stalePart} ${envPart} ${portsPart} ${licPart} ${awarePart}`;
 }
 
-function writeStatus(results: ToolResult[]): void {
-  mkdirSync(STATUS_DIR, { recursive: true });
-
+function persistStatus(results: ToolResult[]): void {
   const toolsMap: Record<string, ToolResult> = {};
   for (const r of results) toolsMap[r.name] = r;
 
-  const status: WatchStatus = {
+  writeStatus({
     timestamp: new Date().toISOString(),
     tools: {
       stale: toolResultToStatus(toolsMap['stale']!),
@@ -47,9 +41,7 @@ function writeStatus(results: ToolResult[]): void {
       aware: toolResultToStatus(toolsMap['aware']!),
     },
     summary: buildSummary(results),
-  };
-
-  writeFileSync(getStatusPath(), JSON.stringify(status, null, 2) + '\n');
+  });
 }
 
 function sleep(ms: number): Promise<void> {
@@ -81,7 +73,7 @@ export function createWatchCommand(): Command {
       process.stderr.write(`watch: scanning... `);
 
       const results = await runAllChecks(cwd);
-      writeStatus(results);
+      persistStatus(results);
 
       const elapsed = ((Date.now() - start) / 1000).toFixed(1);
       const summary = buildSummary(results);

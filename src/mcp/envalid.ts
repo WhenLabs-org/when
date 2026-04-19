@@ -2,27 +2,21 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { createTool as createEnvalidTool } from '@whenlabs/envalid';
 import { runCli, formatOutput, writeCache, deriveProject, checkTriggers } from './run-cli.js';
-import { formatScanResult } from './format-scan.js';
+import { registerScanTool } from './register-scan-tool.js';
 
 export function registerEnvalidTools(server: McpServer): void {
   const envalid = createEnvalidTool();
 
-  server.tool(
-    'envalid_validate',
-    'Validate .env files against their schema — catch missing or invalid environment variables',
-    {
-      path: z.string().optional().describe('Project directory (defaults to cwd)'),
+  registerScanTool(server, {
+    name: 'envalid_validate',
+    description: 'Validate .env files against their schema — catch missing or invalid environment variables',
+    tool: envalid,
+    formatValues: ['terminal', 'json', 'markdown'],
+    extraSchema: {
       environment: z.string().optional().describe('Target environment (e.g. production, staging)'),
-      format: z.enum(['terminal', 'json', 'markdown']).optional().describe('Output format'),
     },
-    async ({ path, environment, format }) => {
-      const scan = await envalid.scan({ cwd: path, options: { environment } });
-      const output = formatScanResult(scan, format);
-      writeCache('envalid_validate', deriveProject(path), output, scan.ok ? 0 : 1);
-      const extras = await checkTriggers('envalid_validate', { stdout: output, stderr: '', code: scan.ok ? 0 : 1 }, path);
-      return { content: [{ type: 'text' as const, text: output + extras.join('') }] };
-    },
-  );
+    buildOptions: ({ environment }) => ({ environment }),
+  });
 
   server.tool(
     'envalid_detect',

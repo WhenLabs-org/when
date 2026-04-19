@@ -1,49 +1,31 @@
-import { join } from 'node:path';
-import { homedir } from 'node:os';
-import { existsSync, readFileSync, statSync } from 'node:fs';
+import {
+  readStatus as readCachedStatus,
+  statusPath,
+  statusMtime,
+  type CacheStatusSnapshot,
+  type CacheToolStatus,
+} from './cache.js';
 
-const STATUS_PATH = join(homedir(), '.whenlabs', 'status.json');
-
-export interface ToolStatus {
-  status: 'ok' | 'issues' | 'error';
-  count: number;
-  detail: string;
-}
-
-export interface WatchStatus {
-  timestamp: string;
-  tools: {
-    stale: ToolStatus;
-    envalid: ToolStatus;
-    berth: ToolStatus;
-    vow: ToolStatus;
-    aware: ToolStatus;
-  };
-  summary: string;
-}
+export type ToolStatus = CacheToolStatus;
+export type WatchStatus = Omit<CacheStatusSnapshot, 'schemaVersion'>;
 
 export function getStatusPath(): string {
-  return STATUS_PATH;
+  return statusPath();
 }
 
 export function readStatus(): WatchStatus | null {
-  if (!existsSync(STATUS_PATH)) return null;
-  try {
-    const raw = readFileSync(STATUS_PATH, 'utf-8');
-    return JSON.parse(raw) as WatchStatus;
-  } catch {
-    return null;
-  }
+  const snap = readCachedStatus();
+  if (!snap) return null;
+  const { schemaVersion: _ignored, ...rest } = snap;
+  return rest;
 }
 
 export function formatStatusLine(): string | null {
   const data = readStatus();
   if (!data) return null;
 
-  const tools = data.tools;
   const parts: string[] = [];
-
-  for (const [key, info] of Object.entries(tools) as [string, ToolStatus][]) {
+  for (const [key, info] of Object.entries(data.tools) as [string, ToolStatus][]) {
     const label = key === 'envalid' ? 'env' : key === 'vow' ? 'lic' : key;
     if (info.status === 'ok') {
       parts.push(`\u2713${label}`);
@@ -58,11 +40,7 @@ export function formatStatusLine(): string | null {
 }
 
 export function isStale(maxAgeMs: number = 120 * 60 * 1000): boolean {
-  if (!existsSync(STATUS_PATH)) return true;
-  try {
-    const stat = statSync(STATUS_PATH);
-    return Date.now() - stat.mtimeMs > maxAgeMs;
-  } catch {
-    return true;
-  }
+  const mtime = statusMtime();
+  if (mtime === null) return true;
+  return Date.now() - mtime > maxAgeMs;
 }

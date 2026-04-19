@@ -1,6 +1,6 @@
 import path from 'node:path';
 import chalk from 'chalk';
-import type { GlobalOptions, CheckOutput } from '../types.js';
+import type { GlobalOptions, CheckOutput, ActivePort, DockerPort } from '../types.js';
 import { detectAllActive, detectAllConfigured } from '../detectors/index.js';
 import { detectConflicts } from '../resolver/conflicts.js';
 import { suggestResolutions } from '../resolver/suggestions.js';
@@ -11,7 +11,14 @@ interface CheckOptions extends GlobalOptions {
   fix?: boolean;
 }
 
-export async function checkCommand(dir: string, options: CheckOptions): Promise<void> {
+export interface ScanCheckResult {
+  output: CheckOutput;
+  active: ActivePort[];
+  docker: DockerPort[];
+  warnings: string[];
+}
+
+export async function scanCheck(dir: string): Promise<ScanCheckResult> {
   const absDir = path.resolve(dir);
   const projectName = path.basename(absDir);
 
@@ -28,7 +35,6 @@ export async function checkCommand(dir: string, options: CheckOptions): Promise<
     allResolutions.push(...resolutions);
   }
 
-  // Build scanned sources summary
   const sourceMap = new Map<string, { file: string; type: string; count: number }>();
   for (const p of configured) {
     const key = p.sourceFile;
@@ -52,6 +58,13 @@ export async function checkCommand(dir: string, options: CheckOptions): Promise<
     resolutions: allResolutions,
   };
 
+  return { output, active, docker, warnings };
+}
+
+export async function checkCommand(dir: string, options: CheckOptions): Promise<void> {
+  const { output, warnings } = await scanCheck(dir);
+  const conflicts = output.conflicts;
+
   if (options.json) {
     console.log(formatJson(output));
   } else {
@@ -65,12 +78,11 @@ export async function checkCommand(dir: string, options: CheckOptions): Promise<
 
   if (conflicts.length > 0) {
     if (options.fix) {
-      // Delegate to the resolve command
       const { resolveCommand } = await import('./resolve.js');
-      console.log(''); // visual separator
+      console.log('');
       await resolveCommand({
         ...options,
-        dir: absDir,
+        dir: output.directory,
         strategy: 'auto',
         kill: false,
       });

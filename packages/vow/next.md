@@ -20,13 +20,14 @@ Part of the [WhenLabs](https://whenlabs.org) umbrella.
 
 ### Core Features
 - **npm resolver** — Parses `package-lock.json` v1/v2/v3, handles scoped packages, workspaces, bundled deps, dev/prod/peer/optional classification
-- **License resolution (6-step priority chain):**
+- **License resolution (5-step priority chain, shipping today):**
   1. Package metadata (`license` field in package.json)
   2. SPDX expression parsing (`(MIT OR Apache-2.0)`)
   3. LICENSE file detection (LICENSE, LICENCE, COPYING variants)
-  4. TF-IDF text classifier (local, no API — covers ~20 common licenses)
-  5. Registry API fallback (future)
-  6. AI fallback via Claude (future/paid)
+  4. TF-IDF text classifier (local, no API — ~19 common licenses, cosine similarity ≥ 0.7)
+  5. npm registry API fallback with disk-cached responses (7-day TTL; negative cache for 404s)
+
+  An AI-based fallback via Claude is on the roadmap (see "What's Next").
 - **Dependency graph** — Directed graph with cycle detection, BFS depth calculation, path-to-root tracing
 - **Plain-English policy engine** — Claude API parses natural language into structured rules, results cached (SHA-256 hash, 30-day TTL)
 - **Policy evaluator** — First-match-wins rule engine with correct SPDX OR/AND legal semantics, scope filtering (dev/prod), overrides
@@ -42,15 +43,19 @@ Part of the [WhenLabs](https://whenlabs.org) umbrella.
 ### Near-Term (Week 3 scope)
 
 #### Multi-Ecosystem Resolvers
-- **pip resolver** — Parse `requirements.txt`, `Pipfile.lock`, `pyproject.toml` + `poetry.lock`. Read license metadata from installed packages (`pip show`) or PyPI API.
-- **cargo resolver** — Parse `Cargo.lock`, use `cargo metadata` for license info. Rust crates typically have good SPDX metadata.
-- Both extend the existing `BaseResolver` abstract class — the 6-step license resolution chain is shared.
+- ✅ **cargo resolver** (shipping) — Parses `Cargo.lock`, uses the crates.io registry API (`/api/v1/crates/{name}/{version}`) with disk-cached responses. Rust crates have excellent SPDX metadata, so this is effectively step-1 quality straight from the registry.
+- ✅ **pip resolver (poetry.lock)** (shipping) — Parses `poetry.lock`, uses the PyPI JSON API (`/pypi/{name}/{version}/json`) with classifier → SPDX fallback for when `info.license` is empty or a long text blob. Next: `Pipfile.lock`, `uv.lock`, `pdm.lock`, and installed-METADATA fallback.
+- All extend the existing `BaseResolver` abstract class — the license resolution chain is shared.
+
+#### Offline Policy Mode
+- ✅ **`vow policy compile` + `vow check --offline`** (shipping) — pre-parse `.vow.yml` into a hash-pinned `policy.lock.json`. `vow check` transparently prefers the lockfile over the user-level cache + API path, so CI runs without `ANTHROPIC_API_KEY` as long as the lockfile is committed and up-to-date with the policy text. `vow policy status` reports whether the lockfile is stale.
 
 #### GitHub Action
-- `action.yml` + Dockerfile for `vow/action@v1`
-- Auto-comments on PRs with violation summary
-- Supports `fail-on: block` or `fail-on: warn`
-- Requires `ANTHROPIC_API_KEY` secret (only on policy change)
+- ✅ **`whenlabs-org/vow@v1`** (shipping) — composite action wrapping every CLI command (`check`, `scan`, `diff`, `sbom`, `audit`). JavaScript-based (no Docker), so it's fast and runs on Linux/macOS/Windows runners. Three ready-to-use workflow templates in `docs/workflows/`:
+  * `check-on-pr.yml` — PR-comment verdict with `--offline` (no API key needed, uses committed `policy.lock.json`).
+  * `diff-on-pr.yml` — scan base branch + head branch, surface license downgrades as PR comment.
+  * `sbom-on-release.yml` — attach CycloneDX + SPDX SBOMs to GitHub Releases.
+- Follow-up: pre-compiled JavaScript entrypoint to skip `npm install -g` on each run (would also let the action vendor vow so it works without network).
 
 #### npm Publish
 - Publish as `vow` on npm
@@ -58,23 +63,20 @@ Part of the [WhenLabs](https://whenlabs.org) umbrella.
 - Zero config for scanning, one YAML file for policy
 
 #### License Change Detection
-- Compare current scan with previous (stored as JSON artifact)
-- Alert on: new copyleft deps, license downgrades (MIT → GPL between versions), removed licenses
-- Output as diff: `vow diff --baseline previous-scan.json`
+- ✅ **`vow diff --baseline prev.json`** (shipping) — detects added/removed/version-bumped/license-changed packages. Severity derives from the category-rank downgrade gap: MIT → LGPL is a warning, MIT → GPL is an error, MIT → AGPL is an error. New AGPL dep is an error. License upgrade (GPL → MIT) is info. Terminal, Markdown (PR comments), and JSON output formats. `--fail-on error|warning|never` for CI gating.
+- Follow-ups: historical series (track a branch over time), auto-post to GitHub PRs (covered by the GitHub Action item below).
 
 #### SBOM Generation
-- CycloneDX format (JSON + XML)
-- SPDX SBOM format
-- `vow sbom --format cyclonedx --output sbom.json`
-- Required for supply chain compliance (Executive Order 14028, EU CRA)
+- ✅ **CycloneDX 1.5 JSON** + **SPDX 2.3 JSON** (shipping) — `vow sbom --format cyclonedx|spdx`. Produces PURLs (`pkg:npm/...`, `pkg:cargo/...`, `pkg:pypi/...`), SPDX license IDs or compound expressions, and dependency-graph edges. Deterministic timestamps + UUIDs via programmatic options for reproducible builds.
+- Follow-ups: CycloneDX XML, vulnerability stub (so the SBOM can feed OSV / NVD consumers), SPDX tag-value format.
 
 ### Medium-Term
 
-#### Registry API Fallback (Step 5 of resolution chain)
-- Query npm registry API for license metadata when `node_modules` not available
+#### Registry API Fallback for non-npm ecosystems
+- npm registry fallback shipped in v0.2 (disk-cached, opt-out via `--no-registry`)
 - Query PyPI API for Python packages
 - Query crates.io API for Rust crates
-- Enables scanning in CI without `npm install`
+- Enables scanning in CI without running the relevant package manager's install step
 
 #### AI Fallback (Step 6 of resolution chain)
 - For truly ambiguous license text that the TF-IDF classifier can't handle
@@ -83,14 +85,13 @@ Part of the [WhenLabs](https://whenlabs.org) umbrella.
 - Confidence score returned, user prompted for review if low
 
 #### Monorepo Support
-- Detect and scan multiple workspaces (npm workspaces, Yarn workspaces, pnpm workspaces)
-- Per-workspace policy overrides
-- Aggregate report across all workspaces
+- ✅ **Workspace discovery** (shipping) — npm / yarn v1 / yarn berry `workspaces` field (array or `{packages: []}` form) + pnpm `pnpm-workspace.yaml`. Expands simple `*` globs (no globstar). Each workspace's direct deps get merged into the root direct-dep set so graph depth accounts for workspace-owned deps.
+- Per-workspace policy overrides via `workspaces:` key in `.vow.yml` — follow-up
+- Aggregate report that groups findings by workspace — follow-up
 
 #### `vow audit` Command
-- Generate a legal-ready PDF report
-- Package name, version, license, license text, compliance status
-- Suitable for legal team review and compliance audits
+- ✅ **`vow audit`** (shipping) — self-contained HTML report with scan + policy verdict + license texts for blocked/warned/unknown packages. Print-friendly CSS produces clean PDFs via any browser's "Save as PDF". Per-package sections with category chips, confidence scores, dep paths, and matched policy rules. Suitable for legal team review and compliance audits.
+- Follow-up: native PDF output via Puppeteer/Playwright for headless CI generation.
 
 ### Long-Term
 
@@ -117,6 +118,13 @@ Part of the [WhenLabs](https://whenlabs.org) umbrella.
 - Bundler (Ruby)
 
 ---
+
+#### Operational Polish
+- ✅ **Cross-run license cache** (shipping) — `~/.cache/vow/licenses/{ecosystem}/name@version.json` with 30-day TTL. Repeat scans skip readdir + readFile + TF-IDF for already-seen versions. Auto-disabled inside `VITEST` so test isolation is preserved.
+- ✅ **Streaming concurrency** (shipping) — `pLimit(32)` across all three resolvers replaces the old batched `Promise.all(chunk)` pattern. A slow registry-api task no longer stalls the next batch.
+- ✅ **`.vowignore` + `--ignore`** (shipping) — glob-based package exclusions that short-circuit policy eval (packages still appear in scan / SBOM). `@internal/*` and friends.
+- ✅ **Structured error codes** (shipping) — every exit-non-zero prints a stable `VOW-EXXXX` identifier. Catalog of 10 codes split into domain (1xxx, exit 1) vs operational (2xxx, exit 2) classes.
+- Follow-up: pre-compiled JS action entrypoint; worker-thread TF-IDF for very large trees (>5k deps).
 
 ## Competitive Position
 

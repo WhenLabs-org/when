@@ -23,10 +23,16 @@ export interface ResolvedPackage {
 }
 
 const LICENSE_FILE_NAMES = [
-  'LICENSE', 'LICENSE.md', 'LICENSE.txt', 'LICENSE.MIT', 'LICENSE.BSD',
+  'LICENSE', 'LICENSE.md', 'LICENSE.txt',
+  'LICENSE.MIT', 'LICENSE.BSD', 'LICENSE.APACHE', 'LICENSE.APACHE-2.0',
+  'LICENSE-MIT', 'LICENSE-BSD', 'LICENSE-APACHE', 'LICENSE-APACHE-2.0',
+  'LICENSE-MIT.md', 'LICENSE-APACHE.md', 'LICENSE-APACHE-2.0.md',
+  'LICENSE-MIT.txt', 'LICENSE-APACHE.txt', 'LICENSE-APACHE-2.0.txt',
   'LICENCE', 'LICENCE.md', 'LICENCE.txt',
-  'COPYING', 'COPYING.md', 'COPYING.txt',
+  'COPYING', 'COPYING.md', 'COPYING.txt', 'COPYING.LESSER',
   'license', 'license.md', 'license.txt',
+  'license-mit', 'license-apache', 'license-apache-2.0',
+  'license-mit.md', 'license-apache.md', 'license-apache-2.0.md',
   'licence', 'licence.md', 'licence.txt',
   'copying', 'copying.md', 'copying.txt',
   'License', 'License.md', 'License.txt',
@@ -40,48 +46,70 @@ export abstract class BaseResolver {
   abstract get ecosystem(): string;
 
   protected async readAndClassifyLicenseFile(dirPath: string): Promise<LicenseResult | null> {
+    const results = await this.readAndClassifyAllLicenseFiles(dirPath);
+    if (results.length === 0) return null;
+    if (results.length === 1) return results[0]!;
+    return combineLicenseResults(results);
+  }
+
+  protected async readAndClassifyAllLicenseFiles(
+    dirPath: string,
+  ): Promise<LicenseResult[]> {
     let files: string[];
     try {
       files = await readdir(dirPath);
     } catch {
-      return null;
+      return [];
     }
 
+    const results: LicenseResult[] = [];
+    const seenSpdx = new Set<string>();
+    let fallbackCustom: LicenseResult | null = null;
+
     for (const candidate of LICENSE_FILE_NAMES) {
-      if (files.includes(candidate)) {
-        try {
-          const filePath = path.join(dirPath, candidate);
-          const content = await readFile(filePath, 'utf-8');
-          // Limit to 50KB
-          const text = content.slice(0, 50_000);
+      if (!files.includes(candidate)) continue;
 
-          const result = classifyLicenseText(text);
-          if (result) {
-            return {
-              spdxExpression: result.spdxId,
-              source: 'license-file',
-              confidence: result.confidence,
-              category: getLicenseCategory(result.spdxId),
-              licenseFilePath: filePath,
-            };
-          }
+      const filePath = path.join(dirPath, candidate);
+      let text: string;
+      try {
+        const content = await readFile(filePath, 'utf-8');
+        text = content.slice(0, 50_000);
+      } catch {
+        continue;
+      }
 
-          // Could not classify — return as custom
-          return {
-            spdxExpression: null,
-            source: 'license-file',
-            confidence: 0,
-            category: 'custom',
-            licenseFilePath: filePath,
-            licenseText: text.slice(0, 500),
-          };
-        } catch {
-          continue;
-        }
+      const classified = classifyLicenseText(text);
+      if (classified) {
+        const key = classified.spdxId.toLowerCase();
+        if (seenSpdx.has(key)) continue;
+        seenSpdx.add(key);
+        results.push({
+          spdxExpression: classified.spdxId,
+          source: 'license-file',
+          confidence: classified.confidence,
+          category: getLicenseCategory(classified.spdxId),
+          licenseFilePath: filePath,
+        });
+        continue;
+      }
+
+      // Remember the first unclassifiable file so we can fall back to "custom"
+      // only when NO file classified. A mix of one classified + one custom is
+      // reported as the classified one (not as compound).
+      if (!fallbackCustom) {
+        fallbackCustom = {
+          spdxExpression: null,
+          source: 'license-file',
+          confidence: 0,
+          category: 'custom',
+          licenseFilePath: filePath,
+          licenseText: text.slice(0, 500),
+        };
       }
     }
 
-    return null;
+    if (results.length > 0) return results;
+    return fallbackCustom ? [fallbackCustom] : [];
   }
 
   protected async resolveLicense(
@@ -192,4 +220,33 @@ export abstract class BaseResolver {
       licenseText: rawLicense,
     };
   }
+}
+
+function combineLicenseResults(results: LicenseResult[]): LicenseResult {
+  const ids = results
+    .map((r) => r.spdxExpression)
+    .filter((v): v is string => typeof v === 'string' && v.length > 0);
+
+  if (ids.length === 0) return results[0]!;
+  if (ids.length === 1) return results[0]!;
+
+  // Dual/multi-license: combine as SPDX OR expression.
+  // Uniqueness is already enforced by the caller via seenSpdx, but re-dedupe
+  // defensively in case this helper is called directly.
+  const unique = Array.from(new Set(ids));
+  const expression = unique.length === 1 ? unique[0]! : `(${unique.join(' OR ')})`;
+
+  // Category: if all branches share one, keep it; otherwise 'unknown' (user's
+  // choice — matches how extractLicenseFromMetadata handles compound SPDX).
+  const categories = new Set(results.map((r) => r.category));
+  const category = categories.size === 1 ? [...categories][0]! : 'unknown';
+
+  const confidence = Math.min(...results.map((r) => r.confidence));
+
+  return {
+    spdxExpression: expression,
+    source: 'license-file',
+    confidence,
+    category,
+  };
 }

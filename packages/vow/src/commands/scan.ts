@@ -4,6 +4,15 @@ import path from 'node:path';
 import ora from 'ora';
 import type { ScanResult, LicenseSummary, PackageInfo } from '../types.js';
 import { NpmResolver } from '../resolvers/npm.js';
+import { discoverWorkspaces } from '../resolvers/workspaces.js';
+import { NpmRegistryClient } from '../resolvers/registry.js';
+import type { RegistryFetch } from '../resolvers/registry.js';
+import { CargoResolver } from '../resolvers/cargo.js';
+import { CratesRegistryClient } from '../resolvers/crates-registry.js';
+import { PipResolver } from '../resolvers/pip.js';
+import { PyPIRegistryClient } from '../resolvers/pypi-registry.js';
+import { LicenseCache } from '../resolvers/license-cache.js';
+import type { ResolvedPackage } from '../resolvers/base.js';
 import { buildGraph } from '../graph/builder.js';
 import type { DepGraph } from '../graph/builder.js';
 import { reportScanSummary } from '../reporters/terminal.js';
@@ -17,6 +26,12 @@ export interface ScanOptions {
   production: boolean;
   format: string;
   output?: string;
+  /** Enable registry API fallback for packages with no resolvable license. Defaults to true. */
+  registry?: boolean;
+  /** Inject a fetch implementation (used by tests). Shared by all registry clients. */
+  registryFetch?: RegistryFetch;
+  /** Enable cross-run license cache (~/.cache/vow/licenses/). Defaults to true. */
+  licenseCache?: boolean;
 }
 
 export async function executeScan(opts: ScanOptions): Promise<ScanResult> {
@@ -47,29 +62,65 @@ export async function executeScan(opts: ScanOptions): Promise<ScanResult> {
     // no package.json
   }
 
+  const workspaces = await discoverWorkspaces(projectPath);
+  for (const ws of workspaces) {
+    for (const depName of ws.directDependencies) {
+      directDependencyNames.add(depName);
+    }
+  }
+
   const spinner = ora('Scanning dependencies...').start();
   const ecosystems: string[] = [];
 
-  // Detect and run resolvers
-  const npmResolver = new NpmResolver({
-    projectPath,
-    includeDevDependencies: !opts.production,
-    depth: opts.depth,
-  });
+  const registryEnabled = opts.registry !== false;
+  const licenseCacheEnabled = opts.licenseCache !== false;
+  const npmRegistry = registryEnabled
+    ? new NpmRegistryClient({ fetch: opts.registryFetch })
+    : undefined;
+  const cratesRegistry = registryEnabled
+    ? new CratesRegistryClient({ fetch: opts.registryFetch })
+    : undefined;
+  const pypiRegistry = registryEnabled
+    ? new PyPIRegistryClient({ fetch: opts.registryFetch })
+    : undefined;
+  const licenseCache = licenseCacheEnabled ? new LicenseCache() : undefined;
+
+  const npmResolver = new NpmResolver(
+    {
+      projectPath,
+      includeDevDependencies: !opts.production,
+      depth: opts.depth,
+    },
+    npmRegistry,
+    licenseCache,
+  );
+
+  const cargoResolver = new CargoResolver(
+    {
+      projectPath,
+      includeDevDependencies: !opts.production,
+      depth: opts.depth,
+    },
+    cratesRegistry,
+    licenseCache,
+  );
+
+  const pipResolver = new PipResolver(
+    {
+      projectPath,
+      includeDevDependencies: !opts.production,
+      depth: opts.depth,
+    },
+    pypiRegistry,
+    licenseCache,
+  );
 
   const allPackages: PackageInfo[] = [];
-  let graph: DepGraph;
+  const allResolved: ResolvedPackage[] = [];
 
-  if (await npmResolver.detect()) {
-    ecosystems.push('npm');
-    spinner.text = `Scanning npm dependencies...`;
-
-    const resolved = await npmResolver.resolve();
-
-    spinner.text = `Resolved ${resolved.length} npm packages. Building graph...`;
-
-    graph = buildGraph(resolved, rootName, rootVersion, directDependencyNames);
-
+  const collect = (ecosystem: string, resolved: ResolvedPackage[]) => {
+    ecosystems.push(ecosystem);
+    allResolved.push(...resolved);
     for (const pkg of resolved) {
       allPackages.push({
         name: pkg.name,
@@ -78,11 +129,33 @@ export async function executeScan(opts: ScanOptions): Promise<ScanResult> {
         dependencyType: pkg.dependencyType,
         path: pkg.path,
         rawLicense: pkg.rawLicense,
+        ecosystem,
       });
     }
-  } else {
-    graph = buildGraph([], rootName, rootVersion, directDependencyNames);
+  };
+
+  if (await npmResolver.detect()) {
+    spinner.text = `Scanning npm dependencies...`;
+    collect('npm', await npmResolver.resolve());
   }
+
+  if (await cargoResolver.detect()) {
+    spinner.text = `Scanning cargo dependencies...`;
+    collect('cargo', await cargoResolver.resolve());
+  }
+
+  if (await pipResolver.detect()) {
+    spinner.text = `Scanning pip dependencies...`;
+    collect('pip', await pipResolver.resolve());
+  }
+
+  spinner.text = `Resolved ${allPackages.length} packages. Building graph...`;
+  const graph: DepGraph = buildGraph(
+    allResolved,
+    rootName,
+    rootVersion,
+    directDependencyNames,
+  );
 
   // Compute summary
   const summary = computeSummary(allPackages);
@@ -101,6 +174,11 @@ export async function executeScan(opts: ScanOptions): Promise<ScanResult> {
     }])) : new Map(),
     summary,
     ecosystems,
+    workspaces: workspaces.map((ws) => ({
+      name: ws.name,
+      path: ws.path,
+      directDependencies: ws.directDependencies,
+    })),
   };
 
   return result;
@@ -137,6 +215,8 @@ export function registerScanCommand(program: Command): void {
     .option('-p, --path <dir>', 'Project directory', '.')
     .option('-d, --depth <n>', 'Max dependency depth', parseInt)
     .option('--production', 'Skip devDependencies', false)
+    .option('--no-registry', 'Disable npm registry API fallback for unresolved licenses')
+    .option('--no-license-cache', 'Disable cross-run license cache at ~/.cache/vow/licenses/')
     .option('-f, --format <fmt>', 'Output format: terminal, json, csv, markdown', 'terminal')
     .option('-o, --output <file>', 'Write output to file')
     .action(async (opts: ScanOptions) => {

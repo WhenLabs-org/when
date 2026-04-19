@@ -1,0 +1,189 @@
+name: 'vow'
+description: 'Scan dependency licenses and validate against plain-English policies'
+author: 'WhenLabs'
+branding:
+  icon: 'shield'
+  color: 'green'
+
+inputs:
+  command:
+    description: 'Which vow command to run: check, scan, diff, sbom, audit'
+    required: false
+    default: 'check'
+  path:
+    description: 'Project directory to scan (defaults to workspace root)'
+    required: false
+    default: '.'
+  format:
+    description: 'Output format (depends on command): terminal, json, markdown, sarif, cyclonedx, spdx'
+    required: false
+    default: ''
+  output-file:
+    description: 'File to write output to. Defaults to `vow-output.<ext>` chosen from format.'
+    required: false
+    default: ''
+  baseline:
+    description: 'For `diff`: path to a baseline scan JSON (e.g. produced by `vow scan -f json`)'
+    required: false
+    default: ''
+  policy:
+    description: 'Policy file path (default: auto-detect .vow.json → .vow.yml)'
+    required: false
+    default: ''
+  offline:
+    description: 'Require policy.lock.json; never call the Claude API. Recommended for CI.'
+    required: false
+    default: 'true'
+  fail-on:
+    description: 'For `check`: block|warn. For `diff`: error|warning|never.'
+    required: false
+    default: ''
+  production:
+    description: 'Skip devDependencies'
+    required: false
+    default: 'false'
+  no-registry:
+    description: 'Disable npm / crates.io / PyPI registry fallbacks (run fully offline)'
+    required: false
+    default: 'false'
+  version:
+    description: 'Version of @whenlabs/vow to install (e.g. "0.2.0", "latest")'
+    required: false
+    default: 'latest'
+  anthropic-api-key:
+    description: 'Anthropic API key; only needed if `offline: false` and the repo uses .vow.yml'
+    required: false
+    default: ''
+
+outputs:
+  output-file:
+    description: 'Path to the file vow wrote (empty for commands that stream to stdout)'
+    value: ${{ steps.run.outputs.output-file }}
+  exit-code:
+    description: 'Exit code of the vow invocation'
+    value: ${{ steps.run.outputs.exit-code }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Resolve vow
+      shell: bash
+      run: |
+        set -e
+        if ! command -v node >/dev/null 2>&1; then
+          echo "::error::Node.js is required. Add `uses: actions/setup-node@v4` before this step."
+          exit 2
+        fi
+        echo "Installing @whenlabs/vow@${{ inputs.version }}..."
+        npm install -g "@whenlabs/vow@${{ inputs.version }}"
+        vow --version || true
+
+    - name: Run vow ${{ inputs.command }}
+      id: run
+      shell: bash
+      env:
+        ANTHROPIC_API_KEY: ${{ inputs.anthropic-api-key }}
+      run: |
+        set +e
+        cmd="${{ inputs.command }}"
+        args=()
+
+        case "$cmd" in
+          scan|tree|fix|export|attribution|check|diff|sbom|audit|init|hook)
+            ;;
+          *)
+            echo "::error::Unknown vow command: '$cmd'"
+            exit 2
+            ;;
+        esac
+
+        # Common flags
+        if [ -n "${{ inputs.path }}" ] && [ "${{ inputs.path }}" != "." ]; then
+          args+=(--path "${{ inputs.path }}")
+        fi
+
+        if [ "${{ inputs.production }}" = "true" ] && \
+           { [ "$cmd" = "scan" ] || [ "$cmd" = "check" ] || [ "$cmd" = "diff" ] || \
+             [ "$cmd" = "sbom" ] || [ "$cmd" = "audit" ] || [ "$cmd" = "attribution" ]; }; then
+          args+=(--production)
+        fi
+
+        if [ "${{ inputs.no-registry }}" = "true" ] && \
+           { [ "$cmd" = "scan" ] || [ "$cmd" = "check" ] || [ "$cmd" = "diff" ] || \
+             [ "$cmd" = "sbom" ] || [ "$cmd" = "audit" ]; }; then
+          args+=(--no-registry)
+        fi
+
+        if [ -n "${{ inputs.policy }}" ] && \
+           { [ "$cmd" = "check" ] || [ "$cmd" = "audit" ]; }; then
+          args+=(--policy "${{ inputs.policy }}")
+        fi
+
+        if [ "${{ inputs.offline }}" = "true" ] && \
+           { [ "$cmd" = "check" ] || [ "$cmd" = "audit" ]; }; then
+          args+=(--offline)
+        fi
+
+        if [ -n "${{ inputs.fail-on }}" ] && \
+           { [ "$cmd" = "check" ] || [ "$cmd" = "diff" ]; }; then
+          args+=(--fail-on "${{ inputs.fail-on }}")
+        fi
+
+        if [ -n "${{ inputs.baseline }}" ] && [ "$cmd" = "diff" ]; then
+          args+=(--baseline "${{ inputs.baseline }}")
+        fi
+
+        # Format + output wiring. Choose sensible defaults for each command.
+        format="${{ inputs.format }}"
+        if [ -z "$format" ]; then
+          case "$cmd" in
+            check)  format=markdown ;;
+            diff)   format=markdown ;;
+            scan)   format=json ;;
+            sbom)   format=cyclonedx ;;
+          esac
+        fi
+
+        ext=txt
+        case "$format" in
+          markdown) ext=md ;;
+          json|sarif|cyclonedx|spdx) ext=json ;;
+        esac
+        if [ "$cmd" = "audit" ]; then
+          ext=html
+          format=""
+        fi
+
+        output="${{ inputs.output-file }}"
+        if [ -z "$output" ]; then
+          output="vow-${cmd}.${ext}"
+        fi
+
+        if [ -n "$format" ] && \
+           { [ "$cmd" = "scan" ] || [ "$cmd" = "check" ] || [ "$cmd" = "diff" ] || \
+             [ "$cmd" = "sbom" ] || [ "$cmd" = "attribution" ] || [ "$cmd" = "export" ]; }; then
+          args+=(--format "$format")
+        fi
+
+        args+=(--output "$output")
+
+        echo "→ vow $cmd ${args[@]}"
+        vow "$cmd" "${args[@]}"
+        code=$?
+
+        echo "exit-code=$code" >> "$GITHUB_OUTPUT"
+        echo "output-file=$output" >> "$GITHUB_OUTPUT"
+        if [ -f "$output" ]; then
+          echo "::group::vow $cmd output ($output)"
+          # Avoid blowing up the log on huge SBOMs; tail a preview for big files.
+          size=$(wc -c < "$output" || echo 0)
+          if [ "$size" -gt 20000 ]; then
+            echo "(file is $size bytes; showing first 200 lines)"
+            head -n 200 "$output"
+          else
+            cat "$output"
+          fi
+          echo "::endgroup::"
+        fi
+
+        exit $code

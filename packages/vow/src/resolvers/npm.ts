@@ -1,8 +1,11 @@
 import { access, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { BaseResolver, type ResolvedPackage, type ResolverOptions } from './base.js';
-import type { DependencyType } from '../types.js';
+import type { DependencyType, LicenseResult } from '../types.js';
 import { pkgKey } from '../types.js';
+import type { NpmRegistryClient } from './registry.js';
+import type { LicenseCache } from './license-cache.js';
+import { pLimit } from '../util/p-limit.js';
 
 interface LockfilePackageEntry {
   version?: string;
@@ -47,14 +50,60 @@ interface PkgJson {
   optionalDependencies?: Record<string, string>;
 }
 
-const BATCH_SIZE = 50;
+const DEFAULT_CONCURRENCY = 32;
 
 export class NpmResolver extends BaseResolver {
   private lockfilePath: string = '';
   private rootPkgJson: PkgJson = {};
+  private readonly registryClient?: NpmRegistryClient;
+  private readonly licenseCache?: LicenseCache;
 
-  constructor(options: ResolverOptions) {
+  constructor(
+    options: ResolverOptions,
+    registryClient?: NpmRegistryClient,
+    licenseCache?: LicenseCache,
+  ) {
     super(options);
+    this.registryClient = registryClient;
+    this.licenseCache = licenseCache;
+  }
+
+  protected override async resolveLicense(
+    name: string,
+    version: string,
+    packageDir?: string,
+    metadata?: Record<string, unknown>,
+  ): Promise<LicenseResult> {
+    if (this.licenseCache) {
+      const cached = await this.licenseCache.get('npm', name, version);
+      if (cached) return cached;
+    }
+
+    const resolved = await this.resolveLicenseUncached(name, version, packageDir, metadata);
+    if (this.licenseCache) {
+      await this.licenseCache.set('npm', name, version, resolved);
+    }
+    return resolved;
+  }
+
+  private async resolveLicenseUncached(
+    name: string,
+    version: string,
+    packageDir?: string,
+    metadata?: Record<string, unknown>,
+  ): Promise<LicenseResult> {
+    const baseResult = await super.resolveLicense(name, version, packageDir, metadata);
+    if (baseResult.source !== 'none') return baseResult;
+    if (!this.registryClient) return baseResult;
+
+    const registryLicense = await this.registryClient.getLicense(name, version);
+    if (!registryLicense) return baseResult;
+
+    const fromRegistry = this.extractLicenseFromMetadata({ license: registryLicense });
+    if (fromRegistry && fromRegistry.spdxExpression) {
+      return { ...fromRegistry, source: 'registry-api' };
+    }
+    return baseResult;
   }
 
   get ecosystem(): string {
@@ -156,72 +205,66 @@ export class NpmResolver extends BaseResolver {
       entries.push({ name, version, depType, depPath: pkgPath, entry });
     }
 
-    // Resolve licenses in batches
-    const resolved: ResolvedPackage[] = [];
-    const licenseCache = new Map<string, ResolvedPackage>();
+    // Resolve licenses with streaming concurrency. A slow package (e.g. a
+    // registry-api miss with a cold cache) doesn't delay faster ones behind
+    // it — as soon as any task resolves, the next queued task starts.
+    const limit = pLimit(DEFAULT_CONCURRENCY);
+    const perVersion = new Map<string, ResolvedPackage>();
 
-    for (let i = 0; i < entries.length; i += BATCH_SIZE) {
-      const batch = entries.slice(i, i + BATCH_SIZE);
-      const batchResults = await Promise.all(
-        batch.map(async ({ name, version, depType, depPath, entry }) => {
-          const key = pkgKey(name, version);
+    const tasks = entries.map(({ name, version, depType, depPath, entry }) =>
+      limit(async () => {
+        const key = pkgKey(name, version);
 
-          // Check cache
-          const cached = licenseCache.get(key);
-          if (cached) {
-            return { ...cached, dependencyType: depType };
+        // In-process dedupe: the same (name, version) can appear at multiple
+        // paths in a lockfile; we only resolve once.
+        const cached = perVersion.get(key);
+        if (cached) {
+          return { ...cached, dependencyType: depType };
+        }
+
+        const pkgDir = path.join(this.options.projectPath, depPath);
+
+        let metadata: Record<string, unknown> = {};
+        try {
+          const pkgJsonPath = path.join(pkgDir, 'package.json');
+          const content = await readFile(pkgJsonPath, 'utf-8');
+          metadata = JSON.parse(content) as Record<string, unknown>;
+        } catch {
+          if (entry.license) {
+            metadata = { license: entry.license };
           }
+        }
 
-          // Build the actual filesystem path
-          const pkgDir = path.join(this.options.projectPath, depPath);
+        const deps = [
+          ...Object.keys(entry.dependencies ?? {}),
+          ...Object.keys(entry.peerDependencies ?? {}),
+          ...Object.keys(entry.optionalDependencies ?? {}),
+        ];
 
-          // Try to read package.json from node_modules
-          let metadata: Record<string, unknown> = {};
-          try {
-            const pkgJsonPath = path.join(pkgDir, 'package.json');
-            const content = await readFile(pkgJsonPath, 'utf-8');
-            metadata = JSON.parse(content) as Record<string, unknown>;
-          } catch {
-            // Use lockfile license data if available
-            if (entry.license) {
-              metadata = { license: entry.license };
-            }
-          }
+        const license = await this.resolveLicense(name, version, pkgDir, metadata);
 
-          // Collect dependencies
-          const deps = [
-            ...Object.keys(entry.dependencies ?? {}),
-            ...Object.keys(entry.peerDependencies ?? {}),
-            ...Object.keys(entry.optionalDependencies ?? {}),
-          ];
+        const rawLicense = typeof metadata['license'] === 'string'
+          ? metadata['license']
+          : typeof metadata['license'] === 'object' && metadata['license'] !== null
+            ? (metadata['license'] as { type?: string }).type
+            : undefined;
 
-          const license = await this.resolveLicense(name, version, pkgDir, metadata);
+        const result: ResolvedPackage = {
+          name,
+          version,
+          license,
+          dependencyType: depType,
+          dependencies: deps.map(d => d),
+          path: pkgDir,
+          rawLicense: rawLicense ?? undefined,
+        };
 
-          const rawLicense = typeof metadata['license'] === 'string'
-            ? metadata['license']
-            : typeof metadata['license'] === 'object' && metadata['license'] !== null
-              ? (metadata['license'] as { type?: string }).type
-              : undefined;
+        perVersion.set(key, result);
+        return result;
+      }),
+    );
 
-          const result: ResolvedPackage = {
-            name,
-            version,
-            license,
-            dependencyType: depType,
-            dependencies: deps.map(d => d), // just names for now; resolved later in graph building
-            path: pkgDir,
-            rawLicense: rawLicense ?? undefined,
-          };
-
-          licenseCache.set(key, result);
-          return result;
-        }),
-      );
-
-      resolved.push(...batchResults);
-    }
-
-    return resolved;
+    return Promise.all(tasks);
   }
 
   private async resolveFromV1(lockfile: PackageLockV2): Promise<ResolvedPackage[]> {

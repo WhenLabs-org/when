@@ -9,12 +9,26 @@ import type {
   PolicyOverride,
 } from './types.js';
 import { extractLicenseIds } from '../license/spdx.js';
+import { compilePattern } from './ignore.js';
+
+export interface EvaluateOptions {
+  overrides?: PolicyOverride[];
+  /** Glob patterns (from .vowignore or --ignore) matched against package names. */
+  ignorePatterns?: string[];
+}
 
 export function evaluatePolicy(
   scanResult: ScanResult,
   policy: ParsedPolicy,
-  overrides: PolicyOverride[] = [],
+  overridesOrOptions: PolicyOverride[] | EvaluateOptions = [],
 ): CheckResult {
+  const options: EvaluateOptions = Array.isArray(overridesOrOptions)
+    ? { overrides: overridesOrOptions }
+    : overridesOrOptions;
+  const overrides = options.overrides ?? [];
+  const ignorePatterns = options.ignorePatterns ?? [];
+  const compiledIgnores = ignorePatterns.map(compilePattern);
+
   const overrideMap = new Map<string, PolicyOverride>();
   for (const ov of overrides) {
     overrideMap.set(ov.package, ov);
@@ -26,7 +40,23 @@ export function evaluatePolicy(
   const allowed: PackageCheckResult[] = [];
 
   for (const pkg of scanResult.packages) {
-    // Check overrides first
+    // Check .vowignore / --ignore first — a matched package is always allowed
+    // regardless of policy rules or registered overrides.
+    const ignoreHit = compiledIgnores.find((r) => r.test(pkg.name));
+    if (ignoreHit) {
+      const result: PackageCheckResult = {
+        pkg,
+        matchedRule: null,
+        action: 'allow',
+        explanation: `Ignored by pattern /${ignoreHit.source}/`,
+        dependencyPath: getDependencyPath(scanResult, pkg),
+      };
+      packages.push(result);
+      allowed.push(result);
+      continue;
+    }
+
+    // Check overrides
     const overrideKey = `${pkg.name}@${pkg.version}`;
     const override = overrideMap.get(overrideKey);
 
@@ -147,6 +177,15 @@ function matchCondition(pkg: PackageInfo, rule: ParsedPolicyRule): boolean {
         name => name.toLowerCase() === pkg.name.toLowerCase(),
       );
       break;
+
+    case 'confidence': {
+      const threshold = condition.threshold
+        ?? (condition.pattern != null ? parseFloat(condition.pattern) : NaN);
+      if (Number.isFinite(threshold)) {
+        matched = pkg.license.confidence < threshold;
+      }
+      break;
+    }
 
     case 'any':
       matched = true;

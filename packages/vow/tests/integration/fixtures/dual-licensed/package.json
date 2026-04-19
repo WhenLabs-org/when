@@ -1,0 +1,7 @@
+{
+  "name": "integration-dual-licensed",
+  "version": "1.0.0",
+  "dependencies": {
+    "dual-lib": "^1.0.0"
+  }
+}

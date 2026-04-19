@@ -5,6 +5,7 @@ import type { GlobalOptions, ActivePort, DockerPort, ConfiguredPort } from '../t
 import { detectAllActive, detectAllConfigured } from '../detectors/index.js';
 import { formatJson } from '../reporters/json.js';
 import { findFreePort } from '../utils/ports.js';
+import { buildScanContext } from './_context.js';
 
 export interface PredictedPort {
   port: number;
@@ -26,11 +27,12 @@ export interface PredictOutput {
 
 export async function predictCommand(dir: string, options: GlobalOptions): Promise<void> {
   const absDir = path.resolve(dir);
-  const projectName = path.basename(absDir);
+  const ctx = await buildScanContext(absDir, { skipRegistry: true });
+  const projectName = ctx.config?.projectName ?? path.basename(absDir);
 
   const [{ ports: active, docker }, { ports: configured, warnings }] = await Promise.all([
-    detectAllActive(),
-    detectAllConfigured(absDir),
+    detectAllActive({ registry: ctx.detectorRegistry, config: ctx.config }),
+    detectAllConfigured(absDir, { registry: ctx.detectorRegistry, config: ctx.config }),
   ]);
 
   // Deduplicate configured ports by port number, keeping highest confidence

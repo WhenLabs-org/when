@@ -2,7 +2,13 @@ import { shellExec } from '../../utils/platform.js';
 import type { ActivePort } from '../../types.js';
 
 export async function detectActivePorts(): Promise<ActivePort[]> {
-  const result = await shellExec('netstat', ['-ano', '-p', 'TCP']);
+  let result;
+  try {
+    result = await shellExec('netstat', ['-ano', '-p', 'TCP']);
+  } catch {
+    // netstat not found (non-Windows without netstat installed)
+    return [];
+  }
   if (!result.stdout.trim()) return [];
 
   const ports = parseNetstatOutput(result.stdout);
@@ -69,7 +75,7 @@ export async function resolveProcessNames(ports: ActivePort[]): Promise<ActivePo
 }
 
 function normalizeAddress(addr: string): string {
-  if (addr === '0.0.0.0' || addr === '[::]' || addr === '::') return '0.0.0.0';
+  if (addr === '0.0.0.0' || addr === '[::]' || addr === '::' || addr === '*') return '0.0.0.0';
   if (addr === '127.0.0.1' || addr === '[::1]') return '127.0.0.1';
   return addr;
 }

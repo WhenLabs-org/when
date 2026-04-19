@@ -1,10 +1,12 @@
 import chalk from 'chalk';
 import type { GlobalOptions, Conflict } from '../types.js';
 import { detectAllActive, detectAllConfigured } from '../detectors/index.js';
-import { detectConflicts } from '../resolver/conflicts.js';
+import { detectAllConflicts } from '../resolver/conflicts.js';
 import { loadRegistry } from '../registry/store.js';
+import { activeReservations } from '../registry/reservations.js';
 import { formatJson } from '../reporters/json.js';
 import { renderConflict } from '../reporters/terminal.js';
+import { buildScanContext } from './_context.js';
 
 interface WatchOptions extends GlobalOptions {
   interval?: number;
@@ -34,14 +36,31 @@ export async function watchCommand(options: WatchOptions): Promise<void> {
       const allConfigured = [];
       for (const project of Object.values(registry.projects)) {
         try {
-          const { ports } = await detectAllConfigured(project.directory);
+          const ctx = await buildScanContext(project.directory, { skipRegistry: true });
+          const { ports } = await detectAllConfigured(project.directory, {
+            registry: ctx.detectorRegistry,
+            config: ctx.config,
+          });
           allConfigured.push(...ports);
         } catch {
           // skip unreachable project dirs
         }
       }
 
-      const conflicts = detectConflicts(active, docker, allConfigured);
+      const reservations = activeReservations(registry);
+      const cwdCtx = await buildScanContext(process.cwd(), { skipRegistry: true });
+      for (const tr of cwdCtx.reservations) {
+        if (tr.source === 'team' && !reservations.some((r) => r.port === tr.port)) {
+          reservations.push(tr);
+        }
+      }
+      const conflicts = detectAllConflicts({
+        active,
+        docker,
+        configured: allConfigured,
+        reservations,
+        team: cwdCtx.team,
+      });
       const currentKeys = new Set(conflicts.map(conflictKey));
 
       // Find new conflicts

@@ -2,6 +2,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import type { Registry, RegisteredProject, ConfiguredPort } from '../types.js';
 import { detectAllConfigured } from '../detectors/index.js';
+import { loadConfig } from '../config/loader.js';
 
 export function resolveProjectName(dir: string, pkg?: Record<string, unknown>): string {
   if (pkg?.name && typeof pkg.name === 'string') return pkg.name;
@@ -13,7 +14,9 @@ export async function registerProject(
   registry: Registry,
 ): Promise<{ registry: Registry; project: RegisteredProject }> {
   const absDir = path.resolve(dir);
-  const { ports } = await detectAllConfigured(absDir);
+  const loaded = await loadConfig(absDir).catch(() => null);
+  const config = loaded?.config;
+  const { ports } = await detectAllConfigured(absDir, { config });
 
   let pkg: Record<string, unknown> | undefined;
   try {
@@ -23,7 +26,7 @@ export async function registerProject(
     // No package.json
   }
 
-  const projectName = resolveProjectName(absDir, pkg);
+  const projectName = config?.projectName ?? resolveProjectName(absDir, pkg);
   const now = new Date().toISOString();
 
   const project: RegisteredProject = {

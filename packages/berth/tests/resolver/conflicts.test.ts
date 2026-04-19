@@ -70,6 +70,37 @@ describe('detectConflicts', () => {
     expect(conflicts[0].severity).toBe('error');
     expect(conflicts[1].severity).toBe('warning');
   });
+
+  it('flags a reserved port claimed by a different project as an error', () => {
+    const configured = [makeConfigured(3000, '/proj-b', 'proj-b')];
+    const reservations = [
+      { port: 3000, project: 'proj-a', source: 'manual' as const, createdAt: '2024-01-01T00:00:00Z' },
+    ];
+    const conflicts = detectConflicts([], [], configured, reservations);
+    expect(conflicts).toHaveLength(1);
+    expect(conflicts[0].severity).toBe('error');
+    expect(conflicts[0].suggestion).toContain('proj-a');
+  });
+
+  it('does NOT flag a reserved port claimed by its own owner', () => {
+    const configured = [makeConfigured(3000, '/proj-a', 'proj-a')];
+    const reservations = [
+      { port: 3000, project: 'proj-a', source: 'manual' as const, createdAt: '2024-01-01T00:00:00Z' },
+    ];
+    const conflicts = detectConflicts([], [], configured, reservations);
+    expect(conflicts).toHaveLength(0);
+  });
+
+  it('warns when an unknown active process holds a reserved port', () => {
+    const active = [makeActive(3000, 999, 'stranger')];
+    const reservations = [
+      { port: 3000, project: 'proj-a', source: 'manual' as const, createdAt: '2024-01-01T00:00:00Z' },
+    ];
+    const conflicts = detectConflicts(active, [], [], reservations);
+    expect(conflicts).toHaveLength(1);
+    expect(conflicts[0].severity).toBe('warning');
+    expect(conflicts[0].suggestion).toContain('proj-a');
+  });
 });
 
 describe('mergePortInfo', () => {

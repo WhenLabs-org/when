@@ -33,6 +33,18 @@ if (command === 'federation') {
   process.exit(0);
 }
 
+if (command === 'export') {
+  const { runExportCli } = await import('./cli/export.js');
+  runExportCli(process.argv.slice(3));
+  process.exit(0);
+}
+
+if (command === 'import') {
+  const { runImportCli } = await import('./cli/export.js');
+  runImportCli(process.argv.slice(3));
+  process.exit(0);
+}
+
 if (command === 'hook') {
   const event = process.argv[3];
   if (!event) {

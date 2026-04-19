@@ -125,7 +125,7 @@ export function registerEstimate(server: McpServer, queries: TaskQueries): void 
         ? `Based on historical data. ${confidenceReasons.join('. ')}.`
         : `Based on ${totalMatchCount} similar tasks across ${args.plan.length} categories.`;
 
-      const result = {
+      const result: Record<string, unknown> = {
         plan_run_id: planRunId,
         total_estimate: formatDuration(totals.total_seconds),
         total_seconds: Math.round(totals.total_seconds),
@@ -146,6 +146,13 @@ export function registerEstimate(server: McpServer, queries: TaskQueries): void 
         federated: anyFederated,
         breakdown,
       };
+      if (totals.cycles.length > 0) {
+        result.warnings = [
+          `depends_on graph contains ${totals.cycles.length} cycle(s): ${
+            totals.cycles.map(c => `[${c.join('→')}]`).join(', ')
+          }. Cycle back-edges are treated as 0 — fix the plan or the estimate will be low.`,
+        ];
+      }
 
       return { content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }] };
     },

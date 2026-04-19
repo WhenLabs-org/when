@@ -7,7 +7,6 @@ import { readTranscriptSummary } from './transcript.js';
 import { estimateTaskCalibrated } from '../matching/similarity.js';
 import { recordResidual } from '../matching/calibration.js';
 import {
-  DEFAULT_EMBEDDING_MODEL,
   getDefaultEmbedder,
   taskEmbeddingText,
   tryEmbed,
@@ -16,6 +15,7 @@ import {
 import { maybeCompletePlan } from '../matching/plan-model.js';
 import { generateReflectInsights } from '../matching/reflect.js';
 import { uploadIfEnabled } from '../federation/client.js';
+import { classifyCategory } from '../matching/classify.js';
 
 // How long after the last edit in an auto-task we treat a new edit as "same task".
 // Separate bursts of activity start a new task.
@@ -121,7 +121,7 @@ export interface HookDeps {
   now?: () => Date;
 }
 
-export function handlePreToolUse(input: HookInput, deps: HookDeps): { task_id: string } | null {
+export async function handlePreToolUse(input: HookInput, deps: HookDeps): Promise<{ task_id: string } | null> {
   const sessionId = input.session_id;
   const toolName = input.tool_name;
   if (!sessionId || !toolName || !EDIT_TOOL_NAMES.has(toolName)) return null;
@@ -145,14 +145,32 @@ export function handlePreToolUse(input: HookInput, deps: HookDeps): { task_id: s
     // Active task was ended elsewhere — fall through to start a new one.
   }
 
-  // Start a new auto-task.
+  // Start a new auto-task. Read the transcript up front so the description,
+  // model, and context size all come from the same source of truth.
   const filePath = extractFilePath(input.tool_input);
-  const category = inferCategoryFromPath(filePath);
+  const fileCategory = inferCategoryFromPath(filePath);
   const taskId = uuidv4();
-  const description = filePath
-    ? `Auto: edits to ${filePath}`
-    : `Auto: ${toolName}`;
+  const summary = readTranscriptSummary(input.transcript_path);
+
+  // Prefer the user's actual request for the description — it carries
+  // semantic intent that matching and reflection can use. Fall back to the
+  // file path when the transcript doesn't expose a user message.
+  const description = summary.last_user_message
+    ? (filePath ? `${summary.last_user_message} (editing ${filePath})` : summary.last_user_message)
+    : (filePath ? `Auto: edits to ${filePath}` : `Auto: ${toolName}`);
   const tags = [AUTO_TAG, toolName.toLowerCase()];
+
+  // Upgrade the category via the embedding classifier when we have semantic
+  // signal in the description — "fix the login bug (editing login.ts)" should
+  // land as `debug`, not `implement`. Falls back to the file-path regex when
+  // there isn't enough historical data to vote reliably.
+  let category = fileCategory;
+  try {
+    const result = await classifyCategory(description, tags, queries, getDefaultEmbedder(), fileCategory);
+    category = result.category;
+  } catch {
+    // never break the hook on classifier issues
+  }
 
   queries.insertTask(
     taskId,
@@ -164,9 +182,8 @@ export function handlePreToolUse(input: HookInput, deps: HookDeps): { task_id: s
     null,
   );
 
-  // Best-effort: pull model / context size from the session transcript so the
-  // calibration loop (Phase 3) can bucket estimates per model.
-  const summary = readTranscriptSummary(input.transcript_path);
+  // Pull model / context size from the same transcript read for the
+  // per-model calibration bucketing.
   if (summary.model_id != null || summary.context_tokens != null) {
     queries.updateTelemetry(taskId, {
       modelId: summary.model_id,
@@ -205,7 +222,48 @@ export function handlePreToolUse(input: HookInput, deps: HookDeps): { task_id: s
   return { task_id: taskId };
 }
 
-const TEST_BASH_RE = /\b(npm (test|run test)|pnpm (test|run test)|yarn (test|run test)|vitest|jest|pytest|cargo test|go test|mvn test|gradle test|rspec)\b/i;
+// Canonical test-runner commands — strong match.
+const TEST_BASH_STRONG_RE = /\b(npm (test|run test)|pnpm (test|run test)|yarn (test|run test)|vitest|jest|pytest|cargo test|go test|mvn test|gradle test|rspec|phpunit|dotnet test|tox)\b/i;
+// Custom shell test scripts — weaker match, still counts. Matches paths like
+// `./scripts/ci.sh`, `./run-tests`, `./bin/test-all`, `make test`.
+const TEST_BASH_SHELL_RE = /(^|[\s&;])(?:make\s+test\b|\.?\/?[\w./-]*(?:ci|test|tests|check|verify)[\w./-]*\.sh\b|\.?\/?[\w./-]*\/(?:test|tests|ci)(?:\.\w+)?\b)/i;
+
+/** Does this bash command look like a test invocation? */
+export function commandLooksLikeTest(cmd: string): boolean {
+  if (!cmd) return false;
+  return TEST_BASH_STRONG_RE.test(cmd) || TEST_BASH_SHELL_RE.test(cmd);
+}
+
+// Common strings that show up in test-runner stdout. Used as a secondary
+// signal when exit_code is missing or the runner exits 0 but didn't actually
+// run any tests.
+const TEST_PASS_RE = /\b(all tests passed|tests? passed|✓ \d+ passed|[1-9][0-9]* passed(,|\s)|ok \d+|PASS\b|OK\s*\(\d+\s+tests?\)|tests: [1-9][0-9]* passed)\b/i;
+// Require a nonzero failed count so "0 failed" in a passing summary doesn't
+// collide with the PASS regex.
+const TEST_FAIL_RE = /\b(tests? failed|[1-9][0-9]* failed(,|\s)|not ok \d+|FAIL\b|AssertionError|FAILED \(|error: test)/i;
+
+/**
+ * Decide whether tests passed on their first try, given a tool_response.
+ * Returns 1 (passed), 0 (failed), or null (inconclusive).
+ *
+ * Prefers exit_code when present. Falls back to stdout/stderr scanning so
+ * custom runners that don't report an exit code still register a signal.
+ */
+export function judgeTestRun(toolResponse: Record<string, unknown>): 0 | 1 | null {
+  const exitCode = typeof toolResponse.exit_code === 'number' ? toolResponse.exit_code
+    : typeof toolResponse.exitCode === 'number' ? toolResponse.exitCode
+    : null;
+  if (exitCode === 0) return 1;
+  if (typeof exitCode === 'number' && exitCode !== 0) return 0;
+
+  // No exit code — fall back to text matching.
+  const stdout = typeof toolResponse.stdout === 'string' ? toolResponse.stdout : '';
+  const stderr = typeof toolResponse.stderr === 'string' ? toolResponse.stderr : '';
+  const combined = `${stdout}\n${stderr}`;
+  if (TEST_FAIL_RE.test(combined)) return 0;
+  if (TEST_PASS_RE.test(combined)) return 1;
+  return null;
+}
 
 export function handlePostToolUse(input: HookInput, deps: HookDeps): void {
   const sessionId = input.session_id;
@@ -233,12 +291,8 @@ export function handlePostToolUse(input: HookInput, deps: HookDeps): void {
   // Test-run detection: Bash invocations that look like a test command.
   if (toolName === 'Bash') {
     const cmd = typeof input.tool_input?.command === 'string' ? input.tool_input.command : '';
-    if (TEST_BASH_RE.test(cmd)) {
-      const response = input.tool_response ?? {};
-      const exitCode = typeof response.exit_code === 'number' ? response.exit_code
-        : typeof response.exitCode === 'number' ? response.exitCode
-        : null;
-      const passed = exitCode === 0 ? 1 : exitCode != null ? 0 : null;
+    if (commandLooksLikeTest(cmd)) {
+      const passed = judgeTestRun(input.tool_response ?? {});
       // Only record the FIRST test run for this task — that's "first try".
       const existing = queries.getTask(state.task_id);
       if (existing && existing.tests_passed_first_try == null && passed != null) {
@@ -248,7 +302,7 @@ export function handlePostToolUse(input: HookInput, deps: HookDeps): void {
   }
 }
 
-export async function handleStop(input: HookInput, deps: HookDeps): Promise<{ ended: string | null }> {
+export async function handleStop(input: HookInput, deps: HookDeps): Promise<{ ended: string | null; systemMessage?: string }> {
   const sessionId = input.session_id;
   if (!sessionId) return { ended: null };
   const { queries } = deps;
@@ -300,8 +354,9 @@ export async function handleStop(input: HookInput, deps: HookDeps): Promise<{ en
   try {
     const parsed = parseTask(active);
     const text = taskEmbeddingText(parsed.description, parsed.tags);
-    const vec = await tryEmbed(getDefaultEmbedder(), text);
-    if (vec) queries.setEmbedding(state.task_id, vectorToBuffer(vec), DEFAULT_EMBEDDING_MODEL);
+    const embedder = getDefaultEmbedder();
+    const vec = await tryEmbed(embedder, text);
+    if (vec) queries.setEmbedding(state.task_id, vectorToBuffer(vec), embedder.modelName);
   } catch { /* never break the hook */ }
 
   // Plan-level completion + refit.
@@ -316,23 +371,31 @@ export async function handleStop(input: HookInput, deps: HookDeps): Promise<{ en
     if (finalRow) uploadIfEnabled(finalRow);
   } catch { /* never break the hook */ }
 
-  // Session-end reflection: log any actionable insights to stderr so they
-  // surface in the agent's session logs. Only fires once the user has
-  // produced at least a few recent completed tasks (otherwise we'd spam).
+  // Session-end reflection: collect actionable insights. High/medium-confidence
+  // ones (cap: 2) are surfaced to the user via the hook's systemMessage
+  // channel; everything else goes to stderr as a diagnostic log.
+  let systemMessage: string | undefined;
   try {
+    const reflectNow = (deps.now ?? (() => new Date()))();
     const recentCount = queries.getCompletedInRange(
-      new Date((deps.now ?? (() => new Date()))().getTime() - 4 * 60 * 60 * 1000).toISOString(),
+      new Date(reflectNow.getTime() - 4 * 60 * 60 * 1000).toISOString(),
     ).length;
     if (recentCount >= 3) {
-      const insights = generateReflectInsights(queries, { scope: 'session' });
+      const insights = generateReflectInsights(queries, { scope: 'session', now: reflectNow });
       for (const ins of insights) {
         process.stderr.write(`velocity-mcp reflect [${ins.confidence}] ${ins.message}\n`);
+      }
+      const shown = insights
+        .filter(i => i.confidence === 'high' || i.confidence === 'medium')
+        .slice(0, 2);
+      if (shown.length > 0) {
+        systemMessage = 'velocity: ' + shown.map(i => i.message).join(' ');
       }
     }
   } catch { /* never break the hook */ }
 
   clearSessionState(queries, sessionId);
-  return { ended: state.task_id };
+  return { ended: state.task_id, systemMessage };
 }
 
 export function reapOrphanTasks(queries: TaskQueries, now: Date = new Date()): number {
@@ -366,16 +429,22 @@ export async function runHookCli(event: string, queries: TaskQueries): Promise<v
     switch (event) {
       case 'pre-tool-use':
       case 'PreToolUse':
-        handlePreToolUse(input, { queries });
+        await handlePreToolUse(input, { queries });
         break;
       case 'post-tool-use':
       case 'PostToolUse':
         handlePostToolUse(input, { queries });
         break;
       case 'stop':
-      case 'Stop':
-        await handleStop(input, { queries });
+      case 'Stop': {
+        const result = await handleStop(input, { queries });
+        // Claude Code's Stop hook surfaces any JSON on stdout to the user.
+        // systemMessage is the documented field for "show this to the user".
+        if (result.systemMessage) {
+          process.stdout.write(JSON.stringify({ systemMessage: result.systemMessage }) + '\n');
+        }
         break;
+      }
       case 'session-start':
       case 'SessionStart':
         reapOrphanTasks(queries);

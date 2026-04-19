@@ -82,6 +82,12 @@ describe('config + salt', () => {
     require('node:fs').writeFileSync(configFile, 'not json', 'utf-8');
     expect(loadConfig(configFile)).toBeNull();
   });
+
+  it('enableFederation rejects missing / non-URL endpoint — no public server exists', () => {
+    expect(() => enableFederation('', configFile)).toThrow(/endpoint/);
+    expect(() => enableFederation('not-a-url', configFile)).toThrow(/http/);
+    expect(() => enableFederation('ftp://x', configFile)).toThrow(/http/);
+  });
 });
 
 describe('tag hashing', () => {

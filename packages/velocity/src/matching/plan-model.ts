@@ -78,6 +78,7 @@ export interface PlanTotalBreakdown {
   total_seconds: number;
   debug_count: number;
   has_dependencies: boolean;
+  cycles: number[][];   // non-empty = the dep graph has a cycle; callers should warn
 }
 
 /**
@@ -120,9 +121,44 @@ export function hasAnyDependencies(items: PlanTaskInput[]): boolean {
   return items.some(i => Array.isArray(i.depends_on) && i.depends_on.length > 0);
 }
 
+/**
+ * Return every simple cycle in the dependency DAG as a list of node indices.
+ * Empty array means the graph is acyclic. Used to warn the user instead of
+ * silently defanging a cycle inside criticalPathSeconds.
+ */
+export function detectPlanCycles(items: PlanTaskInput[]): number[][] {
+  const cycles: number[][] = [];
+  const pathIndex = new Map<number, number>();
+  const path: number[] = [];
+  const finished = new Set<number>();
+
+  function dfs(node: number): void {
+    if (finished.has(node)) return;
+    if (pathIndex.has(node)) {
+      const start = pathIndex.get(node)!;
+      cycles.push(path.slice(start).concat(node));
+      return;
+    }
+    pathIndex.set(node, path.length);
+    path.push(node);
+    const deps = items[node]?.depends_on ?? [];
+    for (const d of deps) {
+      if (d < 0 || d >= items.length || d === node) continue;
+      dfs(d);
+    }
+    path.pop();
+    pathIndex.delete(node);
+    finished.add(node);
+  }
+
+  for (let i = 0; i < items.length; i++) dfs(i);
+  return cycles;
+}
+
 export function computePlanTotal(items: PlanTaskInput[], params: PlanModelParams): PlanTotalBreakdown {
   const sumTask = items.reduce((s, i) => s + Math.max(0, i.seconds), 0);
   const withDeps = hasAnyDependencies(items);
+  const cycles = withDeps ? detectPlanCycles(items) : [];
   const critical = withDeps ? criticalPathSeconds(items) : sumTask;
   const debugCount = items.filter(i => i.category === 'debug').length;
   const ohead = overheadSeconds(items.length, params.k1);
@@ -135,6 +171,7 @@ export function computePlanTotal(items: PlanTaskInput[], params: PlanModelParams
     total_seconds: critical + ohead + tail,
     debug_count: debugCount,
     has_dependencies: withDeps,
+    cycles,
   };
 }
 

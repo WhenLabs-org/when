@@ -3,7 +3,7 @@ import { z } from 'zod';
 import type { TaskQueries } from '../db/queries.js';
 import { CATEGORIES, GROUP_BY_OPTIONS, formatDuration, parseTask, median } from '../types.js';
 import type { Task, StatsBreakdownItem } from '../types.js';
-import { generateInsights } from '../matching/insights.js';
+import { generateReflectInsightsFromTasks } from '../matching/reflect.js';
 
 export function registerStats(server: McpServer, queries: TaskQueries): void {
   server.tool(
@@ -96,7 +96,7 @@ export function registerStats(server: McpServer, queries: TaskQueries): void {
       const totalMinutes = totalTime / 60;
       const overallLpm = totalMinutes > 0 && totalLines > 0 ? Math.round((totalLines / totalMinutes) * 10) / 10 : null;
 
-      const insights = generateInsights(tasks, { lastNDays: days });
+      const insights = generateReflectInsightsFromTasks(tasks, queries);
 
       const result: Record<string, unknown> = {
         period: `last ${days} days`,

@@ -6,7 +6,9 @@ import type Database from 'better-sqlite3';
 import { initDb } from '../db/schema.js';
 import { TaskQueries } from '../db/queries.js';
 import {
+  commandLooksLikeTest,
   inferCategoryFromPath,
+  judgeTestRun,
   shouldReuseTask,
   handlePreToolUse,
   handlePostToolUse,
@@ -43,7 +45,7 @@ afterEach(() => {
   db.close();
 });
 
-describe('inferCategoryFromPath', () => {
+describe('inferCategoryFromPath', async () => {
   it.each([
     ['src/foo/bar.test.ts', 'test'],
     ['src/foo/bar.spec.tsx', 'test'],
@@ -64,8 +66,8 @@ describe('inferCategoryFromPath', () => {
   });
 });
 
-describe('shouldReuseTask', () => {
-  it('true when last activity is within merge window', () => {
+describe('shouldReuseTask', async () => {
+  it('true when last activity is within merge window', async () => {
     const now = new Date('2026-01-01T00:00:30Z');
     const state = {
       task_id: 't1',
@@ -76,7 +78,7 @@ describe('shouldReuseTask', () => {
     };
     expect(shouldReuseTask(state, now)).toBe(true);
   });
-  it('false when last activity is past merge window', () => {
+  it('false when last activity is past merge window', async () => {
     const now = new Date(new Date('2026-01-01T00:00:00Z').getTime() + MERGE_WINDOW_MS + 1000);
     const state = {
       task_id: 't1',
@@ -87,14 +89,14 @@ describe('shouldReuseTask', () => {
     };
     expect(shouldReuseTask(state, now)).toBe(false);
   });
-  it('false when no state', () => {
+  it('false when no state', async () => {
     expect(shouldReuseTask(null, new Date())).toBe(false);
   });
 });
 
-describe('handlePreToolUse', () => {
-  it('starts a new auto task for an Edit on session with no state', () => {
-    const r = handlePreToolUse(
+describe('handlePreToolUse', async () => {
+  it('starts a new auto task for an Edit on session with no state', async () => {
+    const r = await handlePreToolUse(
       {
         session_id: 's1',
         hook_event_name: 'PreToolUse',
@@ -112,16 +114,16 @@ describe('handlePreToolUse', () => {
     expect(state.task_id).toBe(r!.task_id);
   });
 
-  it('reuses the active task when a second edit arrives within the merge window', () => {
+  it('reuses the active task when a second edit arrives within the merge window', async () => {
     const t0 = new Date('2026-01-01T00:00:00Z');
-    const r1 = handlePreToolUse(
+    const r1 = await handlePreToolUse(
       {
         session_id: 's1', tool_name: 'Edit',
         tool_input: { file_path: 'src/a.ts' },
       },
       { queries, now: () => t0 },
     );
-    const r2 = handlePreToolUse(
+    const r2 = await handlePreToolUse(
       {
         session_id: 's1', tool_name: 'Write',
         tool_input: { file_path: 'src/b.ts' },
@@ -133,21 +135,21 @@ describe('handlePreToolUse', () => {
 
   it('starts a new task when activity gap exceeds merge window', async () => {
     const t0 = new Date('2026-01-01T00:00:00Z');
-    const r1 = handlePreToolUse(
+    const r1 = await handlePreToolUse(
       { session_id: 's1', tool_name: 'Edit', tool_input: { file_path: 'src/a.ts' } },
       { queries, now: () => t0 },
     );
     // End the first task to simulate a stop between bursts.
     await handleStop({ session_id: 's1' }, { queries, now: () => new Date(t0.getTime() + 1000) });
-    const r2 = handlePreToolUse(
+    const r2 = await handlePreToolUse(
       { session_id: 's1', tool_name: 'Edit', tool_input: { file_path: 'src/b.ts' } },
       { queries, now: () => new Date(t0.getTime() + MERGE_WINDOW_MS + 10_000) },
     );
     expect(r2?.task_id).not.toBe(r1?.task_id);
   });
 
-  it('ignores non-edit tools', () => {
-    const r = handlePreToolUse(
+  it('ignores non-edit tools', async () => {
+    const r = await handlePreToolUse(
       { session_id: 's1', tool_name: 'Bash', tool_input: { command: 'ls' } },
       { queries },
     );
@@ -155,8 +157,8 @@ describe('handlePreToolUse', () => {
     expect(getSessionState(queries, 's1')).toBeNull();
   });
 
-  it('categorizes a test file as test', () => {
-    const r = handlePreToolUse(
+  it('categorizes a test file as test', async () => {
+    const r = await handlePreToolUse(
       { session_id: 's1', tool_name: 'Edit', tool_input: { file_path: 'src/foo.test.ts' } },
       { queries },
     );
@@ -165,9 +167,9 @@ describe('handlePreToolUse', () => {
   });
 });
 
-describe('handlePostToolUse', () => {
-  it('increments tool_call_count and appends tools_used', () => {
-    const r = handlePreToolUse(
+describe('handlePostToolUse', async () => {
+  it('increments tool_call_count and appends tools_used', async () => {
+    const r = await handlePreToolUse(
       { session_id: 's1', tool_name: 'Edit', tool_input: { file_path: 'a.ts' } },
       { queries },
     );
@@ -180,8 +182,8 @@ describe('handlePostToolUse', () => {
     expect(row.tool_call_count).toBe(2);
   });
 
-  it('records tests_passed_first_try=1 on a successful test Bash call', () => {
-    const r = handlePreToolUse(
+  it('records tests_passed_first_try=1 on a successful test Bash call', async () => {
+    const r = await handlePreToolUse(
       { session_id: 's1', tool_name: 'Edit', tool_input: { file_path: 'a.ts' } },
       { queries },
     );
@@ -197,8 +199,8 @@ describe('handlePostToolUse', () => {
     expect(row.tests_passed_first_try).toBe(1);
   });
 
-  it('records tests_passed_first_try=0 on a failing test run and does not overwrite on retry', () => {
-    const r = handlePreToolUse(
+  it('records tests_passed_first_try=0 on a failing test run and does not overwrite on retry', async () => {
+    const r = await handlePreToolUse(
       { session_id: 's1', tool_name: 'Edit', tool_input: { file_path: 'a.ts' } },
       { queries },
     );
@@ -222,15 +224,95 @@ describe('handlePostToolUse', () => {
     expect(row.tests_passed_first_try).toBe(0);
   });
 
-  it('ignores post-tool events without an active session', () => {
+  it('ignores post-tool events without an active session', async () => {
     handlePostToolUse({ session_id: 's9', tool_name: 'Edit' }, { queries });
     // no crash; no state created
     expect(getSessionState(queries, 's9')).toBeNull();
   });
 });
 
-describe('handlePreToolUse transcript auto-fill', () => {
-  it('writes model_id and context_tokens from transcript when available', () => {
+describe('handlePreToolUse with semantic classifier', async () => {
+  it('upgrades category from file-path regex to semantic vote when history agrees', async () => {
+    const { vectorToBuffer } = await import('../matching/embedding.js');
+    const hash = (text: string): Float32Array => {
+      const v = new Float32Array(384);
+      for (const tok of text.toLowerCase().split(/[^a-z0-9]+/).filter(Boolean)) {
+        let h = 2166136261;
+        for (let i = 0; i < tok.length; i++) { h ^= tok.charCodeAt(i); h = Math.imul(h, 16777619); }
+        v[(h >>> 0) % v.length] += 1;
+      }
+      let n = 0; for (let i = 0; i < v.length; i++) n += v[i] * v[i];
+      n = Math.sqrt(n) || 1;
+      for (let i = 0; i < v.length; i++) v[i] /= n;
+      return v;
+    };
+    const strong: Embedder = { modelName: 'strong-stub', async embed(t) { return hash(t); } };
+    setDefaultEmbedder(strong);
+
+    for (let i = 0; i < 5; i++) {
+      const id = `d${i}`;
+      queries.insertTask(id, 'debug', [], 'fix login authentication bug', null, '2026-01-01T00:00:00Z', null);
+      queries.endTask(id, '2026-01-01T00:05:00Z', 300, 'completed', null, null);
+      queries.setEmbedding(id, vectorToBuffer(hash('fix login authentication bug')), 'strong-stub');
+    }
+
+    const txPath = join(tmp, 'session.jsonl');
+    writeFileSync(
+      txPath,
+      JSON.stringify({ type: 'user', message: { content: 'fix the login authentication bug' } }) + '\n',
+    );
+
+    const r = await handlePreToolUse(
+      { session_id: 's-classify', tool_name: 'Edit', tool_input: { file_path: 'src/auth/login.ts' }, transcript_path: txPath },
+      { queries },
+    );
+    const row = queries.getTask(r!.task_id)!;
+    expect(row.category).toBe('debug');
+  });
+
+  it('keeps the file-path category when there is no history', async () => {
+    const r = await handlePreToolUse(
+      { session_id: 's-no-hist', tool_name: 'Edit', tool_input: { file_path: 'src/foo.test.ts' } },
+      { queries },
+    );
+    const row = queries.getTask(r!.task_id)!;
+    expect(row.category).toBe('test');
+  });
+});
+
+describe('handlePreToolUse description from transcript', async () => {
+  it('uses the last user message as the task description when available', async () => {
+    const txPath = join(tmp, 'session.jsonl');
+    writeFileSync(
+      txPath,
+      JSON.stringify({ type: 'user', message: { content: 'fix the login bug' } }) + '\n' +
+      JSON.stringify({ type: 'assistant', message: { model: 'opus', usage: { input_tokens: 1 } } }) + '\n',
+    );
+    const r = await handlePreToolUse(
+      { session_id: 's-desc', tool_name: 'Edit', tool_input: { file_path: 'src/auth/login.ts' }, transcript_path: txPath },
+      { queries },
+    );
+    const row = queries.getTask(r!.task_id)!;
+    expect(row.description).toContain('fix the login bug');
+    expect(row.description).toContain('src/auth/login.ts');
+  });
+
+  it('falls back to the file-path description when no user message is present', async () => {
+    const txPath = join(tmp, 'session.jsonl');
+    writeFileSync(txPath, JSON.stringify({
+      type: 'assistant', message: { model: 'opus', usage: { input_tokens: 1 } },
+    }) + '\n');
+    const r = await handlePreToolUse(
+      { session_id: 's-desc-2', tool_name: 'Edit', tool_input: { file_path: 'src/a.ts' }, transcript_path: txPath },
+      { queries },
+    );
+    const row = queries.getTask(r!.task_id)!;
+    expect(row.description).toBe('Auto: edits to src/a.ts');
+  });
+});
+
+describe('handlePreToolUse transcript auto-fill', async () => {
+  it('writes model_id and context_tokens from transcript when available', async () => {
     const txPath = join(tmp, 'session.jsonl');
     writeFileSync(
       txPath,
@@ -242,7 +324,7 @@ describe('handlePreToolUse transcript auto-fill', () => {
         },
       }) + '\n',
     );
-    const r = handlePreToolUse(
+    const r = await handlePreToolUse(
       {
         session_id: 's1',
         tool_name: 'Edit',
@@ -256,8 +338,8 @@ describe('handlePreToolUse transcript auto-fill', () => {
     expect(row.context_tokens).toBe(600);
   });
 
-  it('does not overwrite model_id with null when transcript is missing', () => {
-    const r = handlePreToolUse(
+  it('does not overwrite model_id with null when transcript is missing', async () => {
+    const r = await handlePreToolUse(
       {
         session_id: 's1', tool_name: 'Edit',
         tool_input: { file_path: 'src/a.ts' },
@@ -270,10 +352,10 @@ describe('handlePreToolUse transcript auto-fill', () => {
   });
 });
 
-describe('handleStop', () => {
+describe('handleStop', async () => {
   it('ends the active auto task and clears state', async () => {
     const t0 = new Date('2026-01-01T00:00:00Z');
-    const r = handlePreToolUse(
+    const r = await handlePreToolUse(
       { session_id: 's1', tool_name: 'Edit', tool_input: { file_path: 'a.ts' } },
       { queries, now: () => t0 },
     );
@@ -290,10 +372,99 @@ describe('handleStop', () => {
     const r = await handleStop({ session_id: 'nobody' }, { queries });
     expect(r.ended).toBeNull();
   });
+
+  it('returns a systemMessage when insights are found and at least 3 recent tasks exist', async () => {
+    const BASE = Date.parse('2026-04-19T10:00:00Z');
+    // Seed 6 completed tasks in the last 4h, half tagged "async" running 3× slower.
+    for (let i = 0; i < 3; i++) {
+      const id = `fast${i}`;
+      queries.insertTask(id, 'debug', ['logic'], 'd', null,
+        new Date(BASE + i).toISOString(), null);
+      queries.endTask(id, new Date(BASE + i + 100_000).toISOString(), 100, 'completed', null, null);
+    }
+    for (let i = 0; i < 3; i++) {
+      const id = `slow${i}`;
+      queries.insertTask(id, 'debug', ['async'], 'd', null,
+        new Date(BASE + i + 10).toISOString(), null);
+      queries.endTask(id, new Date(BASE + i + 400_000).toISOString(), 400, 'completed', null, null);
+    }
+
+    // Start + stop an actual auto-task so handleStop has work to do.
+    const r = await handlePreToolUse(
+      { session_id: 's-ref', tool_name: 'Edit', tool_input: { file_path: 'a.ts' } },
+      { queries, now: () => new Date(BASE + 20) },
+    );
+    expect(r).toBeTruthy();
+    const stopped = await handleStop(
+      { session_id: 's-ref' },
+      { queries, now: () => new Date(BASE + 60_000) },
+    );
+    expect(stopped.systemMessage).toBeTruthy();
+    expect(stopped.systemMessage).toContain('velocity');
+  });
+
+  it('does NOT return a systemMessage when there are too few recent tasks', async () => {
+    const BASE = Date.parse('2026-04-19T10:00:00Z');
+    const r = await handlePreToolUse(
+      { session_id: 's-thin', tool_name: 'Edit', tool_input: { file_path: 'a.ts' } },
+      { queries, now: () => new Date(BASE) },
+    );
+    expect(r).toBeTruthy();
+    const stopped = await handleStop(
+      { session_id: 's-thin' },
+      { queries, now: () => new Date(BASE + 1000) },
+    );
+    expect(stopped.systemMessage).toBeUndefined();
+  });
 });
 
-describe('reapOrphanTasks', () => {
-  it('marks only old un-ended tasks as abandoned', () => {
+describe('commandLooksLikeTest', () => {
+  it.each([
+    ['npm test', true],
+    ['npm run test', true],
+    ['pnpm test', true],
+    ['vitest', true],
+    ['vitest run --reporter=verbose', true],
+    ['pytest -xvs', true],
+    ['cargo test --release', true],
+    ['./scripts/ci.sh', true],
+    ['./scripts/test-all.sh', true],
+    ['bash run-tests.sh', true],
+    ['make test', true],
+    ['phpunit', true],
+    ['dotnet test', true],
+    ['ls -la', false],
+    ['echo hello', false],
+    ['git commit -m "fix tests"', false],
+  ])('%s → %s', (cmd, expected) => {
+    expect(commandLooksLikeTest(cmd)).toBe(expected);
+  });
+});
+
+describe('judgeTestRun', () => {
+  it('returns 1 for exit_code 0', () => {
+    expect(judgeTestRun({ exit_code: 0 })).toBe(1);
+  });
+  it('returns 0 for a nonzero exit_code', () => {
+    expect(judgeTestRun({ exit_code: 2 })).toBe(0);
+  });
+  it('accepts exitCode (camelCase) as well', () => {
+    expect(judgeTestRun({ exitCode: 0 })).toBe(1);
+  });
+  it('falls back to stdout PASS text when exit_code is missing', () => {
+    expect(judgeTestRun({ stdout: 'Tests: 42 passed, 0 failed' })).toBe(1);
+  });
+  it('falls back to stderr FAIL text when exit_code is missing', () => {
+    expect(judgeTestRun({ stderr: 'FAIL: AssertionError at line 5' })).toBe(0);
+  });
+  it('returns null when nothing is conclusive', () => {
+    expect(judgeTestRun({ stdout: 'Hello world' })).toBeNull();
+    expect(judgeTestRun({})).toBeNull();
+  });
+});
+
+describe('reapOrphanTasks', async () => {
+  it('marks only old un-ended tasks as abandoned', async () => {
     const now = new Date('2026-01-01T10:00:00Z');
     // Orphan: started >4h ago
     queries.insertTask('old', 'implement', [], 'old', null,
@@ -314,8 +485,8 @@ describe('reapOrphanTasks', () => {
   });
 });
 
-describe('hooks-settings', () => {
-  it('install writes all four events and uninstall removes them', () => {
+describe('hooks-settings', async () => {
+  it('install writes all four events and uninstall removes them', async () => {
     const settingsPath = join(tmp, 'settings.json');
     installHooks(settingsPath);
     const written = JSON.parse(readFileSync(settingsPath, 'utf-8'));
@@ -339,7 +510,7 @@ describe('hooks-settings', () => {
     expect(after.hooks).toBeUndefined();
   });
 
-  it('preserves unrelated user hooks on install and uninstall', () => {
+  it('preserves unrelated user hooks on install and uninstall', async () => {
     const settingsPath = join(tmp, 'settings.json');
     const userBefore = {
       theme: 'dark',
@@ -364,7 +535,7 @@ describe('hooks-settings', () => {
     expect(afterUninstall.hooks.PreToolUse.find((m: { matcher?: string }) => m.matcher === 'Bash')).toBeDefined();
   });
 
-  it('install is idempotent — running twice does not duplicate entries', () => {
+  it('install is idempotent — running twice does not duplicate entries', async () => {
     const settingsPath = join(tmp, 'settings.json');
     installHooks(settingsPath);
     installHooks(settingsPath);
@@ -373,7 +544,7 @@ describe('hooks-settings', () => {
     expect(pre).toHaveLength(1);
   });
 
-  it('uninstall handles a missing settings file gracefully', () => {
+  it('uninstall handles a missing settings file gracefully', async () => {
     const settingsPath = join(tmp, 'nope.json');
     expect(() => uninstallHooks(settingsPath)).not.toThrow();
     expect(existsSync(settingsPath)).toBe(false);

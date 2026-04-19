@@ -14,19 +14,19 @@ Shared TypeScript types for the [@whenlabs](https://github.com/WhenLabs-org) dev
 - **`Finding`** — a single scan item: `{ tool, ruleId, severity, message, suggestion?, location?, data? }`.
 - **`ProjectContext`** — project identity shared across a scan: `{ name, cwd, detectedStack[], configPath? }`.
 - **`SuggestionRule`** — the trigger/emit rule shape used by the kit's post-invocation suggestion layer.
+- **`translateScanResult(input)`** — forward-compat seam for future `schemaVersion` bumps. No-op in v1.0; returns v1 results as-is and throws on any other `schemaVersion`.
 
-Supporting types also exported: `Severity`, `Location`, `ScanOptions`, `ScanTiming`, `ScanSummary`, `Patch`, `TriggerContext`.
+Supporting types also exported: `Severity`, `Location`, `ScanOptions`, `ScanTiming`, `ScanSummary`, `Patch`, `TriggerContext`, `VersionedResult`.
 
-## Discipline: additive-only until v1.0
+## Stability: v1.0 contract
 
-The whole point of pinning this to `0.1.x` is stability. Until v1.0:
+As of v1.0 the contract is **stable**. The additive-only pre-v1.0 discipline has ended — every exported type, field, and constant is now locked.
 
-- **Never rename** an exported type, field, or constant.
-- **Never remove** an exported type, field, or constant.
-- **Never tighten** a type (e.g. widening `string` → `'a' | 'b'`, making optional → required).
-- **Adding** a new optional field, a new exported type, or a new enum variant on a union typed as `string` is allowed.
+- **Any breaking change requires a 2.0 major bump.** Renames, removals, tightenings (widening `string` → `'a' | 'b'`, optional → required) all qualify.
+- **Additive changes remain safe in 1.x.** A new optional field, a new exported type, or a new variant on a union typed as `string` can ship in a minor release.
+- **`schemaVersion` is the long-lived signal.** It stays at `1` for the entire 1.x line. A 2.0 core bumps it to `2` and ships a translator via `translateScanResult()` so 1.x consumers have a migration path.
 
-Breaking changes wait for v1.0. Red-flag items from Phase 2 (closed `detectedStack` enum, `inspect()` method, streaming) are deliberately deferred.
+Red-flag items previously deferred (closed `detectedStack` enum, `inspect()` method, streaming `scan()`) are now 2.0 candidates — they cannot land in 1.x without breaking the contract.
 
 ## Known limitations (v0.1)
 

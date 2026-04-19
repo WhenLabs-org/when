@@ -1,7 +1,7 @@
 /**
  * @whenlabs/core — shared types for the @whenlabs developer toolkit.
  *
- * v0.1 surface (additive-only until v1.0):
+ * v1.0 surface (stable contract — breaking changes require a 2.0 bump):
  *   - schemaVersion
  *   - ProjectContext
  *   - Finding (+ Severity, Location)
@@ -135,4 +135,40 @@ export interface SuggestionRule {
   match: (ctx: TriggerContext) => boolean | Promise<boolean>;
   /** Produce follow-up text / side-effects. Returns hints to append. */
   emit: (ctx: TriggerContext) => string[] | Promise<string[]>;
+}
+
+// --- Forward-compat: schemaVersion v2 translator stub -----------------------
+
+/**
+ * Minimal shape the kit uses to detect "this came from a newer core than I
+ * understand." Anything stamped with a `schemaVersion` other than {@link schemaVersion}
+ * is a candidate for translation. Kept as `unknown`-ish on purpose — by design
+ * we don't know the v2 shape yet.
+ */
+export interface VersionedResult {
+  schemaVersion: number;
+  [key: string]: unknown;
+}
+
+/**
+ * Forward-compat seam for when `schemaVersion` is bumped to 2 in a future
+ * breaking release. Consumers should call this before narrowing a result to
+ * {@link ScanResult} so the kit has a single place to land v2→v1 adapters.
+ *
+ * **Status (v1.0):** no-op. There is no v2 yet, so the only legal input is a
+ * v1 result, which is returned as-is. When v2 lands, this function becomes the
+ * canonical place to translate `{schemaVersion: 2, ...}` payloads down to v1
+ * for older consumers (or vice versa for newer ones).
+ *
+ * Throws if handed a schemaVersion the installed core doesn't understand,
+ * so the kit fails loud instead of silently mis-parsing.
+ */
+export function translateScanResult(input: VersionedResult): ScanResult {
+  if (input.schemaVersion === schemaVersion) {
+    return input as unknown as ScanResult;
+  }
+  throw new Error(
+    `@whenlabs/core: unsupported schemaVersion ${input.schemaVersion} (this build understands ${schemaVersion}). ` +
+      `Upgrade @whenlabs/core to consume newer tool output, or downgrade the tool.`,
+  );
 }

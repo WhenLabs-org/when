@@ -31,7 +31,7 @@ describe("createDefaultConfig", () => {
   it("returns a valid AwareConfig", () => {
     const config = createDefaultConfig("test-project", defaultStack, defaultTargets);
 
-    expect(config.version).toBe(1);
+    expect(config.version).toBe(2);
     expect(config.project.name).toBe("test-project");
     expect(config.stack).toEqual(defaultStack);
     expect(config.targets).toEqual(defaultTargets);
@@ -41,6 +41,8 @@ describe("createDefaultConfig", () => {
     expect(config._meta.createdAt).toBeTruthy();
     expect(config._meta.lastDetectionHash).toBeTruthy();
     expect(config._meta.awareVersion).toBeTruthy();
+    expect(config._meta.fileHashes).toEqual({});
+    expect(config._meta.fragmentVersions).toEqual({});
   });
 });
 

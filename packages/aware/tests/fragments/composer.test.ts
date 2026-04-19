@@ -2,10 +2,22 @@ import { describe, it, expect } from "vitest";
 import { resolveFragments } from "../../src/fragments/index.js";
 import type { DetectedStack, AwareConfig } from "../../src/types.js";
 
-function makeStackItem(name: string, variant: string | null = null) {
+// Phase 2 made framework and styling fragments version-aware, so test
+// fixtures now need to supply versions — otherwise no version-specific
+// fragment will match. Sensible defaults per known stack item:
+const DEFAULT_VERSIONS: Record<string, string> = {
+  nextjs: "15.1.0",
+  tailwindcss: "4.0.0",
+};
+
+function makeStackItem(
+  name: string,
+  variant: string | null = null,
+  version?: string,
+) {
   return {
     name,
-    version: null,
+    version: version ?? DEFAULT_VERSIONS[name] ?? null,
     variant,
     confidence: 0.95,
     detectedFrom: "test",

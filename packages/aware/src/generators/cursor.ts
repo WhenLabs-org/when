@@ -89,8 +89,7 @@ export class CursorGenerator extends BaseGenerator {
   readonly filePath: string = TARGETS.cursor.file;
 
   generate(context: ComposedContext): GeneratorResult {
-    const parts: string[] = [];
-    let sectionCount = 0;
+    const blocks: string[] = [];
 
     // Header
     const projectLines = context.projectSection.split("\n").filter(Boolean);
@@ -100,15 +99,13 @@ export class CursorGenerator extends BaseGenerator {
       const intro = description
         ? `You are working on ${name}, ${description.toLowerCase().replace(/\.$/, "")}.`
         : `You are working on ${name}.`;
-      parts.push(intro);
-      sectionCount++;
+      blocks.push(this.wrapSection("header", intro));
     }
 
     // Tech stack
     const stackList = extractStackList(context.stackSection);
     if (stackList) {
-      parts.push(`Tech stack: ${stackList}`);
-      sectionCount++;
+      blocks.push(this.wrapSection("stack", `Tech stack: ${stackList}`));
     }
 
     // Rules
@@ -120,26 +117,27 @@ export class CursorGenerator extends BaseGenerator {
     allRules.push(...extractConventionRules(context.conventionsSection));
 
     if (allRules.length > 0) {
-      parts.push(`Rules:\n${allRules.map((r) => `- ${r}`).join("\n")}`);
-      sectionCount++;
+      const body = `Rules:\n${allRules.map((r) => `- ${r}`).join("\n")}`;
+      blocks.push(this.wrapSection("rules", body));
     }
 
     // Structure
     const structureLines = extractStructure(context.structureSection);
     if (structureLines.length > 0) {
-      parts.push(
-        `Project structure:\n${structureLines.map((l) => `- ${l}`).join("\n")}`,
-      );
-      sectionCount++;
+      const body = `Project structure:\n${structureLines
+        .map((l) => `- ${l}`)
+        .join("\n")}`;
+      blocks.push(this.wrapSection("structure", body));
     }
 
-    const content = parts.join("\n\n") + "\n";
+    const body = blocks.join("\n\n");
+    const content = this.finalize(body, true);
 
     return {
       target: this.target,
       filePath: this.filePath,
       content,
-      sections: sectionCount,
+      sections: blocks.length,
     };
   }
 }

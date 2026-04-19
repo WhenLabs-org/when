@@ -1,10 +1,10 @@
 import * as path from "node:path";
 import ora from "ora";
-import { loadConfig, computeDetectionHash } from "../utils/config.js";
+import { computeDriftReport } from "../diff/index.js";
+import { loadConfig } from "../utils/config.js";
 import { fileExists, readFile } from "../utils/fs.js";
 import { log } from "../utils/logger.js";
 import { CONFIG_FILE, TARGETS } from "../constants.js";
-import { detectStack, stackToConfig } from "../detectors/index.js";
 import type { AwareConfig, TargetsConfig } from "../types.js";
 
 interface DiagnosticResult {
@@ -32,77 +32,90 @@ export async function doctorCommand(): Promise<void> {
     return;
   }
 
+  // Use loadConfig so migration surfaces. Any migration error aborts before
+  // we run the drift engine — stale configs would give misleading output.
   let config: AwareConfig;
   try {
-    config = JSON.parse(configContent) as AwareConfig;
-    results.push({ label: "Config file", status: "ok", message: `${CONFIG_FILE} found and valid JSON` });
-  } catch {
-    log.error(`${CONFIG_FILE} contains invalid JSON.`);
+    const loaded = await loadConfig(projectRoot);
+    if (!loaded) {
+      log.error(`${CONFIG_FILE} contains invalid JSON.`);
+      process.exit(1);
+    }
+    config = loaded;
+    results.push({
+      label: "Config file",
+      status: "ok",
+      message: `${CONFIG_FILE} found and parseable`,
+    });
+  } catch (err) {
+    log.error(`${CONFIG_FILE} failed to migrate: ${(err as Error).message}`);
     process.exit(1);
   }
 
   // 2. Schema basics
   if (!config.version || !config.project?.name || !config.stack || !config.targets) {
-    results.push({ label: "Config schema", status: "error", message: "Missing required fields (version, project.name, stack, targets)" });
+    results.push({
+      label: "Config schema",
+      status: "error",
+      message:
+        "Missing required fields (version, project.name, stack, targets)",
+    });
   } else {
-    results.push({ label: "Config schema", status: "ok", message: "All required fields present" });
+    results.push({
+      label: "Config schema",
+      status: "ok",
+      message: "All required fields present",
+    });
   }
 
-  // 3. Check enabled targets have generated files
-  const targetEntries = Object.entries(TARGETS) as Array<[keyof TargetsConfig, { file: string; name: string }]>;
-  for (const [key, target] of targetEntries) {
-    if (config.targets[key]) {
-      const filePath = path.join(projectRoot, target.file);
-      if (await fileExists(filePath)) {
-        results.push({ label: target.name, status: "ok", message: `${target.file} exists` });
-      } else {
-        results.push({ label: target.name, status: "warn", message: `${target.file} missing — run \`aware sync\`` });
-      }
-    }
-  }
-
-  // 4. Check for disabled targets that have stale files
-  for (const [key, target] of targetEntries) {
-    if (!config.targets[key]) {
-      const filePath = path.join(projectRoot, target.file);
-      if (await fileExists(filePath)) {
-        results.push({ label: target.name, status: "warn", message: `${target.file} exists but target is disabled — consider removing it` });
-      }
-    }
-  }
-
-  // 5. Stack drift detection
-  const spinner = ora("Re-detecting stack...").start();
-  const currentStack = await detectStack(projectRoot);
-  const currentConfig = stackToConfig(currentStack);
+  // 3. Delegate all per-target health to the drift engine so `doctor`
+  //    and `diff --check` agree byte-for-byte. The engine covers:
+  //    - missing files for enabled targets
+  //    - tampered / outdated / unmanaged files
+  //    - stale files for disabled targets
+  const spinner = ora("Checking drift...").start();
+  const report = await computeDriftReport({ projectRoot, config });
   spinner.stop();
 
-  const currentHash = computeDetectionHash(currentConfig);
-  const savedHash = config._meta?.lastDetectionHash;
-
-  if (savedHash && currentHash !== savedHash) {
-    // Find what changed
-    const drifted: string[] = [];
-    const configStack = config.stack;
-    for (const key of Object.keys(currentConfig) as Array<keyof typeof currentConfig>) {
-      const current = currentConfig[key];
-      const saved = configStack[key];
-      const currentStr = Array.isArray(current) ? current.join(",") : (current ?? "");
-      const savedStr = Array.isArray(saved) ? saved.join(",") : (saved ?? "");
-      if (currentStr !== savedStr) {
-        drifted.push(key);
-      }
-    }
+  if (report.hasStackDrift) {
+    const labels = report.stackDrifts.map((d) => d.key).join(", ");
     results.push({
       label: "Stack drift",
       status: "warn",
-      message: `Stack has changed since last sync: ${drifted.join(", ")}. Run \`aware sync\``,
+      message: `Stack has changed since last sync: ${labels}. Run \`aware sync\``,
     });
   } else {
-    results.push({ label: "Stack drift", status: "ok", message: "Stack matches last detection" });
+    results.push({
+      label: "Stack drift",
+      status: "ok",
+      message: "Stack matches last detection",
+    });
   }
 
-  // 6. Check structure paths exist
+  for (const drift of report.contentDrifts) {
+    results.push({
+      label: `${TARGETS[drift.target].name} integrity`,
+      status: drift.kind === "tampered" ? "error" : "warn",
+      message: drift.message,
+    });
+  }
+
+  // Positive confirmation for targets that had no drift at all.
+  const driftedTargets = new Set(report.contentDrifts.map((d) => d.target));
+  const targetEntries = Object.entries(TARGETS) as Array<
+    [keyof TargetsConfig, { file: string; name: string }]
+  >;
+  for (const [key, target] of targetEntries) {
+    if (!config.targets[key]) continue;
+    if (driftedTargets.has(key)) continue;
+    results.push({
+      label: target.name,
+      status: "ok",
+      message: `${target.file} verifies against its stamped hash`,
+    });
+  }
+
+  // 5. Check structure paths exist
   if (config.structure) {
     const missingPaths: string[] = [];
     for (const dirPath of Object.keys(config.structure)) {
@@ -118,33 +131,95 @@ export async function doctorCommand(): Promise<void> {
         message: `${missingPaths.length} configured path(s) missing: ${missingPaths.slice(0, 3).join(", ")}${missingPaths.length > 3 ? "..." : ""}`,
       });
     } else if (Object.keys(config.structure).length > 0) {
-      results.push({ label: "Structure", status: "ok", message: "All configured paths exist" });
+      results.push({
+        label: "Structure",
+        status: "ok",
+        message: "All configured paths exist",
+      });
     }
   }
 
-  // 7. Check for empty project description
-  if (!config.project.description) {
-    results.push({ label: "Description", status: "warn", message: "project.description is empty — consider adding one" });
-  }
-
-  // 8. Check rules
-  if (!config.rules || config.rules.length === 0) {
-    results.push({ label: "Custom rules", status: "warn", message: "No custom rules defined — add project-specific rules to improve context quality" });
+  // 6. Convention extraction status. Surface whether extraction ran,
+  //    how many files were sampled, and what confidence each aspect had.
+  //    Users who never consented to code scanning can see it's happening
+  //    and opt out via `conventions.extract: false`.
+  if (config.conventions.extract === false) {
+    results.push({
+      label: "Convention extraction",
+      status: "warn",
+      message:
+        "Disabled (conventions.extract: false). Generated rules reflect " +
+        "framework defaults, not your codebase.",
+    });
+  } else if (config.conventions.extracted) {
+    const ext = config.conventions.extracted;
+    const pieces: string[] = [];
+    if (ext.naming) pieces.push(`naming=${ext.naming.files}`);
+    if (ext.tests?.layout) pieces.push(`tests=${ext.tests.layout}`);
+    if (ext.layout?.pattern) pieces.push(`layout=${ext.layout.pattern}`);
+    const summary = pieces.length > 0 ? pieces.join(", ") : "no high-confidence signals";
+    results.push({
+      label: "Convention extraction",
+      status: "ok",
+      message: `Active (${ext._sampleSize ?? 0} files sampled): ${summary}`,
+    });
   } else {
-    results.push({ label: "Custom rules", status: "ok", message: `${config.rules.length} rule(s) defined` });
+    results.push({
+      label: "Convention extraction",
+      status: "warn",
+      message:
+        "No extracted conventions recorded. Run `aware sync` to populate.",
+    });
   }
 
-  // 9. Staleness check
+  // 7. Empty description / missing rules / freshness
+  if (!config.project.description) {
+    results.push({
+      label: "Description",
+      status: "warn",
+      message: "project.description is empty — consider adding one",
+    });
+  }
+
+  if (!config.rules || config.rules.length === 0) {
+    results.push({
+      label: "Custom rules",
+      status: "warn",
+      message:
+        "No custom rules defined — add project-specific rules to improve context quality",
+    });
+  } else {
+    results.push({
+      label: "Custom rules",
+      status: "ok",
+      message: `${config.rules.length} rule(s) defined`,
+    });
+  }
+
   if (config._meta?.lastSyncedAt) {
     const syncDate = new Date(config._meta.lastSyncedAt);
-    const daysSinceSync = Math.floor((Date.now() - syncDate.getTime()) / (1000 * 60 * 60 * 24));
+    const daysSinceSync = Math.floor(
+      (Date.now() - syncDate.getTime()) / (1000 * 60 * 60 * 24),
+    );
     if (daysSinceSync > 30) {
-      results.push({ label: "Freshness", status: "warn", message: `Last synced ${daysSinceSync} days ago — consider running \`aware sync\`` });
+      results.push({
+        label: "Freshness",
+        status: "warn",
+        message: `Last synced ${daysSinceSync} days ago — consider running \`aware sync\``,
+      });
     } else {
-      results.push({ label: "Freshness", status: "ok", message: `Last synced ${daysSinceSync} day(s) ago` });
+      results.push({
+        label: "Freshness",
+        status: "ok",
+        message: `Last synced ${daysSinceSync} day(s) ago`,
+      });
     }
   } else {
-    results.push({ label: "Freshness", status: "warn", message: "Never synced — run \`aware sync\` after reviewing config" });
+    results.push({
+      label: "Freshness",
+      status: "warn",
+      message: "Never synced — run `aware sync` after reviewing config",
+    });
   }
 
   // Print results

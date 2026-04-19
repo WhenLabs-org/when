@@ -2,15 +2,20 @@ import * as path from "node:path";
 import { detectStack, stackToConfig } from "./detectors/index.js";
 import { resolveFragments } from "./fragments/index.js";
 import { generateAll } from "./generators/index.js";
-import { createDefaultConfig } from "./utils/config.js";
+import { createDefaultConfig, loadConfig } from "./utils/config.js";
 import { parsePackageJson } from "./utils/parsers.js";
 import { fileExists, listDir } from "./utils/fs.js";
+import { extractConventions } from "./conventions/extractor.js";
+import { loadPlugins } from "./plugins/loader.js";
+import { log } from "./utils/logger.js";
 import type {
   AwareConfig,
   ConventionsConfig,
   DetectedStack,
+  ExtractedConventions,
   Fragment,
   GeneratorResult,
+  NamingConventions,
   StackConfig,
   TargetsConfig,
 } from "./types.js";
@@ -31,6 +36,13 @@ export interface ScanOptions {
   projectRoot?: string;
   targets?: TargetsConfig;
   detect?: boolean;
+  /**
+   * Opt out of Phase 3 source-code convention extraction. Default true.
+   * Kept opt-out rather than opt-in because extraction is core to the
+   * tool's value proposition; users who don't want code scanned (or
+   * have non-standard layouts) can disable it explicitly.
+   */
+  extractConventions?: boolean;
 }
 
 export interface ScanOutput {
@@ -87,7 +99,69 @@ export async function scan(opts: ScanOptions = {}): Promise<ScanOutput> {
   }
   config.project.architecture = generateArchitectureString(stackConfig);
   config.structure = await detectStructure(projectRoot);
-  config.conventions = generateConventions(stack);
+
+  // Convention resolution (Phase 3): start from framework defaults, then
+  // override high-confidence extracted values. The extracted payload is
+  // always saved under `conventions.extracted` so `aware sync` can keep
+  // it current without touching user-edited sibling fields.
+  //
+  // Three opt-out paths, all honored:
+  //   1. `opts.extractConventions === false` — library caller opts out
+  //      programmatically.
+  //   2. Existing `.aware.json` has `conventions.extract: false` — user
+  //      pre-seeded a config before running `init --force`.
+  //   3. Neither — the default. Extraction runs.
+  const defaults = generateConventions(stack);
+  const existingConfig = await loadExistingConfigSafely(projectRoot);
+
+  // Phase 5: load plugins declared in an existing .aware.json BEFORE
+  // fragment resolution runs. This means a pre-seeded config can
+  // register plugin fragments for the very first `aware init`.
+  // Plugin load failures don't abort scan — they just surface as
+  // warnings and the core fragments still apply.
+  if (existingConfig?.plugins && existingConfig.plugins.length > 0) {
+    await loadPlugins({
+      projectRoot,
+      pluginSpecifiers: existingConfig.plugins,
+    });
+  }
+
+  const shouldExtract = await shouldExtractConventions(
+    opts,
+    existingConfig,
+  );
+  if (shouldExtract) {
+    log.dim(
+      `  Sampling source files for convention extraction… (opt out: set \`conventions.extract: false\` in .aware.json)`,
+    );
+    const extracted = await extractConventions(projectRoot);
+    config.conventions = mergeConventionsForInit(defaults, extracted);
+  } else {
+    config.conventions = defaults;
+  }
+  // Carry the opt-out flag forward so the user's choice survives a
+  // re-init. Without this, `init --force` would silently re-enable
+  // extraction on the next sync.
+  if (existingConfig?.conventions?.extract === false) {
+    config.conventions.extract = false;
+  }
+
+  // Carry plugins forward. Otherwise `aware init --force` on a
+  // pre-seeded `.aware.json` with `plugins: [...]` would load the
+  // plugins once (so generation benefits), then save a new config
+  // WITHOUT the plugins field — the next sync wouldn't know to load
+  // them. Plugins are opt-in via user edit, and a re-init should
+  // preserve that choice.
+  if (existingConfig?.plugins && existingConfig.plugins.length > 0) {
+    config.plugins = [...existingConfig.plugins];
+  }
+
+  // Carry packages (monorepo root declaration) forward for the same
+  // reason — init of a monorepo root shouldn't silently drop the
+  // workspace membership list.
+  if (existingConfig?.packages && existingConfig.packages.length > 0) {
+    config.packages = [...existingConfig.packages];
+  }
 
   const fragments = resolveFragments(stack, config);
   const results = generateAll(stack, config, fragments);
@@ -223,6 +297,71 @@ export async function detectStructure(projectRoot: string): Promise<Record<strin
   }
 
   return structure;
+}
+
+/**
+ * Decide whether to run convention extraction for a `scan()` call.
+ * Covers all three opt-out paths so init behaves the same as sync.
+ */
+async function shouldExtractConventions(
+  opts: ScanOptions,
+  existing: AwareConfig | null,
+): Promise<boolean> {
+  if (opts.extractConventions === false) return false;
+  if (existing?.conventions?.extract === false) return false;
+  return true;
+}
+
+/**
+ * Best-effort load of an existing `.aware.json` so scan() can honor
+ * pre-seeded user preferences (notably `conventions.extract: false`).
+ * Returns null on any failure — a corrupt or future-version file is
+ * the init path's problem to surface, not ours.
+ */
+async function loadExistingConfigSafely(
+  projectRoot: string,
+): Promise<AwareConfig | null> {
+  try {
+    return await loadConfig(projectRoot);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Merge framework-default conventions with extracted ones for a fresh
+ * init. Extracted values win when present (the extractor already gated
+ * on confidence >= 0.7 — below that it emits nothing). The full
+ * `extracted` payload is stashed under `conventions.extracted` so
+ * downstream `sync` can update it without touching user-facing fields.
+ */
+export function mergeConventionsForInit(
+  defaults: ConventionsConfig,
+  extracted: ExtractedConventions,
+): ConventionsConfig {
+  const merged: ConventionsConfig = { ...defaults };
+
+  if (extracted.naming) {
+    merged.naming = {
+      ...(defaults.naming ?? {}),
+      ...extracted.naming,
+    } as NamingConventions;
+  }
+  if (extracted.tests) {
+    merged.testing = {
+      ...(defaults.testing ?? {}),
+      ...extracted.tests,
+    };
+  }
+  if (extracted.layout) {
+    merged.components = {
+      ...(defaults.components ?? {}),
+      layout: extracted.layout.pattern ?? "mixed",
+    };
+  }
+
+  merged.extracted = extracted;
+  return merged;
 }
 
 export function generateConventions(stack: DetectedStack): ConventionsConfig {

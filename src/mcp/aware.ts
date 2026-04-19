@@ -1,8 +1,12 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
+import { createTool as createAwareTool } from '@whenlabs/aware';
 import { runCli, formatOutput, writeCache, deriveProject, checkTriggers } from './run-cli.js';
+import { formatScanResult } from './format-scan.js';
 
 export function registerAwareTools(server: McpServer): void {
+  const aware = createAwareTool();
+
   server.tool(
     'aware_init',
     'Auto-detect project stack and generate AI context files (CLAUDE.md, .cursorrules, etc.)',
@@ -12,13 +16,19 @@ export function registerAwareTools(server: McpServer): void {
       force: z.coerce.boolean().optional().describe('Overwrite existing files without prompting'),
     },
     async ({ path, targets, force }) => {
-      const args = ['init'];
-      if (targets) args.push('--targets', targets);
-      if (force) args.push('--force');
-      const result = await runCli('aware', args, path);
-      const output = formatOutput(result);
-      writeCache('aware_init', deriveProject(path), output, result.code);
-      const extras = await checkTriggers('aware_init', result, path);
+      if (force) {
+        const args = ['init', '--force'];
+        if (targets) args.push('--targets', targets);
+        const result = await runCli('aware', args, path);
+        const output = formatOutput(result);
+        writeCache('aware_init', deriveProject(path), output, result.code);
+        const extras = await checkTriggers('aware_init', result, path);
+        return { content: [{ type: 'text' as const, text: output + extras.join('') }] };
+      }
+      const scan = await aware.scan({ cwd: path, options: { targets } });
+      const output = formatScanResult(scan);
+      writeCache('aware_init', deriveProject(path), output, scan.ok ? 0 : 1);
+      const extras = await checkTriggers('aware_init', { stdout: output, stderr: '', code: scan.ok ? 0 : 1 }, path);
       return { content: [{ type: 'text' as const, text: output + extras.join('') }] };
     },
   );

@@ -27,7 +27,8 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/WhenLabs-org/when.git"
+    "url": "https://github.com/WhenLabs-org/when.git",
+    "directory": "packages/when"
   },
   "engines": {
     "node": ">=20"
@@ -55,5 +56,6 @@
     "dist",
     "templates",
     "action.yml"
-  ]
+  ],
+  "homepage": "https://github.com/WhenLabs-org/when/tree/main/packages/when"
 }

@@ -40,9 +40,10 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/WhenLabs-org/berth.git"
+    "url": "https://github.com/WhenLabs-org/when.git",
+    "directory": "packages/berth"
   },
-  "homepage": "https://github.com/WhenLabs-org/berth",
+  "homepage": "https://github.com/WhenLabs-org/when/tree/main/packages/berth",
   "bugs": "https://github.com/WhenLabs-org/berth/issues",
   "files": [
     "dist",

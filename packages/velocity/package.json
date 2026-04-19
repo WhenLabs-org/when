@@ -37,6 +37,7 @@
     "node": ">=18"
   },
   "dependencies": {
+    "@huggingface/transformers": "^4.1.0",
     "@modelcontextprotocol/sdk": "^1.29.0",
     "better-sqlite3": "^11.0.0",
     "uuid": "^11.0.0",

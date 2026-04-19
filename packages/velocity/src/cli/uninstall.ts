@@ -2,6 +2,7 @@ import { execSync } from 'node:child_process';
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { homedir } from 'node:os';
+import { uninstallHooks, claudeSettingsPath } from './hooks-settings.js';
 
 const CLAUDE_MD_MARKER = '<!-- velocity-mcp:start -->';
 const CLAUDE_MD_MARKER_END = '<!-- velocity-mcp:end -->';
@@ -36,6 +37,15 @@ export async function uninstall(): Promise<void> {
     }
   } else {
     console.log('   ✓ No ~/.claude/CLAUDE.md found (nothing to remove)');
+  }
+
+  // Step 3: Remove auto-instrumentation hooks from ~/.claude/settings.json
+  console.log('3. Removing auto-instrumentation hooks from ~/.claude/settings.json...');
+  try {
+    uninstallHooks();
+    console.log(`   ✓ Hooks removed from ${claudeSettingsPath()}`);
+  } catch (err) {
+    console.error(`   ✗ Failed to remove hooks: ${(err as Error).message}`);
   }
 
   console.log('\n✅ Uninstall complete!\n');

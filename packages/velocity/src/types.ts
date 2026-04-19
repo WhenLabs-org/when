@@ -34,6 +34,27 @@ export interface TaskRow {
   lines_removed: number | null;
   files_changed: number | null;
   git_diff_stat: string | null;
+  // v3: prediction storage (for calibration loop)
+  predicted_duration_seconds: number | null;
+  predicted_p25_seconds: number | null;
+  predicted_p75_seconds: number | null;
+  predicted_confidence: Confidence | null;
+  // v3: agent/model telemetry
+  model_id: string | null;
+  context_tokens: number | null;
+  tools_used: string | null; // JSON-serialized string[]
+  tool_call_count: number | null;
+  turn_count: number | null;
+  first_edit_offset_seconds: number | null;
+  retry_count: number | null;
+  tests_passed_first_try: number | null; // 0 | 1
+  // v3: embeddings
+  embedding: Buffer | null;
+  embedding_model: string | null;
+  // v3: plan linkage & pauses
+  paused_seconds: number | null;
+  parent_task_id: string | null;
+  parent_plan_id: string | null;
 }
 
 // --- Parsed task (after JSON parse of tags) ---
@@ -55,6 +76,44 @@ export interface Task {
   lines_removed: number | null;
   files_changed: number | null;
   git_diff_stat: string | null;
+  predicted_duration_seconds: number | null;
+  predicted_p25_seconds: number | null;
+  predicted_p75_seconds: number | null;
+  predicted_confidence: Confidence | null;
+  model_id: string | null;
+  context_tokens: number | null;
+  tools_used: string[];
+  tool_call_count: number | null;
+  turn_count: number | null;
+  first_edit_offset_seconds: number | null;
+  retry_count: number | null;
+  tests_passed_first_try: number | null;
+  embedding: Buffer | null;
+  embedding_model: string | null;
+  paused_seconds: number | null;
+  parent_task_id: string | null;
+  parent_plan_id: string | null;
+}
+
+// --- v3: plan run + calibration row shapes ---
+
+export interface PlanRunRow {
+  id: string;
+  created_at: string;
+  plan_json: string;
+  model_id: string | null;
+  total_predicted_seconds: number | null;
+  total_actual_seconds: number | null;
+  completed_at: string | null;
+}
+
+export interface CalibrationRow {
+  category: string;
+  bucket: string;
+  mean_log_error: number;
+  var_log_error: number;
+  n: number;
+  updated_at: string | null;
 }
 
 // --- Tool input/output shapes ---
@@ -64,6 +123,10 @@ export interface PlanItem {
   tags?: string[];
   description: string;
   estimated_files?: number;
+  /** Optional pre-computed sentence embedding for semantic similarity. */
+  embedding?: Float32Array;
+  /** Indices of plan items this task depends on (must complete first). */
+  depends_on?: number[];
 }
 
 export interface EstimateBreakdown {
@@ -121,7 +184,13 @@ export function parseTask(row: TaskRow): Task {
   } catch {
     tags = [];
   }
-  return { ...row, tags };
+  let tools_used: string[];
+  try {
+    tools_used = row.tools_used ? (JSON.parse(row.tools_used) as string[]) : [];
+  } catch {
+    tools_used = [];
+  }
+  return { ...row, tags, tools_used };
 }
 
 export function confidenceFromCount(n: number): Confidence {

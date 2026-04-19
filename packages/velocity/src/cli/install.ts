@@ -2,6 +2,11 @@ import { execSync } from 'node:child_process';
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { homedir } from 'node:os';
+import { installHooks, claudeSettingsPath } from './hooks-settings.js';
+
+export interface InstallOptions {
+  noHooks?: boolean;
+}
 
 const CLAUDE_MD_MARKER = '<!-- velocity-mcp:start -->';
 const CLAUDE_MD_MARKER_END = '<!-- velocity-mcp:end -->';
@@ -35,7 +40,7 @@ You have access to \`velocity-mcp\` tools. Follow these rules for EVERY session:
 - Keep descriptions concise but specific enough to be useful for future matching
 ${CLAUDE_MD_MARKER_END}`;
 
-export async function install(): Promise<void> {
+export async function install(options: InstallOptions = {}): Promise<void> {
   console.log('\n⚡ velocity-mcp installer\n');
 
   // Step 1: Add MCP server globally via claude CLI
@@ -81,6 +86,21 @@ export async function install(): Promise<void> {
     const separator = existing.length > 0 && !existing.endsWith('\n') ? '\n\n' : existing.length > 0 ? '\n' : '';
     writeFileSync(claudeMdPath, existing + separator + TASK_TIMING_INSTRUCTIONS + '\n', 'utf-8');
     console.log('   ✓ Added velocity-mcp instructions');
+  }
+
+  // Step 3: Install auto-instrumentation hooks in ~/.claude/settings.json
+  if (options.noHooks) {
+    console.log('3. Skipping hook installation (--no-hooks)');
+  } else {
+    console.log('3. Installing auto-instrumentation hooks in ~/.claude/settings.json...');
+    try {
+      installHooks();
+      console.log(`   ✓ Hooks installed at ${claudeSettingsPath()}`);
+      console.log('     (edits, test runs, and session end are now tracked automatically)');
+    } catch (err) {
+      console.error(`   ✗ Failed to install hooks: ${(err as Error).message}`);
+      console.error('     You can retry with: npx velocity-mcp install');
+    }
   }
 
   console.log('\n✅ Installation complete!\n');

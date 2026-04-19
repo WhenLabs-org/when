@@ -56,6 +56,13 @@ program
   });
 
 program
+  .command('mcp')
+  .description('Run the WhenLabs MCP server (stdio transport)')
+  .action(async () => {
+    await import('./mcp/index.js');
+  });
+
+program
   .command('ci')
   .description('Run stale, envalid, and vow checks — exits 1 if any tool finds issues')
   .option('--ci', 'Output GitHub Actions annotations (::error file=X::message)')

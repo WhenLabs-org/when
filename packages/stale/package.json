@@ -1,10 +1,22 @@
 {
   "name": "@whenlabs/stale",
-  "version": "0.1.4",
+  "version": "0.2.0",
   "description": "Detect documentation drift in your codebase",
   "type": "module",
+  "main": "./dist/src/index.js",
+  "types": "./dist/src/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/src/index.js",
+      "types": "./dist/src/index.d.ts"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
   "bin": {
-    "stale": "./dist/cli.js"
+    "stale": "./dist/src/cli.js"
   },
   "engines": {
     "node": ">=20.0.0"
@@ -28,6 +40,7 @@
     "@actions/core": "^3.0.0",
     "@actions/github": "^9.1.0",
     "@anthropic-ai/sdk": "^0.88.0",
+    "@whenlabs/core": "^0.1.0",
     "boxen": "^8.0.1",
     "chalk": "^5.4.1",
     "commander": "^14.0.0",

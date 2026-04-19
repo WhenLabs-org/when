@@ -20,7 +20,19 @@ export class TerminalReporter implements Reporter {
             ? chalk.yellow("⚠")
             : chalk.blue("ℹ");
 
-      lines.push(`  ${icon} ${chalk.bold(issue.variable)}: ${issue.message}`);
+      const kindLabel =
+        issue.kind === "live-check-failed"
+          ? chalk.magenta(" [live]")
+          : issue.kind === "live-check-skipped"
+            ? chalk.dim(" [live:skipped]")
+            : issue.kind === "secret-resolution-failed"
+              ? chalk.magenta(" [secret]")
+              : issue.kind === "secret-resolution-skipped"
+                ? chalk.dim(" [secret:skipped]")
+                : "";
+      lines.push(
+        `  ${icon} ${chalk.bold(issue.variable)}${kindLabel}: ${issue.message}`,
+      );
       if (issue.actual) {
         lines.push(`    actual: ${issue.actual}`);
       }

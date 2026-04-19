@@ -1,6 +1,6 @@
 {
   "name": "@whenlabs/envalid",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Type safety for .env files",
   "type": "module",
   "bin": {
@@ -8,6 +8,33 @@
   },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./express": {
+      "types": "./dist/adapters/express.d.ts",
+      "import": "./dist/adapters/express.js"
+    },
+    "./fastify": {
+      "types": "./dist/adapters/fastify.d.ts",
+      "import": "./dist/adapters/fastify.js"
+    },
+    "./nextjs": {
+      "types": "./dist/adapters/nextjs.d.ts",
+      "import": "./dist/adapters/nextjs.js"
+    },
+    "./nestjs": {
+      "types": "./dist/adapters/nestjs.d.ts",
+      "import": "./dist/adapters/nestjs.js"
+    },
+    "./vite": {
+      "types": "./dist/adapters/vite.d.ts",
+      "import": "./dist/adapters/vite.js"
+    },
+    "./package.json": "./package.json"
+  },
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",
@@ -17,7 +44,9 @@
     "prepublishOnly": "npm run build"
   },
   "files": [
-    "dist"
+    "dist",
+    "scripts",
+    "action.yml"
   ],
   "keywords": [
     "env",

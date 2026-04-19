@@ -24,6 +24,10 @@ inputs:
     description: "Treat warnings as errors"
     required: false
     default: "false"
+  comment-on-pr:
+    description: "Post the validation report as a sticky comment on the PR"
+    required: false
+    default: "false"
   node-version:
     description: "Node.js version to use"
     required: false
@@ -44,6 +48,7 @@ runs:
         npm ci && npm run build
 
     - name: Validate environment
+      id: envalid
       shell: bash
       run: |
         ARGS="validate"
@@ -59,4 +64,27 @@ runs:
           ARGS="$ARGS --ci"
         fi
 
-        node ${{ github.action_path }}/dist/cli.js $ARGS
+        set +e
+        REPORT=$(node ${{ github.action_path }}/dist/cli.js $ARGS)
+        STATUS=$?
+        set -e
+        echo "$REPORT"
+        {
+          echo "status=$STATUS"
+          echo "report<<ENVALID_EOF"
+          echo "$REPORT"
+          echo "ENVALID_EOF"
+        } >> "$GITHUB_OUTPUT"
+        exit $STATUS
+
+    - name: Post PR comment
+      if: ${{ always() && inputs.comment-on-pr == 'true' && github.event_name == 'pull_request' }}
+      shell: bash
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
+        GITHUB_REPOSITORY: ${{ github.repository }}
+        GITHUB_REF: ${{ github.ref }}
+        GITHUB_EVENT_PATH: ${{ github.event_path }}
+        ENVALID_REPORT: ${{ steps.envalid.outputs.report }}
+      run: |
+        node ${{ github.action_path }}/scripts/post-pr-comment.mjs

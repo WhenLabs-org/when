@@ -3,22 +3,12 @@ import YAML from "yaml";
 import { readFileSync, existsSync } from "node:fs";
 import type { EnvSchema } from "./types.js";
 import { SchemaNotFoundError, SchemaParseError } from "../errors.js";
+import { BUILTIN_TYPES } from "../runtime/builtins.js";
+import { closestMatch } from "../utils/strings.js";
 
 const variableSchemaZod = z
   .object({
-    type: z.enum([
-      "string",
-      "integer",
-      "float",
-      "boolean",
-      "url",
-      "email",
-      "enum",
-      "csv",
-      "json",
-      "path",
-      "semver",
-    ]),
+    type: z.string(),
     required: z.boolean().default(true),
     default: z.union([z.string(), z.number(), z.boolean()]).optional(),
     description: z.string().optional(),
@@ -50,19 +40,32 @@ const groupSchemaZod = z.object({
 
 const envSchemaZod = z.object({
   version: z.number(),
+  extends: z.union([z.string(), z.array(z.string())]).optional(),
+  imports: z.array(z.string()).optional(),
   variables: z.record(z.string(), variableSchemaZod),
   groups: z.record(z.string(), groupSchemaZod).optional(),
 });
 
-export function parseSchemaFile(filePath: string): EnvSchema {
+export interface ParseSchemaOptions {
+  /** Additional type names that are valid (supplied by plugins). */
+  extraTypes?: Iterable<string>;
+}
+
+export function parseSchemaFile(
+  filePath: string,
+  options: ParseSchemaOptions = {},
+): EnvSchema {
   if (!existsSync(filePath)) {
     throw new SchemaNotFoundError(filePath);
   }
   const content = readFileSync(filePath, "utf-8");
-  return parseSchemaString(content);
+  return parseSchemaString(content, options);
 }
 
-export function parseSchemaString(content: string): EnvSchema {
+export function parseSchemaString(
+  content: string,
+  options: ParseSchemaOptions = {},
+): EnvSchema {
   let raw: unknown;
   try {
     raw = YAML.parse(content);
@@ -80,5 +83,20 @@ export function parseSchemaString(content: string): EnvSchema {
     throw new SchemaParseError(messages);
   }
 
-  return result.data as EnvSchema;
+  const knownTypes = new Set<string>([
+    ...BUILTIN_TYPES,
+    ...(options.extraTypes ?? []),
+  ]);
+  for (const [name, variable] of Object.entries(result.data.variables)) {
+    if (!knownTypes.has(variable.type)) {
+      const hint = closestMatch(variable.type, knownTypes);
+      throw new SchemaParseError(
+        `variables.${name}.type: unknown type "${variable.type}"${
+          hint ? ` (did you mean "${hint}"?)` : ""
+        }`,
+      );
+    }
+  }
+
+  return result.data as unknown as EnvSchema;
 }

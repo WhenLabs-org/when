@@ -6,6 +6,7 @@ The WhenLabs developer toolkit — 6 tools, one install
 - **Language**: TypeScript 5.7
 - **Testing**: Vitest 3.0
 - **Package Manager**: npm
+- **Deployment**: Docker
 - **CI/CD**: GitHub Actions
 - **Bundler**: tsup 8.0
 
@@ -25,6 +26,23 @@ The WhenLabs developer toolkit — 6 tools, one install
 ### Configuration
 
 ### Best Practices
+
+## Docker
+
+### Dockerfile Best Practices
+- Use multi-stage builds: a `builder` stage for compilation/dependencies and a slim `runner` stage for the final image
+- Copy dependency manifests first (`package.json`, `package-lock.json`) and install before copying source — leverages layer caching
+- Use specific base image tags (e.g., `node:20-alpine`) — never use `latest` in production
+- Run the application as a non-root user: `RUN adduser --disabled-password appuser && USER appuser`
+
+### .dockerignore
+- Always include a `.dockerignore` file to exclude: `node_modules`, `.git`, `.env`, build artifacts, test files
+
+### Layer Caching
+
+### Security
+
+### Compose
 
 ## GitHub Actions CI/CD
 

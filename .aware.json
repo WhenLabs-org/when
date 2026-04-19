@@ -17,7 +17,7 @@
     "linting": [],
     "packageManager": "npm",
     "monorepo": null,
-    "deployment": null,
+    "deployment": "docker",
     "auth": null,
     "apiStyle": null,
     "stateManagement": null,
@@ -51,8 +51,8 @@
   },
   "_meta": {
     "createdAt": "2026-04-15T09:35:54.738Z",
-    "lastSyncedAt": "2026-04-15T20:10:31.511Z",
-    "lastDetectionHash": "1043159231ef9834aef21b8658de6de8",
+    "lastSyncedAt": "2026-04-16T06:53:45.451Z",
+    "lastDetectionHash": "23e563c24a368fb588bc23804bfa088f",
     "awareVersion": "0.1.0"
   }
 }

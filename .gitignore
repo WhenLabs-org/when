@@ -12,3 +12,5 @@ yarn-debug.log*
 yarn-error.log*
 .cache/
 .turbo/
+src/mcp.ts
+mcp-publisher

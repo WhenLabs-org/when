@@ -3,82 +3,352 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Research — Siddharth Nigam</title>
-<meta name="description" content="Research papers by Siddharth Nigam on AI transparency, answer engine optimization, and LLM self-knowledge.">
+<title>Research — WhenLabs</title>
+<meta name="description" content="Papers by Siddharth Nigam on AI transparency, answer engine optimization, and LLM self-knowledge.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;1,9..144,300;1,9..144,400&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-:root{
-  --bg:#e0e0e0;--surface-2:#d4d4d4;--text:#1a1a18;--text-dim:#6e6e68;--accent:#c46a1a;
-  --mono:'JetBrains Mono',monospace;--serif:'Instrument Serif',Georgia,serif;
-  --shadow-light:#ffffff;--shadow-dark:rgba(163,163,163,0.7);
-  --neu-out:8px 8px 16px var(--shadow-dark),-8px -8px 16px var(--shadow-light);
-  --neu-in:inset 4px 4px 8px var(--shadow-dark),inset -4px -4px 8px var(--shadow-light);
-  --neu-out-sm:4px 4px 8px var(--shadow-dark),-4px -4px 8px var(--shadow-light);
+:root,[data-theme="light"]{
+  --paper:#dde3ec;
+  --paper-2:#cdd4df;
+  --ink:#141820;
+  --ink-dim:#5a6470;
+  --ink-faint:#9ba4b0;
+  --rule:#b2bac5;
+  --red:#e24a26;
+  --blue:#1f4d7a;
+  --lime:#c7d33a;
+  --plum:#5e2a60;
+  --hover:rgba(20,24,32,0.035);
+  --dot:rgba(20,24,32,0.24);
+  --glow-a:rgba(226,74,38,0.07);
+  --glow-b:rgba(31,77,122,0.06);
+  --serif:'Fraunces','Iowan Old Style',Georgia,serif;
+  --mono:'JetBrains Mono',ui-monospace,Menlo,monospace;
 }
-html{font-size:16px}
-body{background:var(--bg);color:var(--text);font-family:var(--mono);line-height:1.65;-webkit-font-smoothing:antialiased}
+[data-theme="dark"]{
+  --paper:#121418;
+  --paper-2:#1a1d22;
+  --ink:#e8ecf2;
+  --ink-dim:#868c96;
+  --ink-faint:#383c44;
+  --rule:#2a2d33;
+  --red:#ff6a47;
+  --blue:#7aa7d2;
+  --lime:#d6e046;
+  --plum:#b07ab4;
+  --hover:rgba(232,236,242,0.04);
+  --dot:rgba(232,236,242,0.14);
+  --glow-a:rgba(255,106,71,0.08);
+  --glow-b:rgba(122,167,210,0.06);
+}
+html{scroll-behavior:smooth;font-size:16px}
+body{
+  background:var(--paper);color:var(--ink);
+  font-family:var(--serif);line-height:1.55;
+  -webkit-font-smoothing:antialiased;
+  overflow-x:hidden;position:relative;
+  transition:background .35s ease,color .35s ease;
+}
+body::before{
+  content:"";position:fixed;inset:0;
+  background-image:radial-gradient(circle,var(--dot) 0.6px,transparent 0.6px);
+  background-size:22px 22px;opacity:0.7;
+  pointer-events:none;z-index:0;
+}
+body::after{
+  content:"";position:fixed;inset:0;
+  background:radial-gradient(1200px 800px at 85% -10%,var(--glow-a),transparent 60%),
+             radial-gradient(900px 700px at -10% 110%,var(--glow-b),transparent 55%);
+  pointer-events:none;z-index:0;
+}
+main,nav,footer{position:relative;z-index:1}
 
-nav{position:fixed;top:0;left:0;right:0;z-index:100;padding:1rem 2rem;display:flex;justify-content:space-between;align-items:center;background:var(--bg);box-shadow:0 4px 8px var(--shadow-dark),0 -2px 6px var(--shadow-light)}
-.nav-logo{font-size:0.85rem;font-weight:700;letter-spacing:-0.02em;color:var(--accent);text-decoration:none}
-.nav-links{display:flex;gap:1.5rem}
-.nav-links a{color:var(--text-dim);text-decoration:none;font-size:0.75rem;text-transform:uppercase;letter-spacing:0.08em;padding:0.3rem 0.7rem;border-radius:8px;transition:all .2s}
-.nav-links a:hover{color:var(--accent);box-shadow:var(--neu-in)}
+.colorstrip{display:flex;gap:0;height:6px;width:100%;position:fixed;top:0;left:0;right:0;z-index:50}
+.colorstrip span{flex:1}
+.colorstrip span:nth-child(1){background:var(--red)}
+.colorstrip span:nth-child(2){background:var(--lime)}
+.colorstrip span:nth-child(3){background:var(--blue)}
+.colorstrip span:nth-child(4){background:var(--plum)}
+.colorstrip span:nth-child(5){background:var(--ink)}
 
-main{max-width:720px;margin:0 auto;padding:8rem 2rem 4rem}
-main h1{font-family:var(--serif);font-size:2.2rem;font-weight:400;margin-bottom:0.5rem}
-main .subtitle{font-size:0.85rem;color:var(--text-dim);margin-bottom:2.5rem;line-height:1.6}
+nav{padding:2.2rem 2.5rem 0.5rem;display:flex;justify-content:space-between;align-items:baseline;max-width:1200px;margin:0 auto}
+.mark{font-family:var(--serif);font-size:1.05rem;font-weight:500;letter-spacing:-0.015em;color:var(--ink);text-decoration:none;display:inline-flex;align-items:baseline;gap:0.4rem}
+.mark .dot{width:8px;height:8px;border-radius:50%;background:var(--red);display:inline-block;transform:translateY(-2px);animation:blink 2.4s ease-in-out infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
+.mark em{font-style:italic;color:var(--red);font-weight:400}
+.nav-links{display:flex;gap:1.75rem;align-items:baseline}
+.nav-links a{font-family:var(--mono);font-size:0.72rem;color:var(--ink-dim);text-transform:uppercase;letter-spacing:0.12em;text-decoration:none;position:relative;padding:0.25rem 0;transition:color .15s ease}
+.nav-links a.current{color:var(--ink)}
+.nav-links a:hover{color:var(--red)}
+.nav-links a::after{content:"";position:absolute;left:0;right:0;bottom:-2px;height:1px;background:currentColor;transform:scaleX(0);transform-origin:left;transition:transform .25s ease}
+.nav-links a:hover::after{transform:scaleX(1)}
+.nav-links a.current::after{transform:scaleX(1);background:var(--red)}
 
-.paper-card{display:block;text-decoration:none;color:var(--text);background:var(--bg);border:none;border-radius:16px;padding:1.75rem;margin-bottom:1.25rem;box-shadow:var(--neu-out);transition:transform .25s ease,box-shadow .25s ease}
-.paper-card:hover{transform:translateY(-3px);box-shadow:10px 10px 20px var(--shadow-dark),-10px -10px 20px var(--shadow-light)}
-.paper-title{font-size:1rem;font-weight:700;margin-bottom:0.3rem;line-height:1.4}
-.paper-series{font-size:0.75rem;color:var(--accent);margin-bottom:0.5rem;font-style:italic}
-.paper-date{font-size:0.72rem;color:var(--text-dim);margin-bottom:0.6rem}
-.paper-excerpt{font-size:0.8rem;color:var(--text-dim);line-height:1.7;margin-bottom:0.75rem}
-.paper-links{display:flex;gap:0.75rem}
-.paper-links a{font-size:0.7rem;color:var(--accent);text-decoration:none;padding:0.3rem 0.7rem;border-radius:8px;background:var(--bg);box-shadow:var(--neu-out-sm);transition:all .2s}
-.paper-links a:hover{box-shadow:var(--neu-in)}
+.theme-toggle{
+  background:transparent;border:1px solid var(--rule);border-radius:999px;
+  padding:0.3rem 0.7rem 0.3rem 0.6rem;
+  font-family:var(--mono);font-size:0.62rem;color:var(--ink-dim);
+  text-transform:uppercase;letter-spacing:0.14em;cursor:pointer;
+  display:inline-flex;align-items:center;gap:0.4rem;line-height:1;
+  transition:color .2s ease,border-color .2s ease,background .2s ease;
+}
+.theme-toggle:hover{color:var(--red);border-color:var(--red)}
+.theme-toggle .icon{font-size:0.9rem;line-height:1;transform:translateY(-1px);transition:transform .45s ease}
+.theme-toggle:hover .icon{transform:translateY(-1px) rotate(20deg)}
+.theme-toggle .in-dark,.theme-toggle .in-light{display:none}
+[data-theme="light"] .theme-toggle .in-light{display:inline-flex;align-items:center;gap:0.4rem}
+[data-theme="dark"] .theme-toggle .in-dark{display:inline-flex;align-items:center;gap:0.4rem}
 
-footer{max-width:720px;margin:0 auto;padding:2rem;font-size:0.7rem;color:var(--text-dim);border-top:1px solid var(--surface-2)}
-footer a{color:var(--text-dim);text-decoration:none}
-footer a:hover{color:var(--accent)}
+main{max-width:860px;margin:0 auto;padding:3rem 2.5rem 4rem}
 
-@media(max-width:560px){nav{padding:0.75rem 1rem}.nav-links{gap:1rem}main{padding:6rem 1.25rem 3rem}}
+.page-head{
+  padding-top:3rem;padding-bottom:3rem;
+  border-bottom:1px solid var(--rule);
+  margin-bottom:3rem;
+}
+.eyebrow{
+  font-family:var(--mono);font-size:0.7rem;color:var(--ink-dim);
+  text-transform:uppercase;letter-spacing:0.18em;
+  display:flex;align-items:center;gap:1rem;margin-bottom:2rem;
+}
+.eyebrow .rule{flex:0 0 48px;height:1px;background:var(--ink-dim)}
+.page-head h1{
+  font-family:var(--serif);
+  font-size:clamp(3rem,8vw,5.5rem);
+  font-weight:300;line-height:0.95;letter-spacing:-0.035em;
+  margin-bottom:1.5rem;
+}
+.page-head h1 em{font-style:italic;color:var(--red);font-weight:400}
+.page-head .subtitle{
+  font-family:var(--serif);font-weight:300;
+  font-size:clamp(1.05rem,1.8vw,1.25rem);
+  line-height:1.55;color:var(--ink-dim);max-width:56ch;
+}
+
+.papers{display:flex;flex-direction:column;gap:0}
+.paper{
+  border-top:1px solid var(--rule);
+  padding:2.25rem 0 2.5rem;
+  display:grid;grid-template-columns:80px 1fr;gap:1.25rem;
+  position:relative;
+}
+.paper:last-child{border-bottom:1px solid var(--rule)}
+.paper .index{
+  font-family:var(--mono);font-size:0.7rem;
+  color:var(--ink-dim);letter-spacing:0.14em;
+  text-transform:uppercase;padding-top:0.35rem;
+}
+.paper .body{min-width:0}
+.paper .kindrow{
+  display:flex;flex-wrap:wrap;gap:0.5rem;
+  margin-bottom:0.85rem;align-items:center;
+}
+.kind{
+  font-family:var(--mono);font-size:0.6rem;
+  text-transform:uppercase;letter-spacing:0.16em;
+  padding:0.2rem 0.55rem;border:1px solid var(--ink);border-radius:1px;
+  color:var(--ink);
+}
+.kind.paper-tag{border-color:var(--blue);color:var(--blue)}
+.kind.series{border-color:var(--plum);color:var(--plum)}
+.kind.status{border-color:var(--red);color:var(--red)}
+.paper .title{
+  font-family:var(--serif);font-size:clamp(1.5rem,3vw,2.1rem);
+  font-weight:400;line-height:1.15;letter-spacing:-0.02em;
+  margin-bottom:0.4rem;color:var(--ink);text-decoration:none;
+  display:block;
+  transition:color .2s ease;
+}
+.paper .title:hover{color:var(--red)}
+.paper .title em{font-style:italic}
+.paper .series-line{
+  font-family:var(--serif);font-style:italic;font-weight:300;
+  font-size:1rem;line-height:1.5;color:var(--ink-dim);
+  margin-bottom:0.9rem;max-width:64ch;
+}
+.paper .excerpt{
+  font-family:var(--serif);font-weight:300;
+  font-size:1rem;line-height:1.65;color:var(--ink);
+  margin-bottom:1.25rem;max-width:64ch;
+}
+.paper .excerpt em{font-style:italic;color:var(--ink-dim)}
+.paper .meta{
+  font-family:var(--mono);font-size:0.68rem;
+  color:var(--ink-dim);text-transform:uppercase;letter-spacing:0.14em;
+  margin-bottom:1rem;
+}
+.paper .actions{display:flex;flex-wrap:wrap;gap:0.5rem}
+.paper .actions a{
+  font-family:var(--mono);font-size:0.7rem;
+  text-transform:uppercase;letter-spacing:0.1em;
+  color:var(--ink);text-decoration:none;
+  padding:0.55rem 0.95rem;
+  border:1px solid var(--ink);border-radius:1px;
+  display:inline-flex;align-items:center;gap:0.5rem;
+  transition:all .2s ease;
+}
+.paper .actions a:hover{background:var(--ink);color:var(--paper)}
+.paper .actions a.secondary{border-color:var(--rule);color:var(--ink-dim)}
+.paper .actions a.secondary:hover{border-color:var(--ink);color:var(--ink);background:transparent}
+.paper .actions .arrow{transition:transform .25s ease}
+.paper .actions a:hover .arrow{transform:translateX(3px)}
+
+.backlink{
+  display:inline-flex;align-items:center;gap:0.5rem;
+  font-family:var(--mono);font-size:0.72rem;
+  color:var(--ink-dim);text-decoration:none;
+  text-transform:uppercase;letter-spacing:0.14em;
+  margin-top:3rem;
+  transition:color .2s ease;
+}
+.backlink:hover{color:var(--red)}
+.backlink .arr{transition:transform .2s ease}
+.backlink:hover .arr{transform:translateX(-3px)}
+
+footer{
+  border-top:1px solid var(--rule);
+  margin-top:4rem;padding:2rem 2.5rem;
+  max-width:1200px;margin-left:auto;margin-right:auto;
+  display:flex;justify-content:space-between;align-items:baseline;
+  flex-wrap:wrap;gap:1rem;
+  font-family:var(--mono);font-size:0.7rem;
+  color:var(--ink-dim);text-transform:uppercase;letter-spacing:0.12em;
+}
+footer a{color:var(--ink-dim);text-decoration:none;transition:color .15s ease}
+footer a:hover{color:var(--red)}
+footer .left{display:flex;gap:1.5rem;flex-wrap:wrap}
+footer .sig{color:var(--ink);font-weight:500}
+
+@media (max-width:760px){
+  nav{padding:2rem 1.25rem 0.5rem}
+  .nav-links{gap:1.1rem}
+  main{padding:2rem 1.25rem 3rem}
+  .page-head{padding-top:1rem;padding-bottom:2rem;margin-bottom:2rem}
+  .page-head h1{font-size:clamp(2.5rem,12vw,4rem)}
+  .paper{grid-template-columns:1fr;gap:0.5rem;padding:2rem 0}
+  .paper .index{padding-top:0}
+  footer{padding:1.75rem 1.25rem;flex-direction:column;align-items:flex-start}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:0.01ms!important;transition-duration:0.01ms!important}
+}
 </style>
+<script>
+(function(){
+  try{
+    var saved=localStorage.getItem('whenlabs-theme');
+    var sys=window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';
+    document.documentElement.setAttribute('data-theme',saved||sys);
+  }catch(e){document.documentElement.setAttribute('data-theme','light')}
+})();
+</script>
 </head>
 <body>
 
+<div class="colorstrip" aria-hidden="true">
+  <span></span><span></span><span></span><span></span><span></span>
+</div>
+
 <nav>
-  <a class="nav-logo" href="/">@whenlabs/when</a>
+  <a class="mark" href="../index.html" title="Back to WhenLabs">
+    <span class="dot"></span>
+    <span>when<em>labs</em></span>
+  </a>
   <div class="nav-links">
-    <a href="/">Home</a>
-    <a href="/blog/">Blog</a>
-    <a href="/research/">Research</a>
-    <a href="https://github.com/WhenLabs-org/when">GitHub</a>
+    <a href="./" class="current">Research</a>
+    <a href="https://github.com/WhenLabs-org">GitHub</a>
+    <button class="theme-toggle" id="themeToggle" type="button" aria-label="Toggle color scheme">
+      <span class="in-light"><span class="icon">☾</span><span>Dark</span></span>
+      <span class="in-dark"><span class="icon">☀</span><span>Light</span></span>
+    </button>
   </div>
 </nav>
 
 <main>
-  <h1>Research</h1>
-  <div class="subtitle">Papers by Siddharth Nigam on AI transparency, answer engine optimization, and LLM self-knowledge.</div>
 
-  <div class="paper-card">
-    <div class="paper-title">The Introspective Gap: When AI Answer Engines Misdescribe Their Own Source Selection Behavior</div>
-    <div class="paper-series">Paper I of III: A Simulation-Calibrated Exploratory Framework for AEO, GEO, and the Study of LLM Self-Knowledge</div>
-    <div class="paper-date">April 2026 | Preprint</div>
-    <div class="paper-excerpt">Introduces the Introspective Gap: the divergence between an LLM's self-reported source-selection criteria and behaviorally inferred weights from empirical literature. Finds brand recognition strongly under-attributed in self-report (+0.42 gap), while factual accuracy and author credentials appear over-attributed. Includes epistemic inflation modeling and domain-sensitive citation preference simulation across 10,000 trials.</div>
-    <div class="paper-links">
-      <a href="/research/introspective-gap.html">Read online</a>
-      <a href="/research/introspective_gap.pdf" download>Download PDF</a>
+  <header class="page-head">
+    <div class="eyebrow">
+      <span class="rule"></span>
+      <span>Index</span>
+      <span>No. 01</span>
+      <span>Siddharth Nigam</span>
     </div>
-  </div>
+    <h1>Research<em>.</em></h1>
+    <p class="subtitle">
+      A small, slow-growing shelf of papers on AI transparency, answer-engine
+      optimization, and what language models say about themselves.
+    </p>
+  </header>
+
+  <section class="papers">
+
+    <article class="paper">
+      <div class="index">01 / 2026</div>
+      <div class="body">
+        <div class="kindrow">
+          <span class="kind paper-tag">Preprint</span>
+          <span class="kind series">Paper I of III</span>
+          <span class="kind status">New</span>
+        </div>
+        <a class="title" href="introspective-gap.html">The Introspective <em>Gap</em>: When AI Answer Engines Misdescribe Their Own Source Selection Behavior</a>
+        <div class="series-line">
+          A Simulation-Calibrated Exploratory Framework for AEO, GEO, and the
+          Study of LLM Self-Knowledge.
+        </div>
+        <p class="excerpt">
+          Introduces the <em>Introspective Gap</em>: the divergence between
+          an LLM's self-reported source-selection criteria and behaviorally
+          inferred weights from empirical literature. Finds brand recognition
+          strongly under-attributed in self-report (+0.42 gap), while factual
+          accuracy and author credentials appear over-attributed. Includes
+          epistemic inflation modeling and domain-sensitive citation
+          preference simulation across 10,000 trials.
+        </p>
+        <div class="meta">April 2026 · Independent · ~11k words</div>
+        <div class="actions">
+          <a href="introspective-gap.html">Read online <span class="arrow">→</span></a>
+          <a href="introspective_gap.pdf" class="secondary" download>Download PDF</a>
+        </div>
+      </div>
+    </article>
+
+  </section>
+
+  <a class="backlink" href="../"><span class="arr">←</span> Back to WhenLabs</a>
 
 </main>
 
 <footer>
-  <a href="https://github.com/Caissaisdead">Siddharth Nigam</a> &middot; Independent Researcher &middot; <a href="/">WhenLabs</a>
+  <div class="left">
+    <span class="sig">WhenLabs · MMXXVI</span>
+    <a href="https://github.com/Caissaisdead">Siddharth Nigam</a>
+    <a href="mailto:siddharth@whenlabs.org">siddharth@whenlabs.org</a>
+  </div>
+  <div>whenlabs.org/research</div>
 </footer>
+
+<script>
+(function(){
+  var btn=document.getElementById('themeToggle');
+  if(!btn)return;
+  btn.addEventListener('click',function(){
+    var cur=document.documentElement.getAttribute('data-theme')||'light';
+    var next=cur==='light'?'dark':'light';
+    document.documentElement.setAttribute('data-theme',next);
+    try{localStorage.setItem('whenlabs-theme',next)}catch(e){}
+  });
+  var mq=window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)');
+  if(mq&&mq.addEventListener){
+    mq.addEventListener('change',function(e){
+      try{if(localStorage.getItem('whenlabs-theme'))return}catch(_){}
+      document.documentElement.setAttribute('data-theme',e.matches?'dark':'light');
+    });
+  }
+})();
+</script>
 
 </body>
 </html>

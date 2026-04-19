@@ -89,7 +89,7 @@ stale scan
 
 > **Recommended:** Install the full WhenLabs toolkit with `npx @whenlabs/when install` to get stale plus 5 other tools in one step.
 
-Requires **Node.js >= 20**.
+Requires **Node.js >= 20**. Bundles the TypeScript compiler at runtime (used by the AST extractor for JS/TS source parsing) — adds ~50 MB to the install footprint.
 
 ```bash
 # Clone and install

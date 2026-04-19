@@ -252,6 +252,51 @@ Data is stored in SQLite at `~/.velocity-mcp/velocity.db` (global) or `.velocity
 - **`tasks`** -- every recorded task with id, category, tags (JSON), description, project, timestamps, duration, status, file counts, and notes
 - **`meta`** -- schema version and first-run date
 
+## Federated priors (opt-in)
+
+Brand-new velocity installs have no history, so their first estimates fall back to heuristics and report `confidence: none`. When you opt in to federation, velocity uploads a narrow slice of task telemetry to a shared endpoint and, in return, receives aggregate priors that warm-start estimates for thin categories.
+
+Federation is **off by default** and controlled entirely via the CLI:
+
+```bash
+npx velocity-mcp federation enable               # default endpoint
+npx velocity-mcp federation enable --endpoint URL
+npx velocity-mcp federation disable
+npx velocity-mcp federation status
+```
+
+### What leaves your machine
+
+On every completed task, and only while federation is enabled, velocity POSTs this JSON to `<endpoint>/v1/tasks`:
+
+| Field | Source | Notes |
+|---|---|---|
+| `category` | `tasks.category` | one of the 8 fixed enums |
+| `duration_seconds` | `tasks.duration_seconds` | measured wall time |
+| `files_changed` | `tasks.files_changed` | from `git diff --stat` |
+| `lines_added` / `lines_removed` | `tasks.lines_added` / `lines_removed` | from `git diff --stat` |
+| `model_id` | `tasks.model_id` | e.g. `claude-opus-4-7`; may be null |
+| `context_tokens` | `tasks.context_tokens` | summed usage from the transcript |
+| `tests_passed_first_try` | `tasks.tests_passed_first_try` | `0`, `1`, or null |
+| `tags_hashed` | `tasks.tags` | HMAC-SHA256(salt, tag), 64-bit truncation |
+| `client_version` | constant | `velocity-mcp` version string |
+
+### What NEVER leaves your machine
+
+- `description`, `notes`, `project`, `git_diff_stat`, task id
+- Raw tag strings (tags are hashed with a per-user random salt stored at `~/.velocity-mcp/federation.json`)
+- Your calibration table, plan model parameters, embeddings
+
+### Priors endpoint
+
+When an estimate has fewer than 3 matching historical tasks, velocity GETs `<endpoint>/v1/priors?category=X&model_id=Y` and expects:
+
+```json
+{ "n": 1234, "p25_seconds": 180, "median_seconds": 300, "p75_seconds": 480, "updated_at": "2026-..." }
+```
+
+The response is cached locally for 1 hour. Local estimate and federated prior are combined via inverse-variance weighting in log-space; local always contributes at least ~33% so your own data is never overwritten.
+
 ## License
 
 MIT

@@ -1,5 +1,9 @@
 import type { Task, PlanItem, SimilarTask, Confidence } from '../types.js';
 import { confidenceFromCount, percentile } from '../types.js';
+import type { TaskQueries } from '../db/queries.js';
+import { calibrate, getStats, type CalibratedEstimate } from './calibration.js';
+import { bucketKey } from './calibration.js';
+import { bufferToVector, cosineSimilarity } from './embedding.js';
 
 const SIMILARITY_THRESHOLD = 0.3;
 const RECENCY_WINDOW_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
@@ -39,9 +43,40 @@ export function fileCountProximity(est: number | undefined, actual: number | nul
   return 1 - diff / maxVal;
 }
 
+export function descriptionLengthRatio(a: string, b: string): number {
+  const la = a?.length ?? 0;
+  const lb = b?.length ?? 0;
+  if (la === 0 && lb === 0) return 1;
+  const maxL = Math.max(la, lb);
+  if (maxL === 0) return 1;
+  return Math.min(la, lb) / maxL;
+}
+
+// Clamp negative cosine scores to 0 so embeddings and Jaccard share the
+// same [0,1] scale when mixed in findSimilarTasks ranking.
+function clampUnit(x: number): number {
+  if (x < 0) return 0;
+  if (x > 1) return 1;
+  return x;
+}
+
 export function computeSimilarity(plan: PlanItem, historical: Task): number {
   if (plan.category !== historical.category) return 0;
 
+  // Semantic path: both sides have embeddings -> cosine + file + desc-length.
+  if (plan.embedding && historical.embedding) {
+    const hVec = bufferToVector(historical.embedding);
+    if (hVec.length === plan.embedding.length && hVec.length > 0) {
+      const semantic = clampUnit(cosineSimilarity(plan.embedding, hVec));
+      const fileSim = fileCountProximity(plan.estimated_files, historical.files_actual ?? historical.files_estimated);
+      const descRatio = descriptionLengthRatio(plan.description, historical.description);
+      return semantic * 0.6 + fileSim * 0.2 + descRatio * 0.2;
+    }
+    // Dimension mismatch (e.g. re-embedded under a different model) — fall
+    // through to Jaccard rather than produce a garbage score.
+  }
+
+  // Jaccard fallback (original pre-Phase 4 behaviour).
   const tagSim = jaccardSimilarity(plan.tags ?? [], historical.tags);
   const fileSim = fileCountProximity(plan.estimated_files, historical.files_actual ?? historical.files_estimated);
 
@@ -103,6 +138,56 @@ export interface TaskEstimate {
   p25_seconds: number;
   median_seconds: number;
   p75_seconds: number;
+}
+
+/**
+ * Compute the raw estimate, then apply bucket-level calibration if we have
+ * enough observed residuals for (category, modelId, confidence). Fallback is
+ * the raw estimate with `calibrated: false`.
+ */
+export function estimateTaskCalibrated(
+  plan: PlanItem,
+  historicalTasks: Task[],
+  queries: TaskQueries,
+  modelId?: string | null,
+): CalibratedEstimate {
+  const raw = estimateTask(plan, historicalTasks);
+  const stats = getStats(queries, plan.category, modelId ?? null, raw.confidence);
+  return calibrate(raw, stats, bucketKey(modelId, raw.confidence));
+}
+
+/** Local calibrated estimate, then — only if local matches are thin —
+ *  mix in federated priors via inverse-variance weighting. Silently
+ *  degrades to the local estimate if federation is disabled or unavailable. */
+export async function estimateTaskWithFederation(
+  plan: PlanItem,
+  historicalTasks: Task[],
+  queries: TaskQueries,
+  modelId?: string | null,
+): Promise<CalibratedEstimate & { federated?: boolean; federated_n?: number | null }> {
+  const local = estimateTaskCalibrated(plan, historicalTasks, queries, modelId);
+  if (local.matchCount >= 3) return local;
+
+  // Lazy import so the federation module never loads on boot unless needed.
+  const { fetchPriorsIfEnabled } = await import('../federation/client.js');
+  const { mixWithPrior } = await import('../federation/mixing.js');
+  try {
+    const priors = await fetchPriorsIfEnabled({ category: plan.category, model_id: modelId ?? null });
+    if (!priors) return local;
+    const mixed = mixWithPrior(local, priors);
+    return {
+      ...local,
+      seconds: mixed.seconds,
+      median_seconds: mixed.median_seconds,
+      p25_seconds: mixed.p25_seconds,
+      p75_seconds: mixed.p75_seconds,
+      confidence: mixed.confidence,
+      federated: true,
+      federated_n: mixed.federated_n,
+    };
+  } catch {
+    return local;
+  }
 }
 
 export function estimateTask(plan: PlanItem, historicalTasks: Task[]): TaskEstimate {

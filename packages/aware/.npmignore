@@ -1,0 +1,9 @@
+src/
+tests/
+.git/
+.gitignore
+tsconfig.json
+tsup.config.ts
+vitest.config.ts
+05-ai-context-manager.md
+.claude/

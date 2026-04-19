@@ -1,8 +1,12 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
+import { createTool as createStaleTool } from '@whenlabs/stale';
 import { runCli, formatOutput, writeCache, deriveProject, checkTriggers } from './run-cli.js';
+import { formatScanResult } from './format-scan.js';
 
 export function registerStaleTools(server: McpServer): void {
+  const stale = createStaleTool();
+
   server.tool(
     'stale_scan',
     'Scan for documentation drift — detect when docs say one thing and code says another',
@@ -13,14 +17,10 @@ export function registerStaleTools(server: McpServer): void {
       format: z.enum(['terminal', 'json', 'markdown', 'sarif']).optional().describe('Output format'),
     },
     async ({ path, deep, git, format }) => {
-      const args = ['scan'];
-      if (deep) args.push('--deep');
-      if (git) args.push('--git');
-      if (format) args.push('--format', format);
-      const result = await runCli('stale', args, path);
-      const output = formatOutput(result);
-      writeCache('stale', deriveProject(path), output, result.code);
-      const extras = await checkTriggers('stale_scan', result, path);
+      const scan = await stale.scan({ cwd: path, options: { deep, git } });
+      const output = formatScanResult(scan, format === 'sarif' ? 'json' : format);
+      writeCache('stale', deriveProject(path), output, scan.ok ? 0 : 1);
+      const extras = await checkTriggers('stale_scan', { stdout: output, stderr: '', code: scan.ok ? 0 : 1 }, path);
       return { content: [{ type: 'text' as const, text: output + extras.join('') }] };
     },
   );

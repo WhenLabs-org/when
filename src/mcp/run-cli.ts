@@ -8,6 +8,7 @@ import {
   readAwareProjectName,
 } from '../utils/detect-project.js';
 import { getToolConfig, WhenlabsConfig } from '../config/whenlabs-config.js';
+import type { SuggestionRule, TriggerContext } from '@whenlabs/core';
 
 export { findBin };
 
@@ -55,31 +56,6 @@ export function loadToolConfig<K extends keyof WhenlabsConfig>(
   path?: string
 ): WhenlabsConfig[K] | null {
   return getToolConfig(toolName, path);
-}
-
-/**
- * A rule that, given a tool invocation's output, may append one or more
- * follow-up hints (or trigger side-effects like an auto-scan).
- *
- * Declarative SuggestionRule replaces the regex grab-bag that used to live
- * directly inside `checkTriggers`. Kept local here intentionally — Phase 3
- * will lift the type into @whenlabs/core once the shape is validated.
- */
-export interface TriggerContext {
-  toolName: string;
-  output: string;
-  path?: string;
-}
-
-export interface SuggestionRule {
-  /** Short identifier used for debugging/tracing. */
-  id: string;
-  /** Which tool invocation this rule applies to. */
-  tool: string;
-  /** Predicate over tool output (and optional side state). */
-  match: (ctx: TriggerContext) => boolean | Promise<boolean>;
-  /** Produce follow-up text / side-effects. Returns hints to append. */
-  emit: (ctx: TriggerContext) => string[] | Promise<string[]>;
 }
 
 const SUGGESTION_RULES: SuggestionRule[] = [

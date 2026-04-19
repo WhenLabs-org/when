@@ -1,9 +1,9 @@
 import { Command } from 'commander';
-import { type ToolResult, runAllChecks } from '../utils/tool-runner.js';
+import { type ScanRollup, runAllScans } from '../utils/scan-runner.js';
 import { getStatusPath } from '../utils/status-provider.js';
 import { writeStatus, type CacheToolStatus } from '../utils/cache.js';
 
-function toolResultToStatus(r: ToolResult): CacheToolStatus {
+function rollupToStatus(r: ScanRollup): CacheToolStatus {
   const count = r.issues + r.warnings;
   if (r.status === 'error') {
     return { status: 'error', count, detail: r.detail };
@@ -14,8 +14,8 @@ function toolResultToStatus(r: ToolResult): CacheToolStatus {
   return { status: 'ok', count: 0, detail: r.detail };
 }
 
-function buildSummary(results: ToolResult[]): string {
-  const map: Record<string, ToolResult> = {};
+function buildSummary(results: ScanRollup[]): string {
+  const map: Record<string, ScanRollup> = {};
   for (const r of results) map[r.name] = r;
 
   const stalePart = `stale:${map['stale']?.issues ?? 0}`;
@@ -27,18 +27,18 @@ function buildSummary(results: ToolResult[]): string {
   return `${stalePart} ${envPart} ${portsPart} ${licPart} ${awarePart}`;
 }
 
-function persistStatus(results: ToolResult[]): void {
-  const toolsMap: Record<string, ToolResult> = {};
+function persistStatus(results: ScanRollup[]): void {
+  const toolsMap: Record<string, ScanRollup> = {};
   for (const r of results) toolsMap[r.name] = r;
 
   writeStatus({
     timestamp: new Date().toISOString(),
     tools: {
-      stale: toolResultToStatus(toolsMap['stale']!),
-      envalid: toolResultToStatus(toolsMap['envalid']!),
-      berth: toolResultToStatus(toolsMap['berth']!),
-      vow: toolResultToStatus(toolsMap['vow']!),
-      aware: toolResultToStatus(toolsMap['aware']!),
+      stale: rollupToStatus(toolsMap['stale']!),
+      envalid: rollupToStatus(toolsMap['envalid']!),
+      berth: rollupToStatus(toolsMap['berth']!),
+      vow: rollupToStatus(toolsMap['vow']!),
+      aware: rollupToStatus(toolsMap['aware']!),
     },
     summary: buildSummary(results),
   });
@@ -50,7 +50,7 @@ function sleep(ms: number): Promise<void> {
 
 export function createWatchCommand(): Command {
   const cmd = new Command('watch');
-  cmd.description('Run all 5 CLI tools on a schedule and write results to ~/.whenlabs/status.json (velocity is embedded and always-on — it does not participate in scheduled scans)');
+  cmd.description('Run all 5 scan-capable tools on a schedule and write results to ~/.whenlabs/status.json (velocity is embedded and always-on — it does not participate in scheduled scans)');
   cmd.option('--once', 'Run a single scan and exit');
   cmd.option('--interval <seconds>', 'Override the default scan interval (seconds)', '60');
 
@@ -72,7 +72,7 @@ export function createWatchCommand(): Command {
       const start = Date.now();
       process.stderr.write(`watch: scanning... `);
 
-      const results = await runAllChecks(cwd);
+      const results = await runAllScans(cwd);
       persistStatus(results);
 
       const elapsed = ((Date.now() - start) / 1000).toFixed(1);
@@ -94,7 +94,6 @@ export function createWatchCommand(): Command {
     while (!stopped) {
       await runScan();
 
-      // Wait for the interval, checking stopped flag every second
       for (let i = 0; i < intervalSec && !stopped; i++) {
         await sleep(1000);
       }

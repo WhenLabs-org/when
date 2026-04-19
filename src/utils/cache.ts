@@ -14,6 +14,11 @@ export interface CacheEntry {
   tool: string;
   project: string;
   output: string;
+  /**
+   * Scan outcome: 0 when the scan reported ok, 1 otherwise. Historically this
+   * was a CLI exit code, but with createTool()-driven scans it's synthesized
+   * from `scan.ok`. Consumers treat it as a boolean (0 vs. non-zero).
+   */
   code: number;
 }
 
@@ -48,6 +53,7 @@ function entryPath(tool: string, project: string): string {
   return join(ENTRIES_DIR, `${tool}_${project}.json`);
 }
 
+/** See {@link CacheEntry.code} for `code` semantics. */
 export function writeEntry(tool: string, project: string, output: string, code: number): void {
   ensureDir(ENTRIES_DIR);
   const entry: CacheEntry = {

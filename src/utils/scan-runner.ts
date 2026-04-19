@@ -5,13 +5,14 @@ import { createTool as createVowTool } from '@whenlabs/vow';
 import { createTool as createAwareTool } from '@whenlabs/aware';
 import type { ScanResult, Tool } from '@whenlabs/core';
 
-export interface ToolResult {
+export interface ScanRollup {
   name: string;
   label: string;
   issues: number;
   warnings: number;
   status: 'ok' | 'issues' | 'error' | 'skipped';
   detail: string;
+  /** Synthesized: 0 when scan.ok, 1 otherwise. Not a process exit code. */
   exitCode: number;
 }
 
@@ -63,7 +64,7 @@ const ADAPTERS: Adapter[] = [
   },
 ];
 
-async function runAdapter(adapter: Adapter, cwd: string): Promise<ToolResult> {
+async function runAdapter(adapter: Adapter, cwd: string): Promise<ScanRollup> {
   try {
     const scan = await adapter.tool.scan({ cwd });
     const skipReason = adapter.skipCheck?.(scan);
@@ -80,7 +81,7 @@ async function runAdapter(adapter: Adapter, cwd: string): Promise<ToolResult> {
     }
     const errors = scan.summary.errors;
     const warnings = scan.summary.warnings;
-    const status: ToolResult['status'] = errors > 0 || warnings > 0 ? 'issues' : 'ok';
+    const status: ScanRollup['status'] = errors > 0 || warnings > 0 ? 'issues' : 'ok';
     const detail =
       status === 'ok'
         ? adapter.okDetail(scan)
@@ -108,6 +109,11 @@ async function runAdapter(adapter: Adapter, cwd: string): Promise<ToolResult> {
   }
 }
 
-export async function runAllChecks(cwd: string): Promise<ToolResult[]> {
+/**
+ * Runs the 5 scan-capable tools in parallel via their createTool() interfaces.
+ * Velocity is embedded (SQLite, always-on) and has no scan mode, so it's
+ * excluded here.
+ */
+export async function runAllScans(cwd: string): Promise<ScanRollup[]> {
   return Promise.all(ADAPTERS.map((a) => runAdapter(a, cwd)));
 }

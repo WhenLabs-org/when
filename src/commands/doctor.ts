@@ -1,7 +1,6 @@
 import { Command } from 'commander';
-import { type ToolResult, runAllChecks } from '../utils/tool-runner.js';
+import { runAllScans, type ScanRollup } from '../utils/scan-runner.js';
 
-// ANSI color helpers
 const c = {
   reset: '\x1b[0m',
   bold: '\x1b[1m',
@@ -16,8 +15,8 @@ function colorize(text: string, ...codes: string[]): string {
   return codes.join('') + text + c.reset;
 }
 
-function statusIcon(result: ToolResult): string {
-  switch (result.status) {
+function statusIcon(r: ScanRollup): string {
+  switch (r.status) {
     case 'ok': return colorize('\u2713', c.green);
     case 'issues': return colorize('\u2717', c.red);
     case 'error': return colorize('!', c.yellow);
@@ -25,7 +24,7 @@ function statusIcon(result: ToolResult): string {
   }
 }
 
-function printReport(results: ToolResult[]): void {
+function printReport(results: ScanRollup[]): void {
   console.log('');
   console.log(colorize('  WhenLabs Health Report', c.bold));
   console.log(colorize('  \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500', c.dim));
@@ -82,7 +81,7 @@ export function createDoctorCommand(): Command {
       process.stdout.write(colorize('  Running health checks\u2026', c.dim) + '\n');
     }
 
-    const results = await runAllChecks(cwd);
+    const results = await runAllScans(cwd);
 
     const hasIssues = results.some(r => r.status === 'issues' || r.status === 'error');
 
@@ -103,7 +102,6 @@ export function createDoctorCommand(): Command {
       };
       console.log(JSON.stringify(output, null, 2));
     } else {
-      // Clear the "Running..." line
       process.stdout.write('\x1b[1A\x1b[2K');
       printReport(results);
     }

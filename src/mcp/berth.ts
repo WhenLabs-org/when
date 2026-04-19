@@ -1,17 +1,21 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
+import { createTool as createBerthTool } from '@whenlabs/berth';
 import { runCli, formatOutput, writeCache, deriveProject, checkTriggers } from './run-cli.js';
+import { formatScanResult } from './format-scan.js';
 
 export function registerBerthTools(server: McpServer): void {
+  const berth = createBerthTool();
+
   server.tool(
     'berth_status',
     'Show all active ports, Docker ports, and configured ports — diagnose port conflicts',
     {},
     async () => {
-      const result = await runCli('berth', ['status', '--json']);
-      const output = formatOutput(result);
-      writeCache('berth_status', deriveProject(), output, result.code);
-      const extras = await checkTriggers('berth_status', result);
+      const scan = await berth.scan();
+      const output = formatScanResult(scan);
+      writeCache('berth_status', deriveProject(), output, scan.ok ? 0 : 1);
+      const extras = await checkTriggers('berth_status', { stdout: output, stderr: '', code: scan.ok ? 0 : 1 });
       return { content: [{ type: 'text' as const, text: output + extras.join('') }] };
     },
   );
@@ -21,10 +25,10 @@ export function registerBerthTools(server: McpServer): void {
     'Scan a project directory for port conflicts before starting dev servers',
     { path: z.string().optional().describe('Project directory to check (defaults to cwd)') },
     async ({ path }) => {
-      const result = await runCli('berth', ['check', path || '.']);
-      const output = formatOutput(result);
-      writeCache('berth_check', deriveProject(path), output, result.code);
-      const extras = await checkTriggers('berth_check', result, path);
+      const scan = await berth.scan({ cwd: path });
+      const output = formatScanResult(scan);
+      writeCache('berth_check', deriveProject(path), output, scan.ok ? 0 : 1);
+      const extras = await checkTriggers('berth_check', { stdout: output, stderr: '', code: scan.ok ? 0 : 1 }, path);
       return { content: [{ type: 'text' as const, text: output + extras.join('') }] };
     },
   );

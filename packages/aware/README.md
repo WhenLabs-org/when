@@ -62,7 +62,7 @@ Or run directly:
 npx aware-cli init
 ```
 
-**Requirements:** Node.js >= 18
+**Requirements:** Node.js >= 20.12
 
 ## Commands
 
@@ -340,7 +340,7 @@ aware-tool/
 - **Diffing:** [fast-json-patch](https://github.com/Starcounter-Jack/JSON-Patch)
 - **File Globbing:** [fast-glob](https://github.com/mrmlnc/fast-glob)
 - **Output:** [chalk](https://github.com/chalk/chalk), [ora](https://github.com/sindresorhus/ora) (spinners)
-- **Build:** [tsup](https://github.com/egoist/tsup) (ESM, Node 18 target)
+- **Build:** [tsup](https://github.com/egoist/tsup) (ESM, Node 20+ target)
 - **Testing:** [Vitest](https://vitest.dev/) with fixture-based project testing
 
 ## Development

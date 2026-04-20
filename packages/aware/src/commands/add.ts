@@ -4,6 +4,32 @@ import { prompt } from "../utils/prompts.js";
 
 interface AddOptions {
   type: string;
+  rule?: string;
+  dir?: string;
+  description?: string;
+  category?: string;
+  key?: string;
+  value?: string;
+}
+
+// Resolve a field non-interactively when a flag is supplied, otherwise prompt
+// the user — but only if stdin is a TTY. In MCP / CI contexts there is no TTY
+// and readline.question() would hang forever, so we surface a clear error
+// instead telling the caller exactly which flag to set.
+async function resolveField(
+  flagValue: string | undefined,
+  flagName: string,
+  promptLabel: string,
+): Promise<string> {
+  if (flagValue && flagValue.trim()) return flagValue.trim();
+  if (!process.stdin.isTTY) {
+    log.error(
+      `${promptLabel} is required. Pass --${flagName} <value> when running non-interactively (MCP / CI).`,
+    );
+    process.exit(2);
+  }
+  const answer = await prompt(promptLabel);
+  return answer;
 }
 
 export async function addCommand(options: AddOptions): Promise<void> {
@@ -19,7 +45,7 @@ export async function addCommand(options: AddOptions): Promise<void> {
 
   switch (type) {
     case "rule": {
-      const rule = await prompt("Enter rule");
+      const rule = await resolveField(options.rule, "rule", "Enter rule");
       if (!rule) {
         log.error("Rule cannot be empty.");
         return;
@@ -31,12 +57,12 @@ export async function addCommand(options: AddOptions): Promise<void> {
     }
 
     case "structure": {
-      const dirPath = await prompt("Directory path (e.g., src/utils/)");
+      const dirPath = await resolveField(options.dir, "dir", "Directory path (e.g., src/utils/)");
       if (!dirPath) {
         log.error("Path cannot be empty.");
         return;
       }
-      const description = await prompt("Description");
+      const description = await resolveField(options.description, "description", "Description");
       if (!description) {
         log.error("Description cannot be empty.");
         return;
@@ -48,17 +74,17 @@ export async function addCommand(options: AddOptions): Promise<void> {
     }
 
     case "convention": {
-      const category = await prompt("Category (e.g., naming, imports, testing)");
+      const category = await resolveField(options.category, "category", "Category (e.g., naming, imports, testing)");
       if (!category) {
         log.error("Category cannot be empty.");
         return;
       }
-      const key = await prompt("Key (e.g., files, functions, components)");
+      const key = await resolveField(options.key, "key", "Key (e.g., files, functions, components)");
       if (!key) {
         log.error("Key cannot be empty.");
         return;
       }
-      const value = await prompt("Value");
+      const value = await resolveField(options.value, "value", "Value");
       if (!value) {
         log.error("Value cannot be empty.");
         return;

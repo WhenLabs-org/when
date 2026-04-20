@@ -61,7 +61,6 @@ asciinema rec demo/demo.cast
 #   npx @whenlabs/when install
 #   when init
 #   when doctor
-#   when status
 
 # Stop recording
 # Ctrl-D or exit

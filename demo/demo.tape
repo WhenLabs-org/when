@@ -28,11 +28,4 @@ Sleep 600ms
 Enter
 Sleep 4s
 
-# --- when status ---
-Sleep 1200ms
-Type "when status"
-Sleep 600ms
-Enter
-Sleep 3s
-
 Sleep 1s

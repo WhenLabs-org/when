@@ -1,14 +1,9 @@
 import { Command } from 'commander';
 import { spawn } from 'node:child_process';
-import { resolve, dirname } from 'node:path';
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
-import { stringify } from 'yaml';
+import { resolve } from 'node:path';
+import { existsSync, readFileSync } from 'node:fs';
 import { findBin } from '../utils/find-bin.js';
 import { detectProjectWithStack } from '../utils/detect-project.js';
-import { loadConfig, CONFIG_FILENAME } from '../config/whenlabs-config.js';
-
-const __dirname = dirname(fileURLToPath(import.meta.url));
 
 const c = {
   reset: '\x1b[0m',
@@ -253,46 +248,6 @@ export function createInitCommand(): Command {
       console.log(`  ${icon}  ${label} ${detail}`);
     }
 
-    // Generate .whenlabs.yml if it doesn't exist yet
-    const whenlabsConfigPath = resolve(cwd, CONFIG_FILENAME);
-    if (!existsSync(whenlabsConfigPath)) {
-      try {
-        // Read back created configs to merge into unified file
-        const mergedConfig: Record<string, unknown> = {};
-
-        const staleConfigPath = resolve(cwd, '.stale.yml');
-        if (existsSync(staleConfigPath)) {
-          mergedConfig['stale'] = {};
-        }
-
-        const vowConfigPath = resolve(cwd, '.vow.json');
-        if (existsSync(vowConfigPath)) {
-          try {
-            const vowData = JSON.parse(readFileSync(vowConfigPath, 'utf-8'));
-            mergedConfig['vow'] = {
-              ...(typeof vowData.policy === 'string' ? { policy: vowData.policy } : {}),
-              ...(typeof vowData.production_only === 'boolean' ? { production_only: vowData.production_only } : {}),
-            };
-          } catch { mergedConfig['vow'] = {}; }
-        }
-
-        const envSchemaPath = resolve(cwd, '.env.schema');
-        if (existsSync(envSchemaPath)) {
-          mergedConfig['envalid'] = { schema: '.env.schema' };
-        }
-
-        mergedConfig['berth'] = {};
-        mergedConfig['aware'] = {};
-        mergedConfig['velocity'] = {};
-
-        writeFileSync(whenlabsConfigPath, stringify(mergedConfig, { lineWidth: 0 }), 'utf-8');
-        console.log(`  ${colorize('+', c.green)}  ${colorize(CONFIG_FILENAME, c.bold)} ${colorize('created', c.green)}`);
-      } catch {
-        console.log(`  ${colorize('!', c.yellow)}  Could not generate ${colorize(CONFIG_FILENAME, c.bold)}`);
-      }
-    } else {
-      console.log(`  ${colorize('-', c.dim)}  ${colorize(CONFIG_FILENAME, c.bold)} ${colorize('already exists', c.dim)}`);
-    }
     console.log('');
 
     // Run all 5 scans in parallel

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { mkdtempSync, rmSync, writeFileSync, existsSync } from 'node:fs';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -203,23 +203,6 @@ describe('when init — bootstrap configs', () => {
     expect(logs.some((l) => l.includes('Skipped'))).toBe(true);
   });
 
-  it('generates .whenlabs.yml after bootstrapping', async () => {
-    mockSpawn.mockImplementation(() => fakeChild('{}', 0) as ReturnType<typeof spawn>);
-
-    const orig = console.log;
-    console.log = () => {};
-    const origWrite = process.stdout.write.bind(process.stdout);
-    process.stdout.write = (() => true) as typeof process.stdout.write;
-    try {
-      const cmd = createInitCommand();
-      await withCwd(tmpDir, () => cmd.parseAsync(['node', 'when', 'init']));
-    } finally {
-      console.log = orig;
-      process.stdout.write = origWrite;
-    }
-
-    expect(existsSync(join(tmpDir, '.whenlabs.yml'))).toBe(true);
-  });
 });
 
 describe('when init — summary', () => {

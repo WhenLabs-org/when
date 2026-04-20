@@ -1,6 +1,6 @@
 {
   "name": "@whenlabs/when",
-  "version": "0.11.3",
+  "version": "0.11.4",
   "mcpName": "io.github.WhenLabs-org/when",
   "description": "The WhenLabs developer toolkit — 6 tools, one install",
   "type": "module",

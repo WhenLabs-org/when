@@ -4,6 +4,7 @@ import path from 'node:path';
 import ora from 'ora';
 import type { ScanResult, LicenseSummary, PackageInfo } from '../types.js';
 import { NpmResolver } from '../resolvers/npm.js';
+import { PnpmResolver } from '../resolvers/pnpm.js';
 import { discoverWorkspaces } from '../resolvers/workspaces.js';
 import { NpmRegistryClient } from '../resolvers/registry.js';
 import type { RegistryFetch } from '../resolvers/registry.js';
@@ -95,6 +96,16 @@ export async function executeScan(opts: ScanOptions): Promise<ScanResult> {
     licenseCache,
   );
 
+  const pnpmResolver = new PnpmResolver(
+    {
+      projectPath,
+      includeDevDependencies: !opts.production,
+      depth: opts.depth,
+    },
+    npmRegistry,
+    licenseCache,
+  );
+
   const cargoResolver = new CargoResolver(
     {
       projectPath,
@@ -137,6 +148,9 @@ export async function executeScan(opts: ScanOptions): Promise<ScanResult> {
   if (await npmResolver.detect()) {
     spinner.text = `Scanning npm dependencies...`;
     collect('npm', await npmResolver.resolve());
+  } else if (await pnpmResolver.detect()) {
+    spinner.text = `Scanning pnpm dependencies...`;
+    collect('pnpm', await pnpmResolver.resolve());
   }
 
   if (await cargoResolver.detect()) {
@@ -153,9 +167,9 @@ export async function executeScan(opts: ScanOptions): Promise<ScanResult> {
     spinner.fail('No supported lockfile found');
     throw new Error(
       `No supported lockfile found in ${projectPath}. ` +
-      `vow needs one of: package-lock.json, Cargo.lock, or a Python lockfile ` +
-      `(requirements.txt with hashes, uv.lock, or poetry.lock). ` +
-      `pnpm-lock.yaml and yarn.lock are not yet supported.`,
+      `vow needs one of: package-lock.json, pnpm-lock.yaml, Cargo.lock, ` +
+      `or a Python lockfile (requirements.txt with hashes, uv.lock, or poetry.lock). ` +
+      `yarn.lock is not yet supported.`,
     );
   }
 

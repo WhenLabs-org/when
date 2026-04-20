@@ -299,7 +299,48 @@ program
       return;
     }
 
-    // Normal detect mode: compare code usage against existing schema
+    // Normal detect mode: compare code usage against existing schema.
+    // If no schema exists yet, fall back to a schema-free listing so
+    // `detect` still works on projects that haven't run --generate yet.
+    if (!existsSync(options.schema)) {
+      const envVarLocations = detectEnvVarsInCode(options.dir, { exclude });
+      const varNames = Object.keys(envVarLocations).sort();
+
+      if (options.format === "json") {
+        console.log(JSON.stringify({
+          schema: null,
+          usedInCode: varNames,
+          locations: envVarLocations,
+        }, null, 2));
+        return;
+      }
+
+      console.log("");
+      if (varNames.length === 0) {
+        console.log(chalk.yellow("  No env var usage found in code."));
+        console.log("");
+        return;
+      }
+      console.log(
+        chalk.yellow(
+          `  ⚠ No schema at ${options.schema} — showing env vars used in code (${varNames.length}):`,
+        ),
+      );
+      for (const v of varNames) {
+        const locs = envVarLocations[v];
+        const locStr = locs
+          ? locs.map((l) => `${l.file}:${l.line}`).join(", ")
+          : "";
+        console.log(
+          `    ${chalk.yellow("+")} ${v}${locStr ? chalk.dim(`  used at ${locStr}`) : ""}`,
+        );
+      }
+      console.log("");
+      console.log(chalk.dim(`  Run \`envalid detect --generate\` to create ${options.schema} from these.`));
+      console.log("");
+      return;
+    }
+
     const schema = parseSchemaFile(options.schema);
     const result = detectEnvUsage(options.dir, schema, {
       exclude,

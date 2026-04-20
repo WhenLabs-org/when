@@ -86,6 +86,27 @@ npx @whenlabs/when install --all        # All supported editors
 
 Without flags, `install` targets Claude Code only.
 
+### Manual MCP configuration
+
+If you're using an MCP client not covered by the installer — or you prefer to manage configs by hand — add the following entry to your client's MCP server list:
+
+```json
+{
+  "mcpServers": {
+    "whenlabs": {
+      "command": "npx",
+      "args": ["-y", "@whenlabs/when", "mcp"]
+    }
+  }
+}
+```
+
+- **Claude Desktop** — `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) or `%APPDATA%\Claude\claude_desktop_config.json` (Windows)
+- **Cursor** — Settings → Features → Model Context Protocol → add server
+- **Any MCP-compatible client** — point it at `npx -y @whenlabs/when mcp`
+
+The server speaks stdio and requires Node 20+. All 48 tools listed below are served from this single entry point.
+
 ## CLI Usage
 
 You can also run tools directly from the command line:

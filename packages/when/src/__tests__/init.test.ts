@@ -11,6 +11,7 @@ vi.mock('node:child_process', () => ({
 // Mock find-bin so we don't need real binaries on PATH
 vi.mock('../utils/find-bin.js', () => ({
   findBin: vi.fn((name: string) => name),
+  buildSpawn: vi.fn((name: string) => ({ cmd: name, args: [] })),
 }));
 
 import { spawn } from 'node:child_process';

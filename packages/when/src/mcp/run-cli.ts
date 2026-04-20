@@ -1,7 +1,7 @@
 import { spawn } from 'node:child_process';
 import { join } from 'node:path';
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
-import { findBin } from '../utils/find-bin.js';
+import { findBin, buildSpawn } from '../utils/find-bin.js';
 import {
   detectProjectDirName,
   readAwareProjectName,
@@ -19,9 +19,11 @@ export const deriveProject = detectProjectDirName;
 
 export function runCli(bin: string, args: string[], cwd?: string): Promise<{ stdout: string; stderr: string; code: number }> {
   return new Promise((res) => {
-    const child = spawn(findBin(bin), args, {
+    const s = buildSpawn(bin);
+    const child = spawn(s.cmd, [...s.args, ...args], {
       cwd: cwd || process.cwd(),
       env: { ...process.env, FORCE_COLOR: '0', NO_COLOR: '1' },
+      shell: s.shell,
     });
     let stdout = '';
     let stderr = '';
@@ -63,6 +65,18 @@ const SUGGESTION_RULES: SuggestionRule[] = [
       writeCache('stale', detectProjectDirName(path), staleOutput, staleResult.code);
       if (!staleOutput.trim()) return [];
       return [`\n--- Auto-triggered stale_scan (stack change detected) ---\n${staleOutput}`];
+    },
+  },
+  {
+    id: 'aware-sync-regenerated',
+    tool: 'aware_sync',
+    match: ({ output }) => /wrote|regenerated|updated|synced/i.test(output),
+    async emit({ path }) {
+      const staleResult = await runCli('stale', ['scan'], path);
+      const staleOutput = staleResult.stdout || staleResult.stderr || '';
+      writeCache('stale', detectProjectDirName(path), staleOutput, staleResult.code);
+      if (!staleOutput.trim()) return [];
+      return [`\n--- Auto-triggered stale_scan (context files regenerated) ---\n${staleOutput}`];
     },
   },
   {

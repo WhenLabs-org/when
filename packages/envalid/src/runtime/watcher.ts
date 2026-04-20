@@ -1,5 +1,5 @@
 import { watch, type FSWatcher } from "node:fs";
-import { dirname, resolve } from "node:path";
+import { basename, dirname, resolve } from "node:path";
 
 export interface WatcherOptions {
   /** Files (absolute paths) to watch. */
@@ -18,9 +18,9 @@ export function startWatching(options: WatcherOptions): () => void {
   const debounce = options.debounceMs ?? 150;
   const absolute = options.paths.map((p) => resolve(p));
   const watchedDirs = new Map<string, FSWatcher>();
-  const targetBasenames = new Set(
-    absolute.map((p) => p.slice(p.lastIndexOf("/") + 1)),
-  );
+  // basename() handles both POSIX `/` and Windows `\` separators — the
+  // previous slice on `/` left Windows paths un-basenamed so no events fired.
+  const targetBasenames = new Set(absolute.map((p) => basename(p)));
 
   let timer: NodeJS.Timeout | undefined;
   let pendingPath: string | undefined;

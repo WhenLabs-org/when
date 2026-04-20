@@ -65,7 +65,17 @@ async function readJsonish(filePath: string): Promise<unknown> {
 }
 
 async function importModule(filePath: string): Promise<unknown> {
-  const url = pathToFileURL(filePath).href;
+  // On Windows, os.tmpdir() can return an 8.3 short path like
+  // C:\Users\RUNNER~1\AppData\Local\Temp, which pathToFileURL encodes to
+  // RUNNER%7E1 — vitest's resolver then can't find the file. Resolve the
+  // real path first so the file URL points at the long form.
+  let resolved = filePath;
+  try {
+    resolved = await fs.realpath(filePath);
+  } catch {
+    // fall back to original path
+  }
+  const url = pathToFileURL(resolved).href;
   const mod = await import(url);
   return (mod as { default?: unknown }).default ?? mod;
 }

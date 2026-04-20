@@ -6,34 +6,24 @@ import { registerScanCommand } from './commands/scan.js';
 import { registerTreeCommand } from './commands/tree.js';
 import { registerExportCommand } from './commands/export.js';
 import { registerCheckCommand } from './commands/check.js';
-import { registerFixCommand } from './commands/fix.js';
 import { registerInitCommand } from './commands/init.js';
 import { registerAttributionCommand } from './commands/attribution.js';
-import { registerHookCommand } from './commands/hook.js';
 import { registerSbomCommand } from './commands/sbom.js';
-import { registerDiffCommand } from './commands/diff.js';
-import { registerPolicyCommand } from './commands/policy.js';
-import { registerAuditCommand } from './commands/audit.js';
 
 const program = new Command();
 
 program
   .name('vow')
-  .description('Scan dependency licenses and validate against plain-English policies')
-  .version('0.1.0');
+  .description('Scan dependency licenses and validate against an allow/deny/warn policy')
+  .version('0.2.0');
 
 registerScanCommand(program);
 registerCheckCommand(program);
 registerTreeCommand(program);
-registerFixCommand(program);
 registerInitCommand(program);
 registerAttributionCommand(program);
 registerExportCommand(program);
-registerHookCommand(program);
 registerSbomCommand(program);
-registerDiffCommand(program);
-registerPolicyCommand(program);
-registerAuditCommand(program);
 
 program.parseAsync().catch((err: Error) => {
   if (err instanceof VowError) {

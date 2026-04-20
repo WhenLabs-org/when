@@ -39,11 +39,6 @@ export interface PolicyOverride {
   reason: string;
 }
 
-export interface PolicyConfig {
-  policy: string;
-  overrides?: PolicyOverride[];
-}
-
 export interface PackageCheckResult {
   pkg: PackageInfo;
   matchedRule: ParsedPolicyRule | null;

@@ -9,11 +9,14 @@ export { getLicenseCategory, isPermissive, isCopyleft, isStronglyCopyleft } from
 export { normalizeLicenseId, isValidSpdxId, getLicenseById, getAllLicenses } from './license/database.js';
 export { parseSpdxExpression, extractLicenseIds, satisfies, isSpdxExpression } from './license/spdx.js';
 export { executeScan } from './commands/scan.js';
-export { parsePolicy } from './policy/parser.js';
 export { evaluatePolicy } from './policy/evaluator.js';
-export { createPolicyCache, hashPolicyText } from './policy/cache.js';
-export { loadJsonPolicy, jsonPolicyToParsedPolicy } from './policy/json-policy.js';
-export { reportScanSummary, reportCheckResult, reportFixSuggestions } from './reporters/terminal.js';
+export {
+  loadJsonPolicy,
+  loadYamlPolicy,
+  jsonPolicyToParsedPolicy,
+  hashPolicyText,
+} from './policy/json-policy.js';
+export { reportScanSummary, reportCheckResult } from './reporters/terminal.js';
 export { toJSON } from './reporters/json.js';
 export { toCSV } from './reporters/csv.js';
 export { toMarkdown, toMarkdownCheckResult } from './reporters/markdown.js';
@@ -38,7 +41,6 @@ export type {
   ParsedPolicy,
   PolicyCondition,
   PolicyAction,
-  PolicyConfig,
   PolicyOverride,
   PackageCheckResult,
   CheckResult,

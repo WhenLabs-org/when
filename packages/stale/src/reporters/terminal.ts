@@ -12,11 +12,6 @@ const CATEGORY_LABELS: Record<DriftCategory, string> = {
   'api-route': 'API ENDPOINTS',
   'git-staleness': 'GIT STALENESS',
   'comment-staleness': 'STALE COMMENTS',
-  'semantic': 'SEMANTIC DRIFT',
-  'completeness': 'COMPLETENESS',
-  'example': 'OUTDATED EXAMPLES',
-  'architecture': 'ARCHITECTURE',
-  'response-shape': 'RESPONSE SHAPES',
 };
 
 const CATEGORY_CONTEXT: Record<DriftCategory, string> = {
@@ -29,11 +24,6 @@ const CATEGORY_CONTEXT: Record<DriftCategory, string> = {
   'api-route': 'checking against route definitions',
   'git-staleness': 'checking doc age vs source activity',
   'comment-staleness': 'checking comment symbol references',
-  'semantic': 'AI-powered analysis',
-  'completeness': 'AI-powered analysis',
-  'example': 'AI-powered analysis',
-  'architecture': 'AI-powered analysis',
-  'response-shape': 'AI-powered analysis',
 };
 
 function formatIssue(issue: DriftIssue): string {
@@ -76,19 +66,7 @@ export class TerminalReporter implements Reporter {
       grouped.set(issue.category, list);
     }
 
-    // Static checks header
-    const AI_CATEGORIES = ['semantic', 'completeness', 'example', 'architecture', 'response-shape'];
-    const hasStaticIssues = [...grouped.keys()].some((k) => !AI_CATEGORIES.includes(k));
-    const hasAiIssues = [...grouped.keys()].some((k) => AI_CATEGORIES.includes(k));
-
-    if (hasStaticIssues) {
-      lines.push(chalk.bold.underline('── Static Checks ──────────────────────────────────────────'));
-      lines.push('');
-    }
-
     for (const [category, issues] of grouped) {
-      if (AI_CATEGORIES.includes(category)) continue;
-
       const label = CATEGORY_LABELS[category] ?? category.toUpperCase();
       const context = CATEGORY_CONTEXT[category];
       lines.push(chalk.bold(`${label} ${chalk.dim(`(${context})`)}`));
@@ -96,23 +74,6 @@ export class TerminalReporter implements Reporter {
       for (const issue of issues) {
         lines.push(formatIssue(issue));
         lines.push('');
-      }
-    }
-
-    if (hasAiIssues) {
-      lines.push(chalk.bold.underline('── AI Analysis ───────────────────────────────────────────'));
-      lines.push('');
-
-      for (const [category, issues] of grouped) {
-        if (!AI_CATEGORIES.includes(category)) continue;
-
-        const label = CATEGORY_LABELS[category] ?? category.toUpperCase();
-        lines.push(chalk.bold(label));
-
-        for (const issue of issues) {
-          lines.push(formatIssue(issue));
-          lines.push('');
-        }
       }
     }
 

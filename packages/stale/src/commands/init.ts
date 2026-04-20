@@ -30,16 +30,7 @@ checks:
   dependencies: true
   apiRoutes: true
 
-# AI-powered analysis (requires STALE_AI_KEY)
-ai:
-  enabled: false
-  model: sonnet  # sonnet or opus
-  checks:
-    semantic: true
-    completeness: true
-    examples: true
-
-# Output format: terminal, json, markdown, sarif
+# Output format: terminal, json, markdown
 output:
   format: terminal
 `;

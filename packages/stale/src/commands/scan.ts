@@ -3,13 +3,12 @@ import type { CliFlags, DriftReport, DriftSummary, DriftIssue, DriftCategory } f
 import { resolveConfig } from '../config.js';
 import { parseAllDocs } from '../parsers/markdown.js';
 import { parseCodebase } from '../parsers/codebase.js';
-import { getStaticAnalyzers, getAiAnalyzers, runAnalyzers } from '../analyzers/registry.js';
+import { getStaticAnalyzers, runAnalyzers } from '../analyzers/registry.js';
 import { getReporter } from '../reporters/index.js';
 
 const ALL_CATEGORIES: DriftCategory[] = [
   'command', 'file-path', 'env-var', 'url', 'version', 'dependency', 'api-route',
   'git-staleness', 'comment-staleness',
-  'semantic', 'completeness', 'example', 'architecture', 'response-shape',
 ];
 
 function buildSummary(issues: DriftIssue[], totalChecks: number): DriftSummary {
@@ -39,8 +38,7 @@ function buildSummary(issues: DriftIssue[], totalChecks: number): DriftSummary {
 
 export type ScanOutcome =
   | { kind: 'report'; report: DriftReport }
-  | { kind: 'no-docs' }
-  | { kind: 'missing-ai-key' };
+  | { kind: 'no-docs' };
 
 export async function scan(options: CliFlags): Promise<ScanOutcome> {
   const startTime = Date.now();
@@ -61,20 +59,9 @@ export async function scan(options: CliFlags): Promise<ScanOutcome> {
 
   const staticAnalyzers = getStaticAnalyzers(config);
   const issues = await runAnalyzers(staticAnalyzers, ctx);
-  let analyzerCount = staticAnalyzers.length;
-
-  if (config.ai.enabled) {
-    if (!process.env.STALE_AI_KEY) {
-      return { kind: 'missing-ai-key' };
-    }
-    const aiAnalyzers = getAiAnalyzers(config);
-    const aiIssues = await runAnalyzers(aiAnalyzers, ctx);
-    issues.push(...aiIssues);
-    analyzerCount += aiAnalyzers.length;
-  }
 
   const duration = Date.now() - startTime;
-  const totalChecks = docs.length * analyzerCount;
+  const totalChecks = docs.length * staticAnalyzers.length;
 
   const report: DriftReport = {
     projectPath,
@@ -89,17 +76,12 @@ export async function scan(options: CliFlags): Promise<ScanOutcome> {
   return { kind: 'report', report };
 }
 
-export async function scanCommand(options: CliFlags): Promise<DriftReport> {
+export async function scanCommand(options: CliFlags): Promise<DriftReport | void> {
   const outcome = await scan(options);
 
   if (outcome.kind === 'no-docs') {
     console.log('No documentation files found. Nothing to check.');
     process.exit(0);
-  }
-
-  if (outcome.kind === 'missing-ai-key') {
-    console.error('Error: --deep requires STALE_AI_KEY environment variable');
-    process.exit(1);
   }
 
   const { report } = outcome;

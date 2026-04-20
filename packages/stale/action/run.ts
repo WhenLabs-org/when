@@ -38,14 +38,13 @@ function parseFailOn(raw: string): 'error' | 'warning' | 'never' {
   return 'error';
 }
 
-function parseFormat(raw: string): 'terminal' | 'json' | 'markdown' | 'sarif' {
-  if (raw === 'json' || raw === 'markdown' || raw === 'sarif') return raw;
+function parseFormat(raw: string): 'terminal' | 'json' | 'markdown' {
+  if (raw === 'json' || raw === 'markdown') return raw;
   return 'terminal';
 }
 
 export async function runAction({ io, projectPath }: RunActionOptions): Promise<RunActionResult> {
   try {
-    const deep = io.getInput('deep') === 'true';
     const failOn = parseFailOn(io.getInput('fail-on') || 'error');
     const shouldComment = io.getInput('comment') !== 'false';
     const configPath = io.getInput('config') || undefined;
@@ -53,7 +52,6 @@ export async function runAction({ io, projectPath }: RunActionOptions): Promise<
 
     const outcome = await scan({
       path: projectPath,
-      deep,
       format,
       config: configPath,
     });
@@ -61,11 +59,6 @@ export async function runAction({ io, projectPath }: RunActionOptions): Promise<
     if (outcome.kind === 'no-docs') {
       io.info('No documentation files found. Nothing to check.');
       return { kind: 'no-docs' };
-    }
-    if (outcome.kind === 'missing-ai-key') {
-      const reason = 'deep=true requires the STALE_AI_KEY environment variable';
-      io.setFailed(reason);
-      return { kind: 'failed', reason };
     }
 
     const { report } = outcome;

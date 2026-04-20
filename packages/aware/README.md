@@ -2,7 +2,7 @@
 
 Auto-detect your stack and generate AI context files. Part of the [WhenLabs](https://whenlabs.org) toolkit.
 
-Aware scans your project, detects your tech stack, and generates context files for **Claude Code**, **Cursor**, **GitHub Copilot**, and **AGENTS.md** -- all from a single source of truth.
+Aware scans your project, detects your tech stack, and generates context files for **Claude Code**, **Cursor**, **GitHub Copilot**, and **AGENTS.md** — all from a single source of truth.
 
 > **Part of the [WhenLabs toolkit](https://github.com/WhenLabs-org/when)** — install all 6 tools with one command:
 > ```
@@ -12,6 +12,7 @@ Aware scans your project, detects your tech stack, and generates context files f
 ## The Problem
 
 Every AI coding tool reads a different context file:
+
 - **CLAUDE.md** for Claude Code
 - **.cursorrules** for Cursor
 - **.github/copilot-instructions.md** for GitHub Copilot
@@ -53,13 +54,13 @@ One command. Full stack detection. Four context files. All in sync.
 > **Recommended:** Install the full WhenLabs toolkit with `npx @whenlabs/when install` to get aware plus 5 other tools in one step.
 
 ```bash
-npm install -g aware-cli
+npm install -g @whenlabs/aware
 ```
 
 Or run directly:
 
 ```bash
-npx aware-cli init
+npx @whenlabs/aware init
 ```
 
 **Requirements:** Node.js >= 20.12
@@ -75,11 +76,21 @@ aware init                          # Detect and generate
 aware init -t claude,cursor         # Only specific targets
 aware init --force                  # Overwrite existing files
 aware init --no-detect              # Skip detection, create empty config
+aware init --workspace              # Monorepo mode: scaffold a per-package .aware.json that extends the root
 ```
+
+**Options:**
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `-t, --targets <targets>` | Comma-separated targets: `claude`, `cursor`, `copilot`, `agents`, `all` | `claude,cursor,copilot,agents` |
+| `-f, --force` | Overwrite existing files without prompting | `false` |
+| `--no-detect` | Skip auto-detection, create empty config | detection on |
+| `--workspace` | Monorepo mode: discover workspace packages and scaffold a per-package `.aware.json` that extends the root | `false` |
 
 ### `aware sync`
 
-Regenerates context files from `.aware.json` after you've edited it. Also re-detects the stack and reports any drift.
+Regenerates context files from `.aware.json` after you've edited it.
 
 ```bash
 aware sync                          # Regenerate all targets
@@ -88,60 +99,30 @@ aware sync --dry-run                # Preview changes without writing
 
 ### `aware diff`
 
-Shows what changed in your detected stack since the last sync. Displays additions, removals, and changes with colored output, and offers to sync if changes are found.
+Shows what changed in your detected stack and generated files since the last sync.
 
 ```bash
-aware diff
-
-# CI-friendly: exit 0 if no changes, exit 1 if drift detected
-aware diff --exit-code
+aware diff                          # Human-readable diff, prompts to sync if drift found
+aware diff --check                  # CI mode: exit 0 (clean) / 1 (stack drift) / 2 (tamper)
+aware diff --json                   # Emit a machine-readable DriftReport as JSON
+aware diff --target claude          # Narrow content drift to one target
+aware diff --check --quiet          # Silent CI gate
 ```
 
-The `--exit-code` flag is useful in CI pipelines to fail a build when AI context files have drifted from the actual stack.
+**Options:**
 
-### `aware watch`
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--check` | CI mode: exit 0/1/2 for clean/drift/tamper; no interactive prompt | `false` |
+| `--json` | Emit a machine-readable `DriftReport` as JSON | `false` |
+| `--target <target>` | Narrow content drift to one target (`claude`, `cursor`, `copilot`, `agents`) | all targets |
+| `--quiet` | Suppress human output (useful with `--check`) | `false` |
 
-Watches for project changes (package.json, config files, .env, etc.) and suggests or auto-applies context updates. Uses native `fs.watch` for efficient file watching with a configurable debounce.
+Exit codes for `--check`:
 
-```bash
-aware watch                         # Watch and suggest
-aware watch --auto-sync             # Watch and auto-regenerate
-aware watch --debounce 5000         # Custom debounce (ms, default: 2000)
-```
-
-### `aware validate`
-
-Validates your `.aware.json` for schema errors (missing required fields, invalid types) and warnings (stale structure paths, empty rules, no enabled targets).
-
-```bash
-aware validate
-```
-
-### `aware doctor`
-
-Runs a comprehensive health check on your project's Aware configuration:
-- Config file exists and is valid JSON
-- Required schema fields present
-- Enabled targets have corresponding generated files
-- Disabled targets don't have stale files lingering
-- Stack drift detection (compares current detection vs. saved state)
-- Structure paths exist on disk
-- Project description and custom rules are populated
-- Staleness check (warns if last sync was 30+ days ago)
-
-```bash
-aware doctor
-```
-
-### `aware add`
-
-Interactively add a rule, convention, or structure entry to `.aware.json`.
-
-```bash
-aware add -t rule                   # Add a project-specific rule
-aware add -t convention             # Add a naming/import/testing convention
-aware add -t structure              # Add a directory description
-```
+- `0` — No drift
+- `1` — Stack drift detected (re-run `aware sync` to update generated files)
+- `2` — Tamper detected (a generated file was edited by hand since the last sync)
 
 ## How It Works
 
@@ -184,7 +165,7 @@ Detection results go into `.aware.json`. Edit this file to customize conventions
   "stack": {
     "framework": "nextjs@15.1:app-router",
     "language": "typescript@5.5",
-    "orm": "drizzle",
+    "orm": "drizzle"
     // ... auto-detected
   },
   "conventions": {
@@ -195,7 +176,7 @@ Detection results go into `.aware.json`. Edit this file to customize conventions
   },
   "rules": [
     "Use server components by default",
-    "Never use any -- define proper types"
+    "Never use any — define proper types"
   ],
   "structure": {
     "src/app/": "Next.js App Router pages and layouts",
@@ -214,7 +195,7 @@ Conventions are auto-generated based on the detected language and framework (e.g
 
 ### 3. Fragment System
 
-Each detected stack component maps to a **fragment** -- a chunk of context-aware best practices and conventions. Fragments cover frameworks, ORMs, testing tools, linting, deployment, auth, API patterns, state management, and CI/CD.
+Each detected stack component maps to a **fragment** — a chunk of context-aware best practices and conventions. Fragments cover frameworks, ORMs, testing tools, linting, deployment, auth, API patterns, state management, and CI/CD.
 
 Fragments are resolved based on your detected stack and composed into a unified context. Only relevant fragments are included.
 
@@ -224,8 +205,8 @@ Each AI tool gets the format it works best with:
 
 | Target | File | Style |
 |--------|------|-------|
-| Claude Code | `CLAUDE.md` | Full markdown -- verbose, all sections, fragment content included inline |
-| Cursor | `.cursorrules` | Concise flat rules -- imperative style, condensed fragments |
+| Claude Code | `CLAUDE.md` | Full markdown — verbose, all sections, fragment content included inline |
+| Cursor | `.cursorrules` | Concise flat rules — imperative style, condensed fragments |
 | GitHub Copilot | `.github/copilot-instructions.md` | Medium markdown, trimmed |
 | AGENTS.md | `AGENTS.md` | Structured sections (Context, Conventions, Constraints) |
 
@@ -259,87 +240,32 @@ Each AI tool gets the format it works best with:
 
 **Monorepos:** Turborepo, Nx, pnpm workspaces
 
-## Project Structure
+## CI Integration
 
-```
-aware-tool/
-├── src/
-│   ├── cli.ts                    # CLI entry point (Commander.js)
-│   ├── constants.ts              # Version, config filename, target definitions
-│   ├── types.ts                  # TypeScript types for detection, config, fragments
-│   ├── commands/
-│   │   ├── init.ts               # Detect stack, generate config + context files
-│   │   ├── sync.ts               # Re-detect and regenerate from .aware.json
-│   │   ├── diff.ts               # Show stack changes since last sync
-│   │   ├── watch.ts              # File watcher with auto-sync support
-│   │   ├── validate.ts           # Schema and content validation
-│   │   ├── doctor.ts             # Project health diagnostics
-│   │   └── add.ts                # Interactive add rule/convention/structure
-│   ├── detectors/                # 15 parallel stack detectors
-│   │   ├── index.ts              # Orchestrates all detectors via Promise.all
-│   │   ├── framework.ts          # Next.js, Remix, Astro, Express, etc.
-│   │   ├── language.ts           # TypeScript, Python, Rust, Go
-│   │   ├── styling.ts            # Tailwind, styled-components, CSS Modules
-│   │   ├── orm.ts                # Drizzle, Prisma, TypeORM, etc.
-│   │   ├── database.ts           # PostgreSQL, MySQL, MongoDB, SQLite
-│   │   ├── testing.ts            # Vitest, Jest, Playwright, Cypress, pytest
-│   │   ├── linting.ts            # ESLint, Prettier, Biome
-│   │   ├── package-manager.ts    # pnpm, npm, Yarn, Bun
-│   │   ├── monorepo.ts           # Turborepo, Nx, pnpm workspaces
-│   │   ├── deployment.ts         # Vercel, Netlify, Fly.io, Docker
-│   │   ├── auth.ts               # NextAuth, Clerk, Lucia, etc.
-│   │   ├── api-style.ts          # tRPC, GraphQL, REST
-│   │   ├── state-management.ts   # Zustand, Redux Toolkit, Jotai, XState
-│   │   ├── cicd.ts               # GitHub Actions, GitLab CI
-│   │   └── bundler.ts            # Vite, Webpack, esbuild, etc.
-│   ├── fragments/                # Stack-specific context fragments
-│   │   ├── index.ts              # Resolves and sorts applicable fragments
-│   │   ├── common.ts             # Shared fragment utilities
-│   │   ├── framework/            # 17 framework fragments
-│   │   ├── styling/              # 3 styling fragments
-│   │   ├── orm/                  # 6 ORM fragments
-│   │   ├── testing/              # 5 testing fragments
-│   │   ├── linting/              # 3 linting fragments
-│   │   ├── deployment/           # 5 deployment fragments
-│   │   ├── auth/                 # 5 auth fragments
-│   │   ├── api/                  # 3 API fragments
-│   │   ├── state-management/     # 4 state management fragments
-│   │   └── cicd/                 # 2 CI/CD fragments
-│   ├── generators/               # Output adapters per AI tool
-│   │   ├── index.ts              # Runs enabled generators
-│   │   ├── base.ts               # Abstract base generator
-│   │   ├── composer.ts           # Composes context from config + fragments
-│   │   ├── claude.ts             # Full markdown output for CLAUDE.md
-│   │   ├── cursor.ts             # Concise imperative rules for .cursorrules
-│   │   ├── copilot.ts            # Medium markdown for copilot-instructions.md
-│   │   └── agents.ts             # Structured sections for AGENTS.md
-│   └── utils/
-│       ├── config.ts             # Load/save .aware.json, compute detection hash
-│       ├── fs.ts                 # File system helpers
-│       ├── logger.ts             # Colored console output
-│       ├── parsers.ts            # package.json, TOML, YAML parsers
-│       └── prompts.ts            # Interactive confirm/prompt helpers
-├── tests/
-│   ├── detectors/                # Tests for all 15 detectors
-│   ├── generators/               # Tests for Claude and Cursor generators
-│   ├── fragments/                # Tests for fragment composition
-│   ├── utils/                    # Tests for config and parser utilities
-│   └── fixtures/                 # Sample projects (nextjs-app, vite-react, etc.)
-├── package.json
-├── tsconfig.json
-├── tsup.config.ts                # Bundles to single ESM file with node shebang
-└── vitest.config.ts
+Add a drift gate to your CI so generated context files never fall out of sync with the actual stack:
+
+```yaml
+# .github/workflows/aware.yml
+name: AI Context Drift
+on: [pull_request]
+jobs:
+  aware:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npx @whenlabs/aware diff --check --quiet
 ```
 
 ## Tech Stack
 
 - **Language:** TypeScript (ES2022, strict mode)
 - **CLI Framework:** [Commander.js](https://github.com/tj/commander.js)
-- **File Watching:** [chokidar](https://github.com/paulmillr/chokidar)
 - **Config Parsing:** [js-yaml](https://github.com/nodeca/js-yaml), [toml](https://github.com/BinaryMuse/toml-node), [dotenv](https://github.com/motdotla/dotenv)
-- **Diffing:** [fast-json-patch](https://github.com/Starcounter-Jack/JSON-Patch)
 - **File Globbing:** [fast-glob](https://github.com/mrmlnc/fast-glob)
-- **Output:** [chalk](https://github.com/chalk/chalk), [ora](https://github.com/sindresorhus/ora) (spinners)
+- **Output:** [chalk](https://github.com/chalk/chalk), [ora](https://github.com/sindresorhus/ora)
 - **Build:** [tsup](https://github.com/egoist/tsup) (ESM, Node 20+ target)
 - **Testing:** [Vitest](https://vitest.dev/) with fixture-based project testing
 
@@ -357,9 +283,6 @@ pnpm build
 
 # Run tests
 pnpm test
-
-# Run tests in watch mode
-pnpm test:watch
 
 # Type check
 pnpm lint

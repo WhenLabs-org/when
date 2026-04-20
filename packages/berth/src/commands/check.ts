@@ -54,13 +54,7 @@ export async function scanCheck(
     ]);
 
   const warnings = [...ctx.warnings, ...activeWarnings, ...configuredWarnings];
-  const conflicts = detectAllConflicts({
-    active,
-    docker,
-    configured,
-    reservations: ctx.reservations,
-    team: ctx.team,
-  });
+  const conflicts = detectAllConflicts({ active, docker, configured });
 
   const allResolutions = [];
   for (const conflict of conflicts) {

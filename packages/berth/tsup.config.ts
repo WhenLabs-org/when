@@ -11,15 +11,6 @@ export default defineConfig([
     splitting: false,
   },
   {
-    entry: { mcp: 'src/mcp/cli.ts' },
-    format: ['esm'],
-    clean: false,
-    shims: true,
-    banner: { js: '#!/usr/bin/env node' },
-    target: 'node18',
-    splitting: false,
-  },
-  {
     entry: ['src/index.ts'],
     format: ['esm'],
     dts: true,

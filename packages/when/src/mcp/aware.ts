@@ -1,6 +1,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
-import { runCli, formatOutput, writeCache, deriveProject } from './run-cli.js';
+import { runCli, formatOutput, writeCache } from './run-cli.js';
+import { detectProjectDirName } from '../utils/detect-project.js';
 
 export function registerAwareTools(server: McpServer): void {
   server.tool(
@@ -15,7 +16,7 @@ export function registerAwareTools(server: McpServer): void {
       if (dryRun) args.push('--dry-run');
       const result = await runCli('aware', args, path);
       const output = formatOutput(result);
-      writeCache('aware_sync', deriveProject(path), output, result.code);
+      writeCache('aware_sync', detectProjectDirName(path), output, result.exitCode);
       return { content: [{ type: 'text' as const, text: output }] };
     },
   );

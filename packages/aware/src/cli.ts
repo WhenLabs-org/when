@@ -140,6 +140,12 @@ program
   .command("add")
   .description("Add a rule, convention, or structure entry to .aware.json")
   .requiredOption("-t, --type <type>", "Type to add: rule, convention, structure")
+  .option("--rule <text>", "Rule text (required for type=rule when non-interactive)")
+  .option("--dir <path>", "Directory path (required for type=structure when non-interactive)")
+  .option("--description <text>", "Description (required for type=structure when non-interactive)")
+  .option("--category <name>", "Category (required for type=convention when non-interactive)")
+  .option("--key <name>", "Key (required for type=convention when non-interactive)")
+  .option("--value <text>", "Value (required for type=convention when non-interactive)")
   .action(addCommand);
 
 program

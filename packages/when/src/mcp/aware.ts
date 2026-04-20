@@ -100,9 +100,43 @@ export function registerAwareTools(server: McpServer): void {
     {
       path: z.string().optional().describe('Project directory (defaults to cwd)'),
       type: z.enum(['rule', 'convention', 'structure']).describe('Type to add'),
+      rule: z.string().optional().describe('Rule text (required when type=rule)'),
+      dir: z.string().optional().describe('Directory path (required when type=structure)'),
+      description: z.string().optional().describe('Description (required when type=structure)'),
+      category: z.string().optional().describe('Category e.g. naming, imports (required when type=convention)'),
+      key: z.string().optional().describe('Key e.g. files, functions (required when type=convention)'),
+      value: z.string().optional().describe('Value (required when type=convention)'),
     },
-    async ({ path, type }) => {
+    async ({ path, type, rule, dir, description, category, key, value }) => {
+      const missing: string[] = [];
+      if (type === 'rule' && !rule) missing.push('rule');
+      if (type === 'structure') {
+        if (!dir) missing.push('dir');
+        if (!description) missing.push('description');
+      }
+      if (type === 'convention') {
+        if (!category) missing.push('category');
+        if (!key) missing.push('key');
+        if (!value) missing.push('value');
+      }
+      if (missing.length) {
+        return {
+          content: [{
+            type: 'text' as const,
+            text: `aware_add: missing required argument(s) for type=${type}: ${missing.join(', ')}`,
+          }],
+          isError: true,
+        };
+      }
+
       const args = ['add', '--type', type];
+      if (rule) args.push('--rule', rule);
+      if (dir) args.push('--dir', dir);
+      if (description) args.push('--description', description);
+      if (category) args.push('--category', category);
+      if (key) args.push('--key', key);
+      if (value) args.push('--value', value);
+
       const result = await runCli('aware', args, path);
       const output = formatOutput(result);
       return { content: [{ type: 'text' as const, text: output }] };

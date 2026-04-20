@@ -50,11 +50,6 @@ export function canonicalReport(): DriftReport {
         'api-route': { errors: 0, warnings: 0, passed: 0 },
         'git-staleness': { errors: 0, warnings: 0, passed: 0 },
         'comment-staleness': { errors: 0, warnings: 0, passed: 0 },
-        'semantic': { errors: 0, warnings: 0, passed: 0 },
-        'completeness': { errors: 0, warnings: 0, passed: 0 },
-        'example': { errors: 0, warnings: 0, passed: 0 },
-        'architecture': { errors: 0, warnings: 0, passed: 0 },
-        'response-shape': { errors: 0, warnings: 0, passed: 0 },
       },
     },
   };

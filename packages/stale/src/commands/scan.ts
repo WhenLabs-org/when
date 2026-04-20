@@ -1,5 +1,5 @@
 import { resolve } from 'node:path';
-import type { CliFlags, DriftReport, DriftSummary, DriftIssue, DriftCategory } from '../types.js';
+import type { Analyzer, CliFlags, DriftReport, DriftSummary, DriftIssue, DriftCategory } from '../types.js';
 import { resolveConfig } from '../config.js';
 import { parseAllDocs } from '../parsers/markdown.js';
 import { parseCodebase } from '../parsers/codebase.js';
@@ -11,27 +11,33 @@ const ALL_CATEGORIES: DriftCategory[] = [
   'git-staleness', 'comment-staleness',
 ];
 
-function buildSummary(issues: DriftIssue[], totalChecks: number): DriftSummary {
+function buildSummary(issues: DriftIssue[], analyzers: Analyzer[]): DriftSummary {
   const errors = issues.filter((i) => i.severity === 'error').length;
   const warnings = issues.filter((i) => i.severity === 'warning').length;
   const infos = issues.filter((i) => i.severity === 'info').length;
 
+  const categoriesWithIssues = new Set(issues.map((i) => i.category));
+
   const byCategory = {} as DriftSummary['byCategory'];
   for (const cat of ALL_CATEGORIES) {
     const catIssues = issues.filter((i) => i.category === cat);
+    const analyzerRanForCategory = analyzers.some((a) => a.category === cat);
     byCategory[cat] = {
       errors: catIssues.filter((i) => i.severity === 'error').length,
       warnings: catIssues.filter((i) => i.severity === 'warning').length,
-      passed: 0,
+      passed: analyzerRanForCategory && catIssues.length === 0 ? 1 : 0,
     };
   }
+
+  const totalChecks = analyzers.length;
+  const passed = analyzers.filter((a) => !categoriesWithIssues.has(a.category)).length;
 
   return {
     totalChecks,
     errors,
     warnings,
     infos,
-    passed: totalChecks - errors - warnings - infos,
+    passed,
     byCategory,
   };
 }
@@ -61,7 +67,6 @@ export async function scan(options: CliFlags): Promise<ScanOutcome> {
   const issues = await runAnalyzers(staticAnalyzers, ctx);
 
   const duration = Date.now() - startTime;
-  const totalChecks = docs.length * staticAnalyzers.length;
 
   const report: DriftReport = {
     projectPath,
@@ -70,7 +75,7 @@ export async function scan(options: CliFlags): Promise<ScanOutcome> {
     docsScanned: docs.map((d) => d.filePath),
     config,
     issues,
-    summary: buildSummary(issues, totalChecks),
+    summary: buildSummary(issues, staticAnalyzers),
   };
 
   return { kind: 'report', report };

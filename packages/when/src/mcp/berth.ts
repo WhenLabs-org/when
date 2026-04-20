@@ -81,10 +81,12 @@ export function registerBerthTools(server: McpServer): void {
       oldPort: z.number().describe('Current port number'),
       newPort: z.number().describe('New port number'),
       project: z.string().optional().describe('Project name from registry'),
+      dryRun: z.coerce.boolean().optional().describe('Show which files would change without writing them'),
     },
-    async ({ oldPort, newPort, project }) => {
+    async ({ oldPort, newPort, project, dryRun }) => {
       const args = ['reassign', String(oldPort), String(newPort)];
       if (project) args.push('--project', project);
+      if (dryRun) args.push('--dry-run');
       const result = await runCli('berth', args);
       const output = formatOutput(result);
       return { content: [{ type: 'text' as const, text: output }] };

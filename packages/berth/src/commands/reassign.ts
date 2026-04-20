@@ -8,6 +8,7 @@ import { formatJson } from '../reporters/json.js';
 
 interface ReassignOptions extends GlobalOptions {
   project?: string;
+  dryRun?: boolean;
 }
 
 export async function reassignCommand(
@@ -15,6 +16,7 @@ export async function reassignCommand(
   newPortStr: string,
   options: ReassignOptions,
 ): Promise<void> {
+  const dryRun = options.dryRun === true;
   const oldPort = parsePortString(oldPortStr);
   const newPort = parsePortString(newPortStr);
 
@@ -45,10 +47,10 @@ export async function reassignCommand(
     projectDir = process.cwd();
   }
 
-  const result = await reassignPort(projectDir, oldPort, newPort);
+  const result = await reassignPort(projectDir, oldPort, newPort, { dryRun });
 
   // Update registry if project is registered
-  if (options.project) {
+  if (options.project && !dryRun) {
     const registry = await loadRegistry();
     const project = registry.projects[options.project];
     if (project) {
@@ -61,13 +63,17 @@ export async function reassignCommand(
   }
 
   if (options.json) {
-    console.log(formatJson({ oldPort, newPort, filesModified: result.filesModified }));
+    console.log(formatJson({ oldPort, newPort, filesModified: result.filesModified, dryRun }));
   } else {
     if (result.filesModified.length > 0) {
-      console.log(chalk.green(`Reassigned port ${oldPort} → ${newPort}`));
-      console.log('Modified files:');
+      const verb = dryRun ? 'Would reassign' : 'Reassigned';
+      console.log(chalk.green(`${verb} port ${oldPort} → ${newPort}`));
+      console.log(dryRun ? 'Files that would be modified:' : 'Modified files:');
       for (const f of result.filesModified) {
         console.log(`  ${f}`);
+      }
+      if (dryRun) {
+        console.log(chalk.dim('\nDry run — no files written. Re-run without --dry-run to apply.'));
       }
     } else {
       console.log(chalk.yellow(`No files found containing port ${oldPort}.`));

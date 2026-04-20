@@ -29,8 +29,10 @@ exports[`JsonReporter > matches the canonical snapshot 1`] = `
       "docs/**/*.md",
     ],
     "ignore": [
-      "node_modules/**",
-      "dist/**",
+      "**/node_modules/**",
+      "**/dist/**",
+      "**/build/**",
+      "**/coverage/**",
       ".git/**",
       ".stale-cache/**",
     ],

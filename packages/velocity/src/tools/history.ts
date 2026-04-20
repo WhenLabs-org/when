@@ -23,8 +23,11 @@ export function registerHistory(server: McpServer, queries: TaskQueries): void {
 
       const tasks = rows.map(row => {
         const t = parseTask(row);
+        // Strip the raw embedding buffer — it's a ~1.5KB byte array per task
+        // that blows up MCP output size and is never useful to a caller.
+        const { embedding: _embedding, ...rest } = t;
         return {
-          ...t,
+          ...rest,
           duration_human: t.duration_seconds != null ? formatDuration(t.duration_seconds) : null,
         };
       });

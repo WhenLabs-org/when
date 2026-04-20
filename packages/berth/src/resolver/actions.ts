@@ -79,10 +79,12 @@ export async function reassignPort(
   projectDir: string,
   oldPort: number,
   newPort: number,
+  options: { dryRun?: boolean } = {},
 ): Promise<{ filesModified: string[] }> {
   const filesModified: string[] = [];
   const oldStr = String(oldPort);
   const newStr = String(newPort);
+  const dryRun = options.dryRun === true;
 
   // .env files
   const envFiles = ['.env', '.env.local', '.env.development', '.env.dev'];
@@ -105,7 +107,7 @@ export async function reassignPort(
       );
 
       if (content !== original) {
-        await fs.writeFile(filePath, content, 'utf-8');
+        if (!dryRun) await fs.writeFile(filePath, content, 'utf-8');
         filesModified.push(filePath);
       }
     } catch {
@@ -128,7 +130,7 @@ export async function reassignPort(
       );
 
       if (content !== original) {
-        await fs.writeFile(filePath, content, 'utf-8');
+        if (!dryRun) await fs.writeFile(filePath, content, 'utf-8');
         filesModified.push(filePath);
       }
     } catch {
@@ -158,7 +160,7 @@ export async function reassignPort(
       .join('\n');
 
     if (content !== original) {
-      await fs.writeFile(pkgPath, content, 'utf-8');
+      if (!dryRun) await fs.writeFile(pkgPath, content, 'utf-8');
       filesModified.push(pkgPath);
     }
   } catch {

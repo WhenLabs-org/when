@@ -71,9 +71,16 @@ function cleanLegacyMcpJson(): string | null {
   return null;
 }
 
+// `@whenlabs/when` ships two bins (`when` and `when-mcp`). `npx <pkg> <bin>`
+// always runs the default bin and treats the rest as args — `npx @whenlabs/when
+// when-mcp` fails with "unknown command 'when-mcp'". The `-p <pkg>` form
+// installs the package but lets `<bin>` pick the non-default entry. `@latest`
+// guards against a stale cached version overriding the intended one.
+export const MCP_SERVER_COMMAND = 'npx -y -p @whenlabs/when@latest when-mcp';
+
 export function registerMcpServer(): { success: boolean; message: string } {
   // All 6 tools (including velocity) are now served by the single whenlabs MCP
-  const whenlabs = registerServer('whenlabs', 'npx @whenlabs/when when-mcp');
+  const whenlabs = registerServer('whenlabs', MCP_SERVER_COMMAND);
 
   // Clean up legacy standalone velocity-mcp from user scope
   const legacyCleanup = unregisterServer('velocity-mcp');

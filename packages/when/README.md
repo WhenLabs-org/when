@@ -71,11 +71,13 @@ If you're not using the `install` command, add this to your Claude Code MCP conf
   "mcpServers": {
     "whenlabs": {
       "command": "npx",
-      "args": ["@whenlabs/when", "when-mcp"]
+      "args": ["-y", "-p", "@whenlabs/when@latest", "when-mcp"]
     }
   }
 }
 ```
+
+The `-p` flag is required — `@whenlabs/when` ships two bins (`when` and `when-mcp`), and `npx @whenlabs/when when-mcp` runs the default `when` bin with `when-mcp` as an unknown subcommand.
 
 ## License
 

@@ -1,6 +1,6 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { getRegistryDir } from '../registry/store.js';
+import os from 'node:os';
 
 interface CacheEnvelope<T> {
   cachedAt: string; // ISO
@@ -9,7 +9,9 @@ interface CacheEnvelope<T> {
 }
 
 export function getCacheDir(): string {
-  return path.join(getRegistryDir(), 'cache');
+  const xdg = process.env.XDG_CACHE_HOME;
+  const base = xdg ? xdg : path.join(os.homedir(), '.cache');
+  return path.join(base, 'berth');
 }
 
 export function getCachePath(key: string): string {

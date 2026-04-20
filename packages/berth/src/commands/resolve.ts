@@ -8,8 +8,6 @@ import { killPortProcess, reassignPort } from '../resolver/actions.js';
 import { findFreePort } from '../utils/ports.js';
 import { formatJson } from '../reporters/json.js';
 import { buildScanContext } from './_context.js';
-import { appendEvents } from '../history/recorder.js';
-import type { HistoryEvent } from '../history/events.js';
 
 export type Strategy = 'kill' | 'reassign' | 'auto';
 
@@ -86,13 +84,7 @@ export async function resolveCommand(options: ResolveOptions): Promise<void> {
     detectAllConfigured(absDir, { registry: ctx.detectorRegistry, config: ctx.config }),
   ]);
 
-  const conflicts = detectAllConflicts({
-    active,
-    docker,
-    configured,
-    reservations: ctx.reservations,
-    team: ctx.team,
-  });
+  const conflicts = detectAllConflicts({ active, docker, configured });
 
   if (conflicts.length === 0) {
     if (options.json) {
@@ -117,11 +109,7 @@ export async function resolveCommand(options: ResolveOptions): Promise<void> {
   // Track ports we've already decided to reassign to, so we don't double-assign
   const usedPorts: number[] = [];
 
-  // Team policy: killBlockingProcesses overrides the --kill flag.
-  // "never" disables kill entirely; "always" allows it without --kill.
-  const killPolicy = ctx.team?.policies?.killBlockingProcesses;
-  const killAllowed =
-    killPolicy === 'never' ? false : killPolicy === 'always' ? true : options.kill ?? false;
+  const killAllowed = options.kill ?? false;
 
   for (const conflict of conflicts) {
     const resolutions = await suggestResolutions(conflict);
@@ -130,9 +118,7 @@ export async function resolveCommand(options: ResolveOptions): Promise<void> {
     if (!chosen) {
       if (!options.json) {
         console.log(chalk.yellow(`  [skip] Port ${conflict.port} -- cannot auto-resolve: ${conflict.suggestion}`));
-        if (killPolicy === 'never' && resolutions.some((r) => r.type === 'kill')) {
-          console.log(chalk.dim(`         Team policy forbids killing blocking processes.`));
-        } else if (!killAllowed && resolutions.some((r) => r.type === 'kill')) {
+        if (!killAllowed && resolutions.some((r) => r.type === 'kill')) {
           console.log(chalk.dim(`         Pass --kill to allow killing blocking processes.`));
         }
       }
@@ -254,21 +240,6 @@ export async function resolveCommand(options: ResolveOptions): Promise<void> {
         `Run with ${chalk.bold('--kill')} or fix manually.`,
       );
     }
-  }
-
-  if (!options.dryRun) {
-    const now = new Date().toISOString();
-    const events: HistoryEvent[] = actions
-      .filter((a) => a.type === 'kill' || a.type === 'reassign')
-      .map((a) => ({
-        type: 'resolution-applied',
-        at: now,
-        port: a.port,
-        action: a.type as 'kill' | 'reassign',
-        detail: a.description,
-        success: a.success,
-      }));
-    if (events.length > 0) await appendEvents(events).catch(() => {});
   }
 
   if (actions.some((a) => !a.success)) {

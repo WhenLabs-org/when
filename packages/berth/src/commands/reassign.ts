@@ -2,12 +2,9 @@ import chalk from 'chalk';
 import type { GlobalOptions } from '../types.js';
 import { parsePortString } from '../utils/ports.js';
 import { reassignPort } from '../resolver/actions.js';
-import { loadRegistry, saveRegistry } from '../registry/store.js';
-import { getProjectByName } from '../registry/project.js';
 import { formatJson } from '../reporters/json.js';
 
 interface ReassignOptions extends GlobalOptions {
-  project?: string;
   dryRun?: boolean;
 }
 
@@ -32,35 +29,7 @@ export async function reassignCommand(
     return;
   }
 
-  let projectDir: string | null = null;
-
-  if (options.project) {
-    const registry = await loadRegistry();
-    const project = getProjectByName(options.project, registry);
-    if (!project) {
-      console.error(chalk.red(`Project "${options.project}" not found in registry.`));
-      process.exitCode = 2;
-      return;
-    }
-    projectDir = project.directory;
-  } else {
-    projectDir = process.cwd();
-  }
-
-  const result = await reassignPort(projectDir, oldPort, newPort, { dryRun });
-
-  // Update registry if project is registered
-  if (options.project && !dryRun) {
-    const registry = await loadRegistry();
-    const project = registry.projects[options.project];
-    if (project) {
-      project.ports = project.ports.map((p) =>
-        p.port === oldPort ? { ...p, port: newPort } : p,
-      );
-      project.updatedAt = new Date().toISOString();
-      await saveRegistry(registry);
-    }
-  }
+  const result = await reassignPort(process.cwd(), oldPort, newPort, { dryRun });
 
   if (options.json) {
     console.log(formatJson({ oldPort, newPort, filesModified: result.filesModified, dryRun }));

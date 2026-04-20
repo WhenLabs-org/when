@@ -2,8 +2,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { detectAllActive } from '../detectors/index.js';
 import { gracefulKill, isDevProcess } from '../utils/process.js';
-import type { KillOutput, Registry } from '../types.js';
-import { getProjectByName } from '../registry/project.js';
+import type { KillOutput } from '../types.js';
 import { invalidateCache } from '../utils/cache.js';
 
 export async function killPortProcess(port: number): Promise<KillOutput> {
@@ -40,32 +39,6 @@ export async function killDevProcesses(): Promise<KillOutput> {
     const success = await gracefulKill(proc.pid);
     if (success) {
       killed.push({ pid: proc.pid, port: proc.port, process: proc.process, project: proc.project });
-    } else {
-      failed.push({ pid: proc.pid, port: proc.port, error: 'Failed to kill process' });
-    }
-  }
-
-  const freedPorts = [...new Set(killed.map((k) => k.port))];
-  return { killed, failed, freedPorts };
-}
-
-export async function freeProjectPorts(projectName: string, registry: Registry): Promise<KillOutput> {
-  const project = getProjectByName(projectName, registry);
-  if (!project) {
-    return { killed: [], failed: [], freedPorts: [] };
-  }
-
-  const registeredPorts = new Set(project.ports.map((p) => p.port));
-  const { ports: activePorts } = await detectAllActive();
-  const matching = activePorts.filter((p) => registeredPorts.has(p.port));
-
-  const killed: KillOutput['killed'] = [];
-  const failed: KillOutput['failed'] = [];
-
-  for (const proc of matching) {
-    const success = await gracefulKill(proc.pid);
-    if (success) {
-      killed.push({ pid: proc.pid, port: proc.port, process: proc.process, project: projectName });
     } else {
       failed.push({ pid: proc.pid, port: proc.port, error: 'Failed to kill process' });
     }

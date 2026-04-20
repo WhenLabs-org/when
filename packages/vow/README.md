@@ -33,7 +33,7 @@ Part of the [WhenLabs](https://whenlabs.org) umbrella.
   4. TF-IDF text classifier (local, no API -- covers ~19 common licenses at cosine similarity ≥ 0.7)
   5. npm registry API fallback (cached at `~/.cache/vow/registry/`, 7-day TTL; negative cache for 404s) -- lets you scan in CI **without** running `npm install`. Disable with `--no-registry`.
 
-  Packages that fall through all five steps are reported with `category: 'unknown'`. An AI-based fallback (Claude) is on the roadmap — see [next.md](./next.md).
+  Packages that fall through all five steps are reported with `category: 'unknown'`.
 - **Plain-English policy engine** -- Describe your license policy in natural language. Claude API parses it into structured rules, cached with SHA-256 hash and 30-day TTL
 - **First-match-wins rule evaluator** -- Supports SPDX OR/AND legal semantics, scope filtering (dev/prod), package-level overrides
 - **Dependency graph** -- Directed graph with cycle detection, BFS depth calculation, path-to-root tracing

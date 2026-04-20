@@ -1,4 +1,4 @@
-import type { Analyzer, AiAnalyzer, AnalyzerContext, DriftIssue, StaleConfig } from '../types.js';
+import type { Analyzer, AnalyzerContext, DriftIssue, StaleConfig } from '../types.js';
 import { CommandsAnalyzer } from './static/commands.js';
 import { FilePathsAnalyzer } from './static/file-paths.js';
 import { EnvVarsAnalyzer } from './static/env-vars.js';
@@ -9,9 +9,6 @@ import { DependenciesAnalyzer } from './static/dependencies.js';
 import { ApiRoutesAnalyzer } from './static/api-routes.js';
 import { GitStalenessAnalyzer } from './static/git-staleness.js';
 import { CommentStalenessAnalyzer } from './static/comment-staleness.js';
-import { SemanticAnalyzer } from './ai/semantic.js';
-import { CompletenessAnalyzer } from './ai/completeness.js';
-import { ExamplesAnalyzer } from './ai/examples.js';
 
 export function getStaticAnalyzers(config: StaleConfig): Analyzer[] {
   const analyzers: Analyzer[] = [];
@@ -28,18 +25,6 @@ export function getStaticAnalyzers(config: StaleConfig): Analyzer[] {
   if (config.checks.apiRoutes) analyzers.push(new ApiRoutesAnalyzer());
   if (config.checks.gitStaleness) analyzers.push(new GitStalenessAnalyzer());
   if (config.checks.commentStaleness) analyzers.push(new CommentStalenessAnalyzer());
-
-  return analyzers;
-}
-
-export function getAiAnalyzers(config: StaleConfig): AiAnalyzer[] {
-  const analyzers: AiAnalyzer[] = [];
-
-  if (!config.ai.enabled) return analyzers;
-
-  if (config.ai.checks.semantic) analyzers.push(new SemanticAnalyzer());
-  if (config.ai.checks.completeness) analyzers.push(new CompletenessAnalyzer());
-  if (config.ai.checks.examples) analyzers.push(new ExamplesAnalyzer());
 
   return analyzers;
 }

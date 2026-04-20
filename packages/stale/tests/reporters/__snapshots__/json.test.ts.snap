@@ -3,15 +3,6 @@
 exports[`JsonReporter > matches the canonical snapshot 1`] = `
 {
   "config": {
-    "ai": {
-      "checks": {
-        "completeness": true,
-        "examples": true,
-        "semantic": true,
-      },
-      "enabled": false,
-      "model": "sonnet",
-    },
     "checks": {
       "apiRoutes": true,
       "commands": true,

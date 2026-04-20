@@ -115,24 +115,4 @@ describe('runAction', () => {
     expect(rec.failed).toBeNull();
   });
 
-  it('fails gracefully when deep=true without STALE_AI_KEY', async () => {
-    const dir = await mkdtemp(join(tmpdir(), 'stale-action-'));
-    try {
-      await writeFile(join(dir, 'README.md'), '# Hi\n');
-      await writeFile(join(dir, 'package.json'), JSON.stringify({ name: 'x' }));
-      const rec = baseRec();
-      rec.inputs = { 'deep': 'true' };
-      const prevKey = process.env.STALE_AI_KEY;
-      delete process.env.STALE_AI_KEY;
-      try {
-        const result = await runAction({ io: makeIo(rec), projectPath: dir });
-        expect(result.kind).toBe('failed');
-        expect(rec.failed).toMatch(/STALE_AI_KEY/);
-      } finally {
-        if (prevKey !== undefined) process.env.STALE_AI_KEY = prevKey;
-      }
-    } finally {
-      await rm(dir, { recursive: true, force: true });
-    }
-  });
 });

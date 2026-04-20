@@ -15,9 +15,8 @@ const TOOL_NAME = 'stale';
 const TOOL_DESCRIPTION = 'Detect documentation drift in your codebase';
 
 export interface StaleScanOptions {
-  deep?: boolean;
   git?: boolean;
-  format?: 'terminal' | 'json' | 'markdown' | 'sarif';
+  format?: 'terminal' | 'json' | 'markdown';
   config?: string;
   path?: string;
   verbose?: boolean;
@@ -62,7 +61,6 @@ export async function scan(opts: ScanOptions = {}): Promise<ScanResult> {
   };
 
   const flags: CliFlags = {
-    deep: toolOpts.deep,
     git: toolOpts.git,
     format: toolOpts.format,
     config: toolOpts.config,
@@ -72,8 +70,6 @@ export async function scan(opts: ScanOptions = {}): Promise<ScanResult> {
 
   const outcome = await runScan(flags);
   const findings: Finding[] = [];
-  // `raw` preserves the full DriftReport so consumers (e.g. JsonReporter) can
-  // keep using the native shape once they migrate through the core contract.
   let raw: DriftReport | undefined;
 
   if (outcome.kind === 'report') {
@@ -81,13 +77,6 @@ export async function scan(opts: ScanOptions = {}): Promise<ScanResult> {
     for (const issue of outcome.report.issues) {
       findings.push(issueToFinding(issue));
     }
-  } else if (outcome.kind === 'missing-ai-key') {
-    findings.push({
-      tool: TOOL_NAME,
-      ruleId: 'missing-ai-key',
-      severity: 'error',
-      message: '--deep requires STALE_AI_KEY environment variable',
-    });
   }
   // 'no-docs' is a clean result — no findings, ok: true.
 

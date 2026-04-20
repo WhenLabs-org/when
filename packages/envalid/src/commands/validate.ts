@@ -7,31 +7,10 @@ import type {
 import type { EnvFile } from "../env/reader.js";
 import { validateValue } from "../schema/validators.js";
 import { closestMatch } from "../utils/strings.js";
-import { pLimit } from "../utils/concurrency.js";
-import {
-  getDefaultRegistry,
-  type Registry,
-} from "../runtime/registry.js";
-import { registerBuiltins } from "../runtime/builtins.js";
 
 export interface ValidateOptions {
   environment?: string;
   ci?: boolean;
-}
-
-export interface ValidateAsyncOptions extends ValidateOptions {
-  /** Run async/live validators. Default false. */
-  checkLive?: boolean;
-  concurrency?: number;
-  registry?: Registry;
-  signal?: AbortSignal;
-}
-
-let builtinsRegistered = false;
-function ensureBuiltins(): void {
-  if (builtinsRegistered) return;
-  registerBuiltins(getDefaultRegistry());
-  builtinsRegistered = true;
 }
 
 export function validate(
@@ -57,69 +36,6 @@ export function validate(
       });
     }
   }
-
-  return finalize(schema, sortIssues(issues));
-}
-
-export async function validateAsync(
-  schema: EnvSchema,
-  envFile: EnvFile,
-  options: ValidateAsyncOptions = {},
-): Promise<ValidationResult> {
-  ensureBuiltins();
-  const registry = options.registry ?? getDefaultRegistry();
-  const limit = pLimit(options.concurrency ?? 8);
-  const live = options.checkLive ?? false;
-
-  const issues: ValidationIssue[] = [];
-  collectStructuralIssues(schema, envFile, options, issues);
-
-  const tasks: Promise<void>[] = [];
-  for (const [name, varSchema] of Object.entries(schema.variables)) {
-    const value = envFile.variables[name];
-    if (value === undefined || value === "") continue;
-    const def = registry.getValidator(varSchema.type);
-    if (!def) {
-      issues.push({
-        variable: name,
-        severity: "error",
-        message: `Unknown type "${varSchema.type}"`,
-        kind: "invalid",
-      });
-      continue;
-    }
-    if (def.async && !live) {
-      issues.push({
-        variable: name,
-        severity: "info",
-        message: `Skipped live check for ${varSchema.type} (pass --check-live to run)`,
-        kind: "live-check-skipped",
-      });
-      continue;
-    }
-    tasks.push(
-      limit(async () => {
-        const result = await def.validate(value, varSchema, {
-          env: envFile.variables,
-          name,
-          live,
-          signal: options.signal,
-        });
-        if (!result.valid) {
-          issues.push({
-            variable: name,
-            severity: "error",
-            message: result.message,
-            actual: varSchema.sensitive ? "[REDACTED]" : value,
-            expected: varSchema.type,
-            kind: def.async ? "live-check-failed" : "invalid",
-          });
-        }
-      }),
-    );
-  }
-
-  await Promise.all(tasks);
 
   return finalize(schema, sortIssues(issues));
 }

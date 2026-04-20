@@ -5,8 +5,6 @@ exports[`TerminalReporter > matches the canonical snapshot (ANSI-stripped) 1`] =
 Scanning project: /tmp/project/
 Analyzing: README.md
 
-── Static Checks ──────────────────────────────────────────
-
 FILE PATHS (checking against filesystem)
   ✗ README.md:10 — References \`src/db.js\` — file does not exist
     Update to \`src/db.ts\`

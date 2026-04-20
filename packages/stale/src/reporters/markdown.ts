@@ -10,11 +10,6 @@ const CATEGORY_LABELS: Record<DriftCategory, string> = {
   'api-route': 'API Endpoints',
   'git-staleness': 'Git Staleness',
   'comment-staleness': 'Stale Comments',
-  'semantic': 'Semantic Drift',
-  'completeness': 'Completeness',
-  'example': 'Outdated Examples',
-  'architecture': 'Architecture',
-  'response-shape': 'Response Shapes',
 };
 
 function severityIcon(severity: string): string {

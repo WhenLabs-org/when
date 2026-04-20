@@ -11,12 +11,7 @@ export type DriftCategory =
   | 'dependency'
   | 'api-route'
   | 'git-staleness'
-  | 'comment-staleness'
-  | 'semantic'
-  | 'completeness'
-  | 'example'
-  | 'architecture'
-  | 'response-shape';
+  | 'comment-staleness';
 
 // --- Core Issue ---
 
@@ -247,14 +242,10 @@ export interface Analyzer {
   analyze(ctx: AnalyzerContext): Promise<DriftIssue[]>;
 }
 
-export interface AiAnalyzer extends Analyzer {
-  requiresApiKey: true;
-}
-
 // --- Reporter Interface ---
 
 export interface Reporter {
-  format: 'terminal' | 'json' | 'markdown' | 'sarif';
+  format: 'terminal' | 'json' | 'markdown';
   render(report: DriftReport): string;
 }
 
@@ -274,15 +265,6 @@ export interface StaleConfig {
     gitStaleness: boolean | { thresholdDays: number };
     commentStaleness: boolean;
   };
-  ai: {
-    enabled: boolean;
-    model: 'sonnet' | 'opus';
-    checks: {
-      semantic: boolean;
-      completeness: boolean;
-      examples: boolean;
-    };
-  };
   severity: {
     missingFile: Severity;
     deadCommand: Severity;
@@ -297,16 +279,15 @@ export interface StaleConfig {
     staleComment: Severity;
   };
   output: {
-    format: 'terminal' | 'json' | 'markdown' | 'sarif';
+    format: 'terminal' | 'json' | 'markdown';
   };
 }
 
 // --- CLI Flags ---
 
 export interface CliFlags {
-  deep?: boolean;
   git?: boolean;
-  format?: 'terminal' | 'json' | 'markdown' | 'sarif';
+  format?: 'terminal' | 'json' | 'markdown';
   config?: string;
   path?: string;
   verbose?: boolean;

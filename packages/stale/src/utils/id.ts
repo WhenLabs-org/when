@@ -10,11 +10,6 @@ const CATEGORY_PREFIX: Record<DriftCategory, string> = {
   'api-route': 'api',
   'git-staleness': 'git',
   'comment-staleness': 'cmt',
-  'semantic': 'sem',
-  'completeness': 'cmp',
-  'example': 'ex',
-  'architecture': 'arch',
-  'response-shape': 'resp',
 };
 
 const idCounts = new Map<string, number>();

@@ -18,15 +18,6 @@ export const DEFAULT_CONFIG: StaleConfig = {
     gitStaleness: false,
     commentStaleness: false,
   },
-  ai: {
-    enabled: false,
-    model: 'sonnet',
-    checks: {
-      semantic: true,
-      completeness: true,
-      examples: true,
-    },
-  },
   severity: {
     missingFile: 'error',
     deadCommand: 'error',
@@ -89,9 +80,6 @@ export async function loadConfig(projectPath: string): Promise<StaleConfig> {
 export function mergeWithCliFlags(config: StaleConfig, flags: CliFlags): StaleConfig {
   const result = { ...config };
 
-  if (flags.deep) {
-    result.ai = { ...result.ai, enabled: true };
-  }
   if (flags.git) {
     result.checks = { ...result.checks, gitStaleness: true };
   }

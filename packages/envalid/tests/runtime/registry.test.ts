@@ -1,7 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
   Registry,
-  definePlugin,
   getDefaultRegistry,
   resetDefaultRegistry,
 } from "../../src/runtime/registry.js";
@@ -25,31 +24,9 @@ describe("Registry", () => {
     expect(reg.validatorNames()).toContain("aws-region");
     expect(reg.getValidator("aws-region")?.typeHint).toBe("string");
   });
-
-  it("registers a plugin's validators and providers", () => {
-    const reg = new Registry();
-    const plugin = definePlugin({
-      name: "test",
-      validators: [
-        {
-          name: "x",
-          validate: () => ({ valid: true }),
-        },
-      ],
-      providers: [
-        {
-          scheme: "test-vault",
-          resolve: async () => "value",
-        },
-      ],
-    });
-    reg.registerPlugin(plugin);
-    expect(reg.getValidator("x")).toBeDefined();
-    expect(reg.getProvider("test-vault")).toBeDefined();
-  });
 });
 
-describe("parseSchemaString with plugin types", () => {
+describe("parseSchemaString with extra types", () => {
   it("rejects an unknown type with a did-you-mean hint", () => {
     expect(() =>
       parseSchemaString(
@@ -58,7 +35,7 @@ describe("parseSchemaString with plugin types", () => {
     ).toThrowError(/unknown type "strng"/);
   });
 
-  it("accepts a plugin-contributed type when passed via extraTypes", () => {
+  it("accepts an extra type when passed via extraTypes", () => {
     const schema = parseSchemaString(
       `version: 1\nvariables:\n  REGION:\n    type: aws-region\n    required: true\n`,
       { extraTypes: ["aws-region"] },

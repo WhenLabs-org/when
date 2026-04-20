@@ -1,4 +1,5 @@
 import { createRequire } from 'node:module';
+import { realpath } from 'node:fs/promises';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import type { BerthPlugin, BerthPluginRegistry } from '../detectors/api.js';
@@ -21,7 +22,15 @@ async function importPlugin(spec: string, configFilePath: string): Promise<Berth
   } catch (err) {
     throw new PluginLoadError(spec, err as Error);
   }
-  const url = pathToFileURL(resolved).href;
+  // Expand Windows 8.3 short paths (e.g. RUNNER~1) before building the
+  // file URL — see the sibling loader.ts for the full story.
+  let target = resolved;
+  try {
+    target = await realpath(resolved);
+  } catch {
+    // fall back to the resolved path
+  }
+  const url = pathToFileURL(target).href;
   const mod = await import(url);
   const fn = (mod as { default?: BerthPlugin }).default ?? (mod as unknown as BerthPlugin);
   if (typeof fn !== 'function') {

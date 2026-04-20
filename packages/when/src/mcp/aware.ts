@@ -26,7 +26,11 @@ export function registerAwareTools(server: McpServer): void {
         return { content: [{ type: 'text' as const, text: output + extras.join('') }] };
       }
       const scan = await aware.scan({ cwd: path, options: { targets } });
-      const output = formatScanResult(scan);
+      const scanOutput = formatScanResult(scan);
+      const header =
+        'aware_init (preview) — no files were written.\n' +
+        'Pass force: true to create/overwrite .aware.json and context files.\n\n';
+      const output = header + scanOutput;
       writeCache('aware_init', deriveProject(path), output, scan.ok ? 0 : 1);
       const extras = await checkTriggers('aware_init', { stdout: output, stderr: '', code: scan.ok ? 0 : 1 }, path);
       return { content: [{ type: 'text' as const, text: output + extras.join('') }] };

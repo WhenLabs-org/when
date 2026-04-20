@@ -112,7 +112,7 @@ async function extractSourceFacts(
     {
       cwd: projectPath,
       ignore: [
-        'node_modules/**', 'dist/**', '.git/**', 'coverage/**',
+        '**/node_modules/**', '**/dist/**', '**/build/**', '.git/**', '**/coverage/**',
         '**/*.test.*', '**/*.spec.*',
         ...(config.ignore ?? []),
       ],
@@ -257,7 +257,7 @@ async function extractConfigPorts(projectPath: string): Promise<ConfigPort[]> {
 export async function parseCodebase(projectPath: string, config: StaleConfig): Promise<CodebaseFacts> {
   const allFiles = await fg(['**/*'], {
     cwd: projectPath,
-    ignore: ['node_modules/**', 'dist/**', '.git/**', 'coverage/**', ...(config.ignore || [])],
+    ignore: ['**/node_modules/**', '**/dist/**', '**/build/**', '.git/**', '**/coverage/**', ...(config.ignore || [])],
     dot: true,
   });
 

@@ -24,7 +24,7 @@ export class CommentStalenessAnalyzer implements Analyzer {
 
     const sourceFiles = await fg(
       ['**/*.{ts,tsx,js,jsx,mjs,cjs}'],
-      { cwd: ctx.projectPath, ignore: ['node_modules/**', 'dist/**', '.git/**', 'coverage/**', '**/*.d.ts'] },
+      { cwd: ctx.projectPath, ignore: ['**/node_modules/**', '**/dist/**', '**/build/**', '.git/**', '**/coverage/**', '**/*.d.ts'] },
     );
 
     for (const file of sourceFiles) {

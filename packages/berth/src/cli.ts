@@ -96,9 +96,14 @@ program
   .command('reassign <oldPort> <newPort>')
   .description('Change a port assignment in project config files')
   .option('-p, --project <name>', 'Project name from registry')
+  .option('--dry-run', 'Show which files would change without writing them')
   .action(async (oldPort, newPort, opts, cmd) => {
     const { reassignCommand } = await import('./commands/reassign.js');
-    await reassignCommand(oldPort, newPort, { ...getGlobalOptions(cmd), project: opts.project });
+    await reassignCommand(oldPort, newPort, {
+      ...getGlobalOptions(cmd),
+      project: opts.project,
+      dryRun: opts.dryRun,
+    });
   });
 
 program

@@ -14,8 +14,10 @@ docs:
 
 # Files/patterns to ignore
 ignore:
-  - "node_modules/**"
-  - "dist/**"
+  - "**/node_modules/**"
+  - "**/dist/**"
+  - "**/build/**"
+  - "**/coverage/**"
   - ".git/**"
 
 # Which checks to enable

@@ -367,7 +367,7 @@ export async function parseMarkdownFile(filePath: string, projectPath: string): 
 export async function parseAllDocs(patterns: string[], projectPath: string): Promise<ParsedDocument[]> {
   const files = await fg(patterns, {
     cwd: projectPath,
-    ignore: ['node_modules/**', 'dist/**', '.git/**'],
+    ignore: ['**/node_modules/**', '**/dist/**', '**/build/**', '**/coverage/**', '.git/**'],
   });
 
   const docs = await Promise.all(

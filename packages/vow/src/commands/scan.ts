@@ -149,6 +149,16 @@ export async function executeScan(opts: ScanOptions): Promise<ScanResult> {
     collect('pip', await pipResolver.resolve());
   }
 
+  if (ecosystems.length === 0) {
+    spinner.fail('No supported lockfile found');
+    throw new Error(
+      `No supported lockfile found in ${projectPath}. ` +
+      `vow needs one of: package-lock.json, Cargo.lock, or a Python lockfile ` +
+      `(requirements.txt with hashes, uv.lock, or poetry.lock). ` +
+      `pnpm-lock.yaml and yarn.lock are not yet supported.`,
+    );
+  }
+
   spinner.text = `Resolved ${allPackages.length} packages. Building graph...`;
   const graph: DepGraph = buildGraph(
     allResolved,

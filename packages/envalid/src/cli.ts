@@ -1,56 +1,27 @@
 import { Command } from "commander";
 import chalk from "chalk";
+import { existsSync } from "node:fs";
 import { parseSchemaFile } from "./schema/parser.js";
 import { loadSchema } from "./schema/loader.js";
 import { readEnvFile } from "./env/reader.js";
-import { validate, validateAsync } from "./commands/validate.js";
+import { validate } from "./commands/validate.js";
 import { runInit } from "./commands/init.js";
 import { diffEnvFiles } from "./commands/diff.js";
 import { runGenerateExample } from "./commands/generate.js";
 import { syncCheck } from "./commands/sync.js";
 import { createReporter, type ReporterFormat } from "./reporters/index.js";
-import { runOnboard } from "./commands/onboard.js";
-import {
-  runHookInstall,
-  runHookUninstall,
-  runHookStatus,
-} from "./commands/hook.js";
 import { detectEnvUsage, detectEnvVarsInCode } from "./env/detector.js";
 import { generateSchemaFromCode } from "./commands/detect-generate.js";
 import { scanSecrets } from "./commands/secrets.js";
 import { EnvalidError } from "./errors.js";
-import { existsSync } from "node:fs";
-import { loadConfig } from "./config.js";
-import { loadPlugins } from "./runtime/plugin.js";
-import { getDefaultRegistry } from "./runtime/registry.js";
-import { registerBuiltins } from "./runtime/builtins.js";
 import { runCodegen } from "./commands/codegen.js";
-import { runExport } from "./commands/export.js";
-import { runWatch } from "./commands/watch.js";
-import { runFix } from "./commands/fix.js";
-import { runMigrate } from "./commands/migrate.js";
-import {
-  resolveSecrets,
-  parseSecretRef,
-} from "./providers/index.js";
-import inquirer from "inquirer";
 
 const program = new Command();
 
 program
   .name("envalid")
   .description("Type safety for .env files")
-  .version("0.3.0");
-
-let pluginsInitialized = false;
-async function initializeRuntime() {
-  if (pluginsInitialized) return;
-  registerBuiltins(getDefaultRegistry());
-  const config = await loadConfig();
-  await loadPlugins(getDefaultRegistry(), config.plugins);
-  pluginsInitialized = true;
-  return config;
-}
+  .version("0.4.0");
 
 // --- validate ---
 program
@@ -60,16 +31,12 @@ program
   .option("-e, --env <path>", "Path to .env file", ".env")
   .option("--environment <name>", "Target environment (e.g. production)")
   .option("--ci", "CI mode: exit 1 on any issue", false)
-  .option("--check-live", "Run async/live validators and resolve secret refs", false)
-  .option("--no-resolve-secrets", "Disable secret reference resolution")
-  .option("--concurrency <n>", "Max concurrent async validators", (v) => Number(v), 8)
   .option(
     "-f, --format <format>",
     "Output format: terminal, json, markdown",
     "terminal",
   )
-  .action(async (options) => {
-    await initializeRuntime();
+  .action((options) => {
     if (!existsSync(options.schema)) {
       console.error(chalk.red(`Error: Schema file not found: ${options.schema}`));
       console.log("");
@@ -81,47 +48,11 @@ program
       process.exit(2);
     }
     const schema = loadSchema(options.schema);
-    let envFile = readEnvFile(options.env);
-
-    const secretIssues: Array<{ variable: string; kind: string; message: string; severity: string }> = [];
-    if (options.resolveSecrets !== false) {
-      const hasRefs = Object.values(envFile.variables).some((v) =>
-        parseSecretRef(v),
-      );
-      if (hasRefs) {
-        const res = await resolveSecrets(envFile.variables, {
-          registry: getDefaultRegistry(),
-          live: options.checkLive === true,
-        });
-        envFile = { ...envFile, variables: res.variables };
-        for (const r of res.results) {
-          if (r.ok) continue;
-          secretIssues.push({
-            variable: r.variable,
-            severity: options.checkLive ? "error" : "info",
-            kind: options.checkLive
-              ? "secret-resolution-failed"
-              : "secret-resolution-skipped",
-            message: `Secret @${r.scheme}: ${r.error ?? "unresolved"}`,
-          });
-        }
-      }
-    }
-
-    const result = await validateAsync(schema, envFile, {
+    const envFile = readEnvFile(options.env);
+    const result = validate(schema, envFile, {
       environment: options.environment,
       ci: options.ci,
-      checkLive: options.checkLive === true,
-      concurrency: options.concurrency,
     });
-    // Splice secret issues into the result.
-    for (const si of secretIssues) {
-      result.issues.push(si as never);
-      if (si.severity === "error") {
-        result.stats.errors++;
-        result.valid = false;
-      }
-    }
     const reporter = createReporter(options.format as ReporterFormat);
     console.log(reporter.reportValidation(result));
     if (!result.valid) process.exit(1);
@@ -210,43 +141,6 @@ program
     if (anyFailed) process.exit(1);
   });
 
-// --- onboard ---
-program
-  .command("onboard")
-  .description("Interactive guided setup for new developers")
-  .option("-s, --schema <path>", "Path to .env.schema", ".env.schema")
-  .option("-o, --output <path>", "Output .env file path", ".env")
-  .action(async (options) => {
-    const schema = parseSchemaFile(options.schema);
-    await runOnboard(schema, options.output);
-  });
-
-// --- hook ---
-const hookCmd = program
-  .command("hook")
-  .description("Manage git pre-commit hook");
-
-hookCmd
-  .command("install")
-  .description("Install pre-commit validation hook")
-  .action(() => {
-    runHookInstall();
-  });
-
-hookCmd
-  .command("uninstall")
-  .description("Remove pre-commit validation hook")
-  .action(() => {
-    runHookUninstall();
-  });
-
-hookCmd
-  .command("status")
-  .description("Check if hook is installed")
-  .action(() => {
-    runHookStatus();
-  });
-
 // --- detect ---
 program
   .command("detect")
@@ -266,7 +160,6 @@ program
       ? (options.exclude as string).split(",").map((s: string) => s.trim())
       : undefined;
 
-    // --generate mode: scan code and produce a schema without needing an existing one
     if (options.generate) {
       const envVarLocations = detectEnvVarsInCode(options.dir, { exclude });
       const varNames = Object.keys(envVarLocations);
@@ -299,11 +192,8 @@ program
       return;
     }
 
-    // Normal detect mode: compare code usage against existing schema
     const schema = parseSchemaFile(options.schema);
-    const result = detectEnvUsage(options.dir, schema, {
-      exclude,
-    });
+    const result = detectEnvUsage(options.dir, schema, { exclude });
 
     if (options.format === "json") {
       console.log(JSON.stringify(result, null, 2));
@@ -345,9 +235,7 @@ program
       result.usedNotInSchema.length === 0 &&
       result.inSchemaNotUsed.length === 0
     ) {
-      console.log(
-        chalk.green("  ✓ Schema and code are in sync"),
-      );
+      console.log(chalk.green("  ✓ Schema and code are in sync"));
     }
 
     console.log(
@@ -397,9 +285,7 @@ program
       console.log(chalk.green("  ✓ No secrets detected"));
     }
 
-    console.log(
-      chalk.dim(`  Scanned ${result.filesScanned} files`),
-    );
+    console.log(chalk.dim(`  Scanned ${result.filesScanned} files`));
     if (result.findings.length > 0) process.exit(1);
   });
 
@@ -410,8 +296,7 @@ program
   .option("-s, --schema <path>", "Path to .env.schema", ".env.schema")
   .option("-o, --output <path>", "Output file path", "src/env.ts")
   .option("--runtime <runtime>", "process | import-meta", "process")
-  .action(async (options) => {
-    await initializeRuntime();
+  .action((options) => {
     const schema = loadSchema(options.schema);
     runCodegen({
       schema,
@@ -424,134 +309,6 @@ program
     );
   });
 
-// --- export ---
-program
-  .command("export")
-  .description("Export schema as JSON Schema or OpenAPI component")
-  .option("-s, --schema <path>", "Path to .env.schema", ".env.schema")
-  .option("-f, --format <format>", "json-schema | openapi", "json-schema")
-  .option("-o, --output <path>", "Output file path")
-  .option("--pretty", "Pretty-print JSON", false)
-  .option("--openapi-version <v>", "OpenAPI version (3.0 or 3.1)", "3.1")
-  .action(async (options) => {
-    await initializeRuntime();
-    const schema = loadSchema(options.schema);
-    const json = runExport({
-      schema,
-      format: options.format,
-      outputPath: options.output,
-      pretty: options.pretty,
-      openapiVersion: options.openapiVersion,
-    });
-    if (!options.output) console.log(json);
-    else console.log(chalk.green(`✓ Wrote ${chalk.bold(options.output)}`));
-  });
-
-// --- watch ---
-program
-  .command("watch")
-  .description("Watch schema + .env and revalidate on change")
-  .option("-s, --schema <path>", "Path to .env.schema", ".env.schema")
-  .option("-e, --env <path>", "Path to .env file", ".env")
-  .option("--environment <name>", "Target environment")
-  .option("-f, --format <format>", "terminal | json | markdown", "terminal")
-  .action(async (options) => {
-    await initializeRuntime();
-    const stop = runWatch({
-      schemaPath: options.schema,
-      envPath: options.env,
-      environment: options.environment,
-      format: options.format as ReporterFormat,
-    });
-    process.on("SIGINT", () => {
-      stop();
-      process.exit(0);
-    });
-    console.log(chalk.dim("\n[envalid] watching… Ctrl-C to exit\n"));
-    await new Promise(() => {
-      /* run forever */
-    });
-  });
-
-// --- fix ---
-program
-  .command("fix")
-  .description("Interactively fix validation errors in a .env file")
-  .option("-s, --schema <path>", "Path to .env.schema", ".env.schema")
-  .option("-e, --env <path>", "Path to .env file", ".env")
-  .option("-o, --output <path>", "Where to write the fixed file")
-  .option("--environment <name>", "Target environment")
-  .option("--auto", "Non-interactive: use defaults where available", false)
-  .action(async (options) => {
-    await initializeRuntime();
-    const schema = loadSchema(options.schema);
-    const envFile = readEnvFile(options.env);
-    const result = await runFix({
-      schema,
-      envFile,
-      outputPath: options.output,
-      environment: options.environment,
-      auto: options.auto,
-      prompt: options.auto
-        ? undefined
-        : async (issue, varSchema) => {
-            const { value } = await inquirer.prompt<{ value: string }>([
-              {
-                type: varSchema?.sensitive ? "password" : "input",
-                name: "value",
-                message: `${issue.variable} (${varSchema?.type ?? "?"}) → ${issue.message}\n  Replacement (empty to skip):`,
-                default:
-                  varSchema?.default !== undefined
-                    ? String(varSchema.default)
-                    : undefined,
-              },
-            ]);
-            return value.trim() === "" ? undefined : value;
-          },
-    });
-    console.log("");
-    console.log(
-      chalk.green(`  ✓ Applied ${result.applied} fix(es)`),
-      chalk.dim(`(${result.skipped} skipped, ${result.remaining.length} remaining)`),
-    );
-  });
-
-// --- migrate ---
-program
-  .command("migrate")
-  .description("Apply a migration file to schema/.env/code")
-  .requiredOption("-f, --file <path>", "Migration YAML file")
-  .option("-s, --schema <path>", "Path to .env.schema", ".env.schema")
-  .option("--env <paths>", "Comma-separated .env files")
-  .option("--code <paths>", "Comma-separated code file globs (simple paths)")
-  .option("--dry-run", "Print diffs without writing", false)
-  .option("--no-backup", "Disable .envalid/backups/<id>/ copies")
-  .option("--force", "Re-apply even if already applied", false)
-  .action(async (options) => {
-    await initializeRuntime();
-    const result = runMigrate({
-      migrationPath: options.file,
-      schemaPath: options.schema,
-      envPaths: options.env ? String(options.env).split(",") : undefined,
-      codePaths: options.code ? String(options.code).split(",") : undefined,
-      dryRun: options.dryRun,
-      backup: options.backup !== false,
-      force: options.force,
-    });
-    if (result.reason) {
-      console.log(chalk.yellow(`⚠ ${result.reason}`));
-      return;
-    }
-    if (options.dryRun) {
-      for (const diff of result.diffs) console.log(diff + "\n");
-      return;
-    }
-    console.log(
-      chalk.green(`✓ Migration applied. ${result.changes.length} file(s) changed.`),
-    );
-  });
-
-// Global error handling
 const run = async () => {
   try {
     await program.parseAsync();

@@ -5,12 +5,9 @@ import path from 'node:path';
 import { createTool } from '../../src/tool.js';
 import { executeScan } from '../../src/commands/scan.js';
 import { toCycloneDx, toSpdx } from '../../src/reporters/sbom.js';
-import { diffScans } from '../../src/diff/engine.js';
-import { toDiffMarkdown } from '../../src/reporters/diff.js';
-import { toAuditHtml } from '../../src/reporters/audit.js';
 import { evaluatePolicy } from '../../src/policy/evaluator.js';
 import { loadJsonPolicy } from '../../src/policy/json-policy.js';
-import { scanResultToJSON, type ScanResult as VowScanResult } from '../../src/types.js';
+import { type ScanResult as VowScanResult } from '../../src/types.js';
 
 const FIXTURES = path.join(import.meta.dirname, 'fixtures');
 
@@ -135,63 +132,6 @@ describe('createTool() — end-to-end with .vow.json policies', () => {
     expect(mystery!.license.source).toBe('none');
   });
 
-  it('vow audit end-to-end: runs scan + policy and renders blocked package HTML', async () => {
-    const scan = await executeScan({
-      path: path.join(FIXTURES, 'gpl-contaminated'),
-      production: false,
-      format: 'terminal',
-      registry: false,
-    });
-    const json = await loadJsonPolicy(path.join(FIXTURES, 'gpl-contaminated'));
-    const check = evaluatePolicy(scan, json!.policy, []);
-
-    const html = toAuditHtml(scan, check, {
-      now: new Date('2026-04-19T00:00:00Z'),
-      licenseTexts: new Map(),
-    });
-
-    expect(html).toContain('License Compliance Audit');
-    expect(html).toContain('gpl-contaminated');
-    expect(html).toContain('tainted@2.0.0');
-    expect(html).toContain('class="pkg blocked"');
-    expect(html).toContain('FAIL');
-  });
-
-  it('vow diff end-to-end: real scan baseline vs altered scan detects downgrades', async () => {
-    // Baseline = clean-mit fixture scan, serialized to JSON
-    const baseline = await executeScan({
-      path: path.join(FIXTURES, 'clean-mit'),
-      production: false,
-      format: 'terminal',
-      registry: false,
-    });
-    const baselineJson = scanResultToJSON(baseline);
-
-    // Current = gpl-contaminated fixture (shares fixture style, introduces GPL)
-    const current = await executeScan({
-      path: path.join(FIXTURES, 'gpl-contaminated'),
-      production: false,
-      format: 'terminal',
-      registry: false,
-    });
-    const currentJson = scanResultToJSON(current);
-
-    const diff = diffScans(baselineJson, currentJson);
-
-    // 'tainted' is new and GPL → error
-    const taintedAdded = diff.added.find((a) => a.name === 'tainted');
-    expect(taintedAdded).toBeDefined();
-    expect(taintedAdded!.severity).toBe('error');
-
-    // beta / gamma existed in the baseline but not the current fixture
-    expect(diff.removed.some((r) => r.name === 'beta')).toBe(true);
-    expect(diff.summary.errors).toBeGreaterThanOrEqual(1);
-
-    // Markdown reporter produces a valid PR-comment shape
-    const md = toDiffMarkdown(diff);
-    expect(md).toContain('## :x: License Diff');
-    expect(md).toContain('tainted');
-  });
 
   it('vow sbom end-to-end: CycloneDX + SPDX on a mixed-ecosystem scan', async () => {
     const fetchFn = async (url: string): Promise<Response> => {

@@ -3,19 +3,6 @@ import Table from 'cli-table3';
 import type { ScanResult } from '../types.js';
 import type { CheckResult, PackageCheckResult } from '../policy/types.js';
 
-export interface FixSuggestion {
-  packageName: string;
-  packageVersion: string;
-  license: string;
-  alternatives: Array<{
-    name: string;
-    version: string;
-    license: string;
-    weeklyDownloads: number;
-    description: string;
-  }>;
-}
-
 export function reportScanSummary(result: ScanResult): string {
   const lines: string[] = [];
 
@@ -147,34 +134,3 @@ function formatLicenseWithSource(pkg: import('../types.js').PackageInfo): string
   return `${expr}${confidenceNote}`;
 }
 
-export function reportFixSuggestions(suggestions: FixSuggestion[]): string {
-  const lines: string[] = [];
-
-  for (const suggestion of suggestions) {
-    lines.push(`For ${chalk.bold(suggestion.packageName)}@${suggestion.packageVersion} (${chalk.red(suggestion.license)}):`);
-
-    if (suggestion.alternatives.length === 0) {
-      lines.push(`  No alternatives found`);
-    } else {
-      lines.push(`  Alternative packages:`);
-      for (const alt of suggestion.alternatives) {
-        const downloads = formatDownloads(alt.weeklyDownloads);
-        lines.push(`  → ${chalk.green(alt.name)} (${alt.license}) — ${downloads} weekly downloads`);
-        if (alt.description) {
-          lines.push(`    ${chalk.gray(alt.description.slice(0, 80))}`);
-        }
-      }
-    }
-    lines.push('');
-  }
-
-  lines.push(chalk.gray('Note: Suggested packages may not be drop-in replacements. Please review before switching.'));
-
-  return lines.join('\n');
-}
-
-function formatDownloads(n: number): string {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
-  return n.toString();
-}

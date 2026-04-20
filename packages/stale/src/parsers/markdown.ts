@@ -59,7 +59,10 @@ const BADGE_PATTERNS = ['shields.io', 'badge', 'travis-ci', 'codecov', 'coverall
 
 function extractCommands(value: string, blockLine: number): ParsedCommand[] {
   const commands: ParsedCommand[] = [];
-  const lines = value.split('\n');
+  // Split on CRLF or LF so the `$` anchor isn't blocked by a trailing \r
+  // on files checked out with Windows line endings (the `.` class doesn't
+  // match \r, so the manager/args regex silently misses CRLF lines).
+  const lines = value.split(/\r?\n/);
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];

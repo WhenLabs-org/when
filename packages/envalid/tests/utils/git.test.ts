@@ -32,7 +32,9 @@ describe("hook install/uninstall", () => {
     rmSync(testDir, { recursive: true, force: true });
   });
 
-  it("installs and uninstalls hook in a git repo", () => {
+  // Windows CI spawns `git` several times through the install/uninstall flow
+  // and each subprocess is slow; bump the timeout so the test isn't flaky.
+  it("installs and uninstalls hook in a git repo", { timeout: 30_000 }, () => {
     // Run install from inside the test git repo
     const originalCwd = process.cwd();
     process.chdir(testDir);

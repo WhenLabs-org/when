@@ -1,4 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import path from 'node:path';
+
+const TMP = path.resolve('/tmp');
 
 vi.mock('../src/detectors/index.js', () => ({
   detectAllActive: vi.fn(),
@@ -39,9 +42,9 @@ describe('createTool', () => {
         {
           port: 8080,
           source: 'dotenv',
-          sourceFile: '/tmp/.env',
+          sourceFile: path.join(TMP, '.env'),
           context: 'PORT=8080',
-          projectDir: '/tmp',
+          projectDir: TMP,
           projectName: 'test',
           confidence: 'high',
         },
@@ -49,7 +52,7 @@ describe('createTool', () => {
       warnings: [],
     });
 
-    const result = await createTool().scan({ cwd: '/tmp' });
+    const result = await createTool().scan({ cwd: TMP });
 
     expect(result.schemaVersion).toBe(1);
     expect(result.tool).toBe('berth');
@@ -58,7 +61,7 @@ describe('createTool', () => {
     expect(result.summary.total).toBe(0);
     expect(result.summary.errors).toBe(0);
     expect(result.project.name).toBe('tmp');
-    expect(result.project.cwd).toBe('/tmp');
+    expect(result.project.cwd).toBe(TMP);
     expect(result.raw).toBeDefined();
   });
 

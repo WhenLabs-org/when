@@ -111,27 +111,6 @@ export interface RegisteredProject {
   updatedAt: string;
 }
 
-export interface Reservation {
-  port: number;
-  project: string;
-  reason?: string;
-  createdAt: string;
-  expiresAt?: string;
-  source: 'manual' | 'berthrc' | 'team';
-}
-
-export interface Registry {
-  version: 2;
-  projects: Record<string, RegisteredProject>;
-  reservations: Reservation[];
-  meta?: { lastMigratedFrom?: number };
-}
-
-export interface RegistryV1 {
-  version: 1;
-  projects: Record<string, RegisteredProject>;
-}
-
 export interface BerthConfigPortEntry {
   port: number;
   required?: boolean;
@@ -156,42 +135,6 @@ export interface LoadedConfig {
   config: BerthConfig;
   filePath: string;
   format: 'js' | 'mjs' | 'cjs' | 'json' | 'rc' | 'package-json';
-}
-
-export interface TeamAssignment {
-  port: number;
-  project: string;
-  role?: string;
-  owner?: string;
-}
-
-export interface TeamReservedRange {
-  from: number;
-  to: number;
-  purpose: string;
-}
-
-export interface TeamForbidden {
-  port: number;
-  reason: string;
-}
-
-export interface TeamPolicy {
-  killBlockingProcesses?: 'never' | 'devOnly' | 'always';
-  onConflict?: 'warn' | 'error';
-}
-
-export interface TeamConfig {
-  version: 1;
-  assignments: TeamAssignment[];
-  reservedRanges?: TeamReservedRange[];
-  forbidden?: TeamForbidden[];
-  policies?: TeamPolicy;
-}
-
-export interface LoadedTeamConfig {
-  config: TeamConfig;
-  filePath: string;
 }
 
 export type EnvironmentKind =

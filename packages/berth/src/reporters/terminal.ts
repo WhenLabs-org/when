@@ -4,7 +4,6 @@ import type {
   StatusOutput,
   CheckOutput,
   KillOutput,
-  RegisteredProject,
   ActivePort,
   DockerPort,
   Conflict,
@@ -219,40 +218,6 @@ export function renderKill(output: KillOutput): string {
   }
 
   return lines.join('\n');
-}
-
-export function renderList(projects: RegisteredProject[], activePorts: ActivePort[]): string {
-  if (projects.length === 0) {
-    return chalk.yellow('No projects registered. Run `berth register` in a project directory.');
-  }
-
-  const activePortSet = new Set(activePorts.map((p) => p.port));
-
-  const table = new Table({
-    head: ['PROJECT', 'PORTS', 'STATUS'].map((h) => chalk.dim(h)),
-    style: { head: [], border: [] },
-    chars: tableChars(),
-  });
-
-  for (const project of projects.sort((a, b) => a.name.localeCompare(b.name))) {
-    const portList = project.ports.map((p) => String(p.port)).join(', ');
-    const runningPorts = project.ports.filter((p) => activePortSet.has(p.port));
-    const allRunning = runningPorts.length === project.ports.length && project.ports.length > 0;
-    const someRunning = runningPorts.length > 0;
-
-    let status: string;
-    if (allRunning) {
-      status = chalk.green('● running');
-    } else if (someRunning) {
-      status = chalk.yellow('◐ partial');
-    } else {
-      status = chalk.dim('○ stopped');
-    }
-
-    table.push([project.name, portList || chalk.dim('none'), status]);
-  }
-
-  return table.toString();
 }
 
 export function renderConflict(conflict: Conflict): string {

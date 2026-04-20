@@ -1,6 +1,6 @@
 {
   "name": "@whenlabs/berth",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "Port & Process Conflict Resolver for Developers",
   "type": "module",
   "main": "./dist/index.js",

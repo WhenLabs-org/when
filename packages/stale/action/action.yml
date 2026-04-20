@@ -5,10 +5,6 @@ branding:
   color: 'orange'
 
 inputs:
-  deep:
-    description: 'Enable AI-powered deep analysis (requires STALE_AI_KEY secret)'
-    required: false
-    default: 'false'
   fail-on:
     description: 'Fail the check on: error, warning, or never'
     required: false
@@ -21,7 +17,7 @@ inputs:
     description: 'Path to .stale.yml config file'
     required: false
   format:
-    description: 'Output format: terminal, json, markdown, sarif'
+    description: 'Output format: terminal, json, markdown'
     required: false
     default: 'terminal'
   github-token:

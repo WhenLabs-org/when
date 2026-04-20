@@ -1,0 +1,25 @@
+lockfileVersion: '6.0'
+
+settings:
+  autoInstallPeers: true
+  excludeLinksFromLockfile: false
+
+dependencies:
+  pkg-a:
+    specifier: ^1.0.0
+    version: 1.0.0
+
+devDependencies:
+  pkg-b:
+    specifier: ^2.0.0
+    version: 2.0.0
+
+packages:
+
+  /pkg-a@1.0.0:
+    resolution: {integrity: sha512-fakeintegritypkga}
+    dev: false
+
+  /pkg-b@2.0.0:
+    resolution: {integrity: sha512-fakeintegritypkgb}
+    dev: true

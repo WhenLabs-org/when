@@ -1,0 +1,10 @@
+{
+  "name": "pnpm-fixture-simple",
+  "version": "0.0.0",
+  "dependencies": {
+    "pkg-a": "^1.0.0"
+  },
+  "devDependencies": {
+    "pkg-b": "^2.0.0"
+  }
+}

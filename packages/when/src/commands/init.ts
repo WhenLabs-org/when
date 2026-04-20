@@ -4,7 +4,7 @@ import { resolve, dirname } from 'node:path';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { stringify } from 'yaml';
-import { findBin } from '../utils/find-bin.js';
+import { buildSpawn } from '../utils/find-bin.js';
 import { detectProjectWithStack } from '../utils/detect-project.js';
 import { loadConfig, CONFIG_FILENAME } from '../config/whenlabs-config.js';
 
@@ -39,11 +39,13 @@ function detectLicenseTemplate(cwd: string): string {
   return 'opensource';
 }
 
-function runTool(bin: string, args: string[], cwd?: string): Promise<{ stdout: string; stderr: string; exitCode: number }> {
+function runTool(name: string, args: string[], cwd?: string): Promise<{ stdout: string; stderr: string; exitCode: number }> {
   return new Promise((resolveP) => {
-    const child = spawn(bin, args, {
+    const s = buildSpawn(name);
+    const child = spawn(s.cmd, [...s.args, ...args], {
       cwd: cwd,
       env: { ...process.env, FORCE_COLOR: '0', NO_COLOR: '1' },
+      shell: s.shell,
     });
     let stdout = '';
     let stderr = '';
@@ -67,7 +69,7 @@ async function bootstrapConfigs(cwd: string): Promise<{ results: BootstrapResult
   const hasEnv = existsSync(resolve(cwd, '.env'));
   const hasEnvSchema = existsSync(resolve(cwd, '.env.schema'));
   if (hasEnv && !hasEnvSchema) {
-    const { exitCode } = await runTool(findBin('envalid'), ['init'], cwd);
+    const { exitCode } = await runTool('envalid', ['init'], cwd);
     if (exitCode === 0) {
       results.push({ label: '.env.schema', action: 'created', detail: 'Created .env.schema from .env' });
     } else if (exitCode === 127) {
@@ -85,7 +87,7 @@ async function bootstrapConfigs(cwd: string): Promise<{ results: BootstrapResult
   const hasVowConfig = existsSync(resolve(cwd, '.vow.yml')) || existsSync(resolve(cwd, '.vow.json'));
   if (!hasVowConfig) {
     const template = detectLicenseTemplate(cwd);
-    const { exitCode } = await runTool(findBin('vow'), ['init', '--template', template], cwd);
+    const { exitCode } = await runTool('vow', ['init', '--template', template], cwd);
     if (exitCode === 0) {
       results.push({ label: '.vow.yml', action: 'created', detail: `Created .vow.yml (template: ${template})` });
     } else if (exitCode === 127) {
@@ -101,7 +103,7 @@ async function bootstrapConfigs(cwd: string): Promise<{ results: BootstrapResult
   const hasStaleConfig = existsSync(resolve(cwd, '.stale.yml'));
   let staleScanNeeded = false;
   if (!hasStaleConfig) {
-    const { exitCode } = await runTool(findBin('stale'), ['init'], cwd);
+    const { exitCode } = await runTool('stale', ['init'], cwd);
     if (exitCode === 0) {
       results.push({ label: '.stale.yml', action: 'created', detail: 'Created .stale.yml' });
       staleScanNeeded = true;
@@ -115,7 +117,7 @@ async function bootstrapConfigs(cwd: string): Promise<{ results: BootstrapResult
   }
 
   // berth: always register project ports
-  const { exitCode: berthCode } = await runTool(findBin('berth'), ['register', '--yes', '--dir', cwd], cwd);
+  const { exitCode: berthCode } = await runTool('berth', ['register', '--yes', '--dir', cwd], cwd);
   if (berthCode === 0) {
     results.push({ label: 'berth ports', action: 'created', detail: 'Registered project ports' });
   } else if (berthCode === 127) {
@@ -142,7 +144,7 @@ interface ScanResult {
 }
 
 async function scanStale(cwd: string): Promise<ScanResult> {
-  const { stdout, exitCode } = await runTool(findBin('stale'), ['scan', '--format', 'json', '--path', cwd]);
+  const { stdout, exitCode } = await runTool('stale', ['scan', '--format', 'json', '--path', cwd]);
   if (exitCode === 127) return { label: 'Doc drift (stale)', status: 'error', detail: 'stale not found' };
   try {
     const json = JSON.parse(stdout);
@@ -154,7 +156,7 @@ async function scanStale(cwd: string): Promise<ScanResult> {
 }
 
 async function scanEnvalid(cwd: string): Promise<ScanResult> {
-  const { stdout, exitCode } = await runTool(findBin('envalid'), ['validate', '--format', 'json']);
+  const { stdout, exitCode } = await runTool('envalid', ['validate', '--format', 'json']);
   if (exitCode === 127) return { label: 'Env validation (envalid)', status: 'error', detail: 'envalid not found' };
   if (exitCode === 2 || stdout.includes('not found')) return { label: 'Env validation (envalid)', status: 'skipped', detail: 'No .env.schema — run `envalid init`' };
   try {
@@ -167,7 +169,7 @@ async function scanEnvalid(cwd: string): Promise<ScanResult> {
 }
 
 async function scanBerth(cwd: string): Promise<ScanResult> {
-  const { stdout, exitCode } = await runTool(findBin('berth'), ['check', cwd, '--json']);
+  const { stdout, exitCode } = await runTool('berth', ['check', cwd, '--json']);
   if (exitCode === 127) return { label: 'Port conflicts (berth)', status: 'error', detail: 'berth not found' };
   try {
     const json = JSON.parse(stdout);
@@ -179,7 +181,7 @@ async function scanBerth(cwd: string): Promise<ScanResult> {
 }
 
 async function scanVow(cwd: string): Promise<ScanResult> {
-  const { stdout, exitCode } = await runTool(findBin('vow'), ['scan', '--format', 'json', '--path', cwd]);
+  const { stdout, exitCode } = await runTool('vow', ['scan', '--format', 'json', '--path', cwd]);
   if (exitCode === 127) return { label: 'License scan (vow)', status: 'error', detail: 'vow not found' };
   const jsonStart = stdout.indexOf('{');
   const jsonStr = jsonStart >= 0 ? stdout.slice(jsonStart) : stdout;
@@ -198,12 +200,12 @@ async function scanVow(cwd: string): Promise<ScanResult> {
 async function scanAware(cwd: string): Promise<ScanResult> {
   const hasConfig = existsSync(resolve(cwd, '.aware.json'));
   if (!hasConfig) {
-    const { exitCode } = await runTool(findBin('aware'), ['init', '--force'], cwd);
+    const { exitCode } = await runTool('aware', ['init', '--force'], cwd);
     if (exitCode === 0) return { label: 'AI context (aware)', status: 'ok', detail: 'Generated .aware.json and context files' };
     if (exitCode === 127) return { label: 'AI context (aware)', status: 'error', detail: 'aware not found' };
     return { label: 'AI context (aware)', status: 'skipped', detail: 'Could not generate — run `aware init` manually' };
   }
-  const { stdout, stderr, exitCode } = await runTool(findBin('aware'), ['doctor'], cwd);
+  const { stdout, stderr, exitCode } = await runTool('aware', ['doctor'], cwd);
   if (exitCode === 127) return { label: 'AI context (aware)', status: 'error', detail: 'aware not found' };
   const combined = (stdout + stderr).trim();
   const warnings = combined.split('\n').filter(l => l.includes('⚠') || /warn/i.test(l)).length;
@@ -323,7 +325,7 @@ export function createInitCommand(): Command {
     const staleResult = results.find(r => r.label === 'Doc drift (stale)');
     if (staleResult?.status === 'issues' || staleScanNeeded) {
       process.stdout.write(colorize('  Auto-fixing doc drift…', c.dim) + '\n');
-      const { exitCode: fixCode } = await runTool(findBin('stale'), ['fix', '--apply'], cwd);
+      const { exitCode: fixCode } = await runTool('stale', ['fix', '--apply'], cwd);
       process.stdout.write('\x1b[1A\x1b[2K');
       if (fixCode === 0) {
         console.log(`  ${colorize('✓', c.green)}  ${colorize('Doc drift auto-fixed', c.green)}`);

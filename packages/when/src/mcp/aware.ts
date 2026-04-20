@@ -50,7 +50,9 @@ export function registerAwareTools(server: McpServer): void {
       const result = await runCli('aware', args, path);
       const output = formatOutput(result);
       writeCache('aware_sync', deriveProject(path), output, result.code);
-      return { content: [{ type: 'text' as const, text: output }] };
+      // Skip downstream triggers on dry runs — nothing actually changed.
+      const extras = dryRun ? [] : await checkTriggers('aware_sync', result, path);
+      return { content: [{ type: 'text' as const, text: output + extras.join('') }] };
     },
   );
 

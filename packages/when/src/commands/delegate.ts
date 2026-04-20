@@ -1,6 +1,6 @@
 import { Command } from 'commander';
 import { spawn } from 'node:child_process';
-import { findBin } from '../utils/find-bin.js';
+import { buildSpawn } from '../utils/find-bin.js';
 
 export function createDelegateCommand(
   name: string,
@@ -15,18 +15,14 @@ export function createDelegateCommand(
 
   cmd.action((_options, command: Command) => {
     const bin = binName ?? name;
-    const binPath = findBin(bin);
-
-    if (!binPath) {
-      console.error(`Error: '${bin}' is not installed. Run: npm install -g @whenlabs/${name}`);
-      process.exit(1);
-    }
+    const s = buildSpawn(bin);
 
     // Forward all arguments after the subcommand name
     const args = command.args;
-    const child = spawn(binPath, args, {
+    const child = spawn(s.cmd, [...s.args, ...args], {
       stdio: 'inherit',
       env: process.env,
+      shell: s.shell,
     });
 
     child.on('error', (err) => {

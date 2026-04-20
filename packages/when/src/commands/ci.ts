@@ -1,9 +1,5 @@
 import { spawn } from 'node:child_process';
-import { resolve, dirname } from 'node:path';
-import { existsSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
-
-const __dirname = dirname(fileURLToPath(import.meta.url));
+import { buildSpawn } from '../utils/find-bin.js';
 
 interface ToolResult {
   tool: string;
@@ -21,27 +17,16 @@ interface CiResult {
   error?: string;
 }
 
-function findBin(name: string): string | null {
-  const pkgRoot = resolve(__dirname, '..');
-  const localBin = resolve(pkgRoot, 'node_modules', '.bin', name);
-  if (existsSync(localBin)) return localBin;
-  return name;
-}
-
 function runTool(bin: string, args: string[]): Promise<ToolResult> {
   return new Promise((resolve) => {
-    const binPath = findBin(bin);
-    if (!binPath) {
-      resolve({ tool: bin, exitCode: 127, stdout: '', stderr: `'${bin}' not found`, issues: 0 });
-      return;
-    }
-
+    const s = buildSpawn(bin);
     let stdout = '';
     let stderr = '';
 
-    const child = spawn(binPath, args, {
+    const child = spawn(s.cmd, [...s.args, ...args], {
       env: process.env,
       stdio: ['ignore', 'pipe', 'pipe'],
+      shell: s.shell,
     });
 
     child.stdout.on('data', (d: Buffer) => { stdout += d.toString(); });

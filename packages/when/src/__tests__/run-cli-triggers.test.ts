@@ -10,6 +10,7 @@ vi.mock('node:child_process', () => ({
 
 vi.mock('../utils/find-bin.js', () => ({
   findBin: vi.fn((name: string) => name),
+  buildSpawn: vi.fn((name: string) => ({ cmd: name, args: [] })),
 }));
 
 import { spawn } from 'node:child_process';

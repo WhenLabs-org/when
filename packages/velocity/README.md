@@ -100,6 +100,8 @@ npm start
 
 ## MCP Tools
 
+> **Umbrella vs standalone:** the `@whenlabs/when` umbrella MCP server exposes only `velocity_start_task` and `velocity_end_task`. The full set below — including `velocity_estimate`, `velocity_stats`, and `velocity_history` — is available when you run `velocity-mcp` as its own MCP server.
+
 ### `velocity_start_task`
 
 Begin timing a coding task.

@@ -24,13 +24,13 @@ Part of the [WhenLabs](https://whenlabs.org) toolchain.
 > **Recommended:** Install the full WhenLabs toolkit with `npx @whenlabs/when install` to get envalid plus 5 other tools in one step.
 
 ```bash
-npm install -g envalid
+npm install -g @whenlabs/envalid
 ```
 
 Or use directly with npx:
 
 ```bash
-npx envalid init
+npx @whenlabs/envalid init
 ```
 
 **Requirements:** Node.js >= 20
@@ -183,7 +183,7 @@ envalid diff .env .env.production --format json
 
 ### `envalid sync`
 
-Validate multiple environments against the schema at once. Environment names are inferred from file names (e.g. `.env.production` -> `production`).
+Validate multiple environments against the schema at once. Environment names are inferred from file names (e.g. `.env.production` → `production`).
 
 ```bash
 envalid sync --environments .env,.env.staging,.env.production
@@ -197,15 +197,6 @@ Generate an `.env.example` file from the schema with descriptions, defaults, and
 ```bash
 envalid generate-example                    # writes .env.example
 envalid generate-example -o .env.template   # custom output path
-```
-
-### `envalid onboard`
-
-Interactive guided setup for new developers. Walks through each required variable, explains what it is, validates input in real-time, and writes a `.env` file. Enum types get a selection list; sensitive values use masked input.
-
-```bash
-envalid onboard
-envalid onboard -s custom.schema -o .env.local
 ```
 
 ### `envalid detect`
@@ -228,7 +219,7 @@ The `--generate` flag scans your codebase for `process.env` (and equivalents), i
 
 Supports: `process.env.X` (Node.js), `import.meta.env.X` (Vite), `os.environ` / `os.getenv` (Python), `ENV[]` (Ruby), `os.Getenv` (Go), `env::var` (Rust), `getenv` / `$_ENV` (PHP).
 
-**file:line references** -- `envalid detect` now shows exactly where each undocumented variable is used:
+`envalid detect` shows exactly where each undocumented variable is used:
 
 ```
   REDIS_URL (missing from schema)
@@ -250,27 +241,6 @@ envalid secrets -d src                # scan specific directory
   src/email.ts:5      SENDGRID_TOKEN = "SG.••••••••"
 ```
 
-### Smart Type Inference
-
-`envalid init` now infers richer types from `.env` values:
-
-- Empty or missing values are marked `required: false` (optional)
-- `PORT`, `*_PORT` variables get `type: port` with range `[1, 65535]`
-- `"true"` / `"false"` values are inferred as `type: boolean`
-- URL-shaped values are inferred as `type: url`
-
-### `envalid hook`
-
-Manage git pre-commit hooks for automatic validation. The hook runs `envalid validate --ci` before each commit and blocks the commit on failure.
-
-```bash
-envalid hook install      # install pre-commit hook
-envalid hook uninstall    # remove pre-commit hook
-envalid hook status       # check if hook is installed
-```
-
-Works with custom `core.hooksPath` configurations (e.g. Husky).
-
 ### `envalid codegen`
 
 Generate a fully-typed `env.ts` from the schema. Literal unions for enums, coerced numbers/booleans, readonly arrays for CSV, defaults folded in. Drop in next to `process.env` and stop writing `!` casts.
@@ -280,110 +250,14 @@ envalid codegen -o src/env.ts            # Node / default (process.env)
 envalid codegen --runtime import-meta    # Vite (import.meta.env)
 ```
 
-### `envalid export`
+### Smart Type Inference
 
-Emit the schema as a JSON Schema (Draft 2020-12) or an OpenAPI component. Plugin-contributed types participate through their `toJsonSchema` hook.
+`envalid init` infers richer types from `.env` values:
 
-```bash
-envalid export --format json-schema --pretty
-envalid export --format openapi --openapi-version 3.0 -o env.openapi.json
-```
-
-### `envalid watch`
-
-Re-run validation on every schema / `.env` change. Debounced. Useful in dev or while authoring a schema.
-
-```bash
-envalid watch
-envalid watch --environment production --format json
-```
-
-### `envalid fix`
-
-Interactively patch validation errors — prompts you for a replacement value, validates it against the schema before writing, masks prompts for `sensitive: true` vars. `--auto` fills defaults non-interactively.
-
-```bash
-envalid fix                 # interactive
-envalid fix --auto          # fill from schema defaults
-envalid fix -o .env.fixed   # write to a different file
-```
-
-### `envalid migrate`
-
-Apply a declarative migration to the schema, `.env` files, and source code in a single shot. Renames, removes, and retypes; idempotent via a content-hash ledger at `.envalid/migrations.json`; `--dry-run` prints a diff, `--backup` keeps originals under `.envalid/backups/<id>/`.
-
-```yaml
-# migrations/2026-04-19-rename-db-host.yaml
-version: 1
-id: 2026-04-19-rename-db-host
-migrations:
-  - rename: { from: DB_HOST, to: DATABASE_HOST }
-  - retype: { variable: PORT, to: integer, default: 3000 }
-  - remove: { variable: LEGACY_TOKEN }
-```
-
-```bash
-envalid migrate -f migrations/2026-04-19-rename-db-host.yaml \
-  --env .env,.env.staging \
-  --code src/app.ts,src/config.ts
-envalid migrate -f migration.yaml --dry-run
-```
-
-## Async validators, plugins & secret providers
-
-### Plugins
-
-Register custom types from any npm package. Validators can be sync or async.
-
-```js
-// envalid.config.js
-import awsPlugin from "@company/envalid-aws";
-export default { plugins: [awsPlugin()] };
-```
-
-```ts
-import { definePlugin } from "@whenlabs/envalid";
-
-export default () => definePlugin({
-  name: "@company/envalid-aws",
-  validators: [
-    {
-      name: "aws-region",
-      typeHint: "string",
-      validate: (value) =>
-        /^[a-z]{2}-[a-z]+-\d+$/.test(value)
-          ? { valid: true }
-          : { valid: false, message: "bad region" },
-      toJsonSchema: () => ({
-        type: "string",
-        pattern: "^[a-z]{2}-[a-z]+-\\d+$",
-      }),
-    },
-  ],
-});
-```
-
-### Live (async) validation
-
-Async validators are skipped by default. Pass `--check-live` (or set `checkLive: true` in `envalid.config.js`) to run them in CI. Concurrency is capped with `--concurrency N` (default 8).
-
-```bash
-envalid validate --check-live --concurrency 16
-```
-
-### Secret provider references
-
-Reference values in `.env` files as `@scheme:payload` — envalid resolves them before validation when `--check-live` is enabled. Built-in providers: `vault`, `aws-sm`, `doppler`, `1password`. Custom providers are contributed via plugins.
-
-```bash
-# .env
-DATABASE_URL=@vault:secret/data/app#DATABASE_URL
-STRIPE_KEY=@aws-sm:my-secret#STRIPE_KEY
-FEATURE_FLAGS=@doppler:myapp/prod/FEATURE_FLAGS
-API_TOKEN=@1password:op://vault/item/token
-```
-
-Offline runs (`--no-resolve-secrets` or the default without `--check-live`) surface an info issue per reference and leave the raw token in place.
+- Empty or missing values are marked `required: false` (optional)
+- `PORT`, `*_PORT` variables get `type: integer` with range `[1, 65535]`
+- `"true"` / `"false"` values are inferred as `type: boolean`
+- URL-shaped values are inferred as `type: url`
 
 ## Schema composition
 
@@ -403,38 +277,15 @@ variables:
 
 Cycles are detected; groups merge variable-lists and `required_in` arrays.
 
-## Framework adapters
-
-Subpath imports for first-class integration. Each adapter validates once at process start and exposes a frozen typed env object.
-
-```ts
-// Express
-import { envalidMiddleware, getEnv } from "@whenlabs/envalid/express";
-app.use(envalidMiddleware());
-console.log(getEnv().DATABASE_URL);
-
-// Fastify
-import { envalidFastifyPlugin } from "@whenlabs/envalid/fastify";
-await fastify.register(envalidFastifyPlugin());
-
-// Next.js
-import { createServerEnv, createClientEnv } from "@whenlabs/envalid/nextjs";
-export const serverEnv = createServerEnv();
-export const clientEnv = createClientEnv(); // only NEXT_PUBLIC_* vars
-
-// NestJS
-import { envalidProvider, ENVALID_TOKEN } from "@whenlabs/envalid/nestjs";
-@Module({ providers: [envalidProvider()] })
-export class AppModule {}
-
-// Vite
-import { envalidVitePlugin } from "@whenlabs/envalid/vite";
-export default defineConfig({ plugins: [envalidVitePlugin()] });
-```
-
 ## CI Integration
 
-### GitHub Action
+```bash
+npx @whenlabs/envalid validate --ci --environment production
+```
+
+The `--ci` flag makes warnings into errors and returns exit code `1` on any issue.
+
+Example GitHub Actions step:
 
 ```yaml
 name: Environment Validation
@@ -444,39 +295,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: WhenLabs-org/envalid@v1
+      - uses: actions/setup-node@v4
         with:
-          schema: .env.schema
-          environment: production
-          fail-on-warning: true
+          node-version: 20
+      - run: npx @whenlabs/envalid validate --ci --environment production
 ```
-
-#### Action Inputs
-
-| Input | Default | Description |
-|-------|---------|-------------|
-| `schema` | `.env.schema` | Path to schema file |
-| `env-file` | `.env` | Path to .env file to validate |
-| `environment` | | Target environment (e.g. production) |
-| `format` | `terminal` | Output format: terminal, json, markdown |
-| `fail-on-warning` | `false` | Treat warnings as errors |
-| `node-version` | `20` | Node.js version to use |
-
-### Generic CI
-
-```bash
-npx envalid validate --ci --environment production
-```
-
-The `--ci` flag makes warnings into errors and returns exit code `1` on any issue.
 
 ## Output Formats
 
 Use `--format` to control output:
 
-- **terminal** (default) -- colored, human-readable with icons
-- **json** -- machine-readable for CI pipelines
-- **markdown** -- tables for PR comments
+- **terminal** (default) — colored, human-readable with icons
+- **json** — machine-readable for CI pipelines
+- **markdown** — tables for PR comments
 
 ## Configuration
 
@@ -497,7 +328,7 @@ CLI flags always override config file values.
 ## Programmatic API
 
 ```typescript
-import { parseSchemaFile, readEnvFile, validate } from "envalid";
+import { parseSchemaFile, readEnvFile, validate } from "@whenlabs/envalid";
 
 const schema = parseSchemaFile(".env.schema");
 const envFile = readEnvFile(".env");
@@ -505,86 +336,45 @@ const result = validate(schema, envFile, { environment: "production" });
 
 console.log(result.valid);    // true/false
 console.log(result.issues);   // ValidationIssue[]
-console.log(result.stats);    // { total, valid, errors, warnings, missing }
 ```
 
-All CLI functionality is available as importable functions:
+Importable functions:
 
 ```typescript
 import {
   // Schema
-  parseSchemaFile, parseSchemaString, validateValue,
+  parseSchemaFile, parseSchemaString, loadSchema, mergeSchemas, validateValue,
   // Validation
   validate, diffEnvFiles, syncCheck,
   // Env files
-  readEnvFile, parseEnvString, detectEnvUsage,
+  readEnvFile, parseEnvString, detectEnvUsage, detectEnvVarsInCode,
   // Generation
-  generateExample, inferType, generateSchema,
+  generateExample, inferType, generateSchema, generateSchemaFromCode,
+  // Secrets
+  scanSecrets,
+  // Codegen
+  runCodegen, generateTypedClient,
   // Reporting
   createReporter,
-  // Git hooks
-  installHook, uninstallHook, isHookInstalled, getGitRoot,
   // Config
   loadConfig, mergeOptions,
   // Utilities
   maskValue,
-} from "envalid";
+} from "@whenlabs/envalid";
 ```
 
-Full TypeScript types are exported for `EnvSchema`, `VariableSchema`, `ValidationResult`, `ValidationIssue`, `DiffResult`, `Reporter`, `EnvFile`, `DetectionResult`, and more.
-
-## Project Structure
-
-```
-envalid/
-├── src/
-│   ├── cli.ts                # Commander.js entry point
-│   ├── index.ts              # Public API exports
-│   ├── config.ts             # cosmiconfig-based config loading
-│   ├── errors.ts             # Custom error classes
-│   ├── commands/
-│   │   ├── validate.ts       # Core validation logic
-│   │   ├── init.ts           # Schema generation from .env
-│   │   ├── diff.ts           # Cross-environment comparison
-│   │   ├── sync.ts           # Multi-environment sync check
-│   │   ├── generate.ts       # .env.example generation
-│   │   ├── onboard.ts        # Interactive developer setup
-│   │   └── hook.ts           # Git hook management
-│   ├── schema/
-│   │   ├── types.ts          # TypeScript type definitions
-│   │   ├── parser.ts         # YAML schema parser (Zod-validated)
-│   │   └── validators.ts     # Per-type validation functions
-│   ├── env/
-│   │   ├── reader.ts         # .env file reader (dotenv)
-│   │   ├── writer.ts         # .env file writer (with quoting)
-│   │   └── detector.ts       # Codebase env var usage scanner
-│   ├── reporters/
-│   │   ├── index.ts          # Reporter factory
-│   │   ├── terminal.ts       # Colored terminal output
-│   │   ├── json.ts           # JSON output for CI
-│   │   └── markdown.ts       # Markdown tables for PRs
-│   └── utils/
-│       ├── git.ts            # Git hook install/uninstall
-│       └── crypto.ts         # Sensitive value masking
-├── tests/                    # Vitest test suite
-├── action.yml                # GitHub Action definition
-├── tsconfig.json
-├── tsup.config.ts            # Build config (ESM, Node 20)
-└── vitest.config.ts
-```
+Full TypeScript types are exported for `EnvSchema`, `VariableSchema`, `ValidationResult`, `ValidationIssue`, `DiffResult`, `Reporter`, `EnvFile`, `DetectionResult`, `SecretsResult`, `CodegenOptions`, and more.
 
 ## Tech Stack
 
 - **TypeScript** (ESM, targeting ES2022)
-- **Commander.js** -- CLI framework
-- **Zod v4** -- schema-of-schema validation
-- **yaml** + **dotenv** -- file parsing
-- **Chalk** -- colored terminal output
-- **Inquirer** -- interactive prompts
-- **Ora** -- spinners
-- **cosmiconfig** -- config file discovery
-- **tsup** -- build tooling
-- **Vitest** -- test framework
+- **Commander.js** — CLI framework
+- **Zod** — schema-of-schema validation
+- **yaml** + **dotenv** — file parsing
+- **Chalk** — colored terminal output
+- **cosmiconfig** — config file discovery
+- **tsup** — build tooling
+- **Vitest** — test framework
 
 ## Development
 

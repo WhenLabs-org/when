@@ -103,22 +103,12 @@ exports[`JsonReporter > matches the canonical snapshot 1`] = `
         "passed": 0,
         "warnings": 0,
       },
-      "architecture": {
-        "errors": 0,
-        "passed": 0,
-        "warnings": 0,
-      },
       "command": {
         "errors": 0,
         "passed": 0,
         "warnings": 1,
       },
       "comment-staleness": {
-        "errors": 0,
-        "passed": 0,
-        "warnings": 0,
-      },
-      "completeness": {
         "errors": 0,
         "passed": 0,
         "warnings": 0,
@@ -133,27 +123,12 @@ exports[`JsonReporter > matches the canonical snapshot 1`] = `
         "passed": 0,
         "warnings": 0,
       },
-      "example": {
-        "errors": 0,
-        "passed": 0,
-        "warnings": 0,
-      },
       "file-path": {
         "errors": 1,
         "passed": 0,
         "warnings": 0,
       },
       "git-staleness": {
-        "errors": 0,
-        "passed": 0,
-        "warnings": 0,
-      },
-      "response-shape": {
-        "errors": 0,
-        "passed": 0,
-        "warnings": 0,
-      },
-      "semantic": {
         "errors": 0,
         "passed": 0,
         "warnings": 0,

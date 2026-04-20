@@ -6,23 +6,18 @@ import type {
   Tool,
 } from '@whenlabs/core';
 import { schemaVersion } from '@whenlabs/core';
-import { readFile } from 'node:fs/promises';
 import path from 'node:path';
-import YAML from 'yaml';
 import { executeScan, type ScanOptions as VowScanOptions } from './commands/scan.js';
 import { evaluatePolicy } from './policy/evaluator.js';
 import { loadIgnoreFile } from './policy/ignore.js';
 import {
-  jsonPolicyToParsedPolicy,
   loadJsonPolicy,
-  type JsonPolicyFile,
+  loadYamlPolicy,
 } from './policy/json-policy.js';
-import { parsePolicy } from './policy/parser.js';
 import type {
   CheckResult,
   PackageCheckResult,
   ParsedPolicy,
-  PolicyConfig,
   PolicyOverride,
 } from './policy/types.js';
 import { pkgKey, type PackageInfo, type ScanResult as VowScanResult } from './types.js';
@@ -37,7 +32,6 @@ interface LoadedPolicy {
 
 interface VowToolOptions extends Partial<VowScanOptions> {
   policy?: string | 'auto' | 'off';
-  apiKey?: string;
   /** Additional ignore patterns applied on top of .vowignore. */
   ignore?: string[];
 }
@@ -45,13 +39,19 @@ interface VowToolOptions extends Partial<VowScanOptions> {
 async function loadPolicyIfPresent(
   projectPath: string,
   mode: string,
-  apiKey: string | undefined,
 ): Promise<LoadedPolicy | null> {
   if (mode === 'off') return null;
 
   if (mode !== 'auto') {
     const explicit = path.resolve(projectPath, mode);
-    return loadPolicyFile(explicit, apiKey);
+    if (explicit.endsWith('.json')) {
+      const jsonResult = await loadJsonPolicy(path.dirname(explicit));
+      if (jsonResult) return { policy: jsonResult.policy, overrides: [], sourceFile: explicit };
+    } else {
+      const yamlResult = await loadYamlPolicy(path.dirname(explicit));
+      if (yamlResult) return { policy: yamlResult.policy, overrides: [], sourceFile: explicit };
+    }
+    return null;
   }
 
   const jsonResult = await loadJsonPolicy(projectPath);
@@ -63,39 +63,16 @@ async function loadPolicyIfPresent(
     };
   }
 
-  const yamlPath = path.join(projectPath, '.vow.yml');
-  try {
-    return await loadPolicyFile(yamlPath, apiKey);
-  } catch {
-    return null;
-  }
-}
-
-async function loadPolicyFile(
-  filePath: string,
-  apiKey: string | undefined,
-): Promise<LoadedPolicy> {
-  const content = await readFile(filePath, 'utf-8');
-
-  if (filePath.endsWith('.json')) {
-    const raw = JSON.parse(content) as JsonPolicyFile;
+  const yamlResult = await loadYamlPolicy(projectPath);
+  if (yamlResult) {
     return {
-      policy: jsonPolicyToParsedPolicy(raw),
+      policy: yamlResult.policy,
       overrides: [],
-      sourceFile: filePath,
+      sourceFile: path.join(projectPath, '.vow.yml'),
     };
   }
 
-  const config = YAML.parse(content) as PolicyConfig;
-  if (!config?.policy || typeof config.policy !== 'string') {
-    throw new Error(`Policy file ${filePath} missing "policy" field`);
-  }
-  const parsed = await parsePolicy(config.policy, { apiKey });
-  return {
-    policy: parsed,
-    overrides: config.overrides ?? [],
-    sourceFile: filePath,
-  };
+  return null;
 }
 
 function baselineSeverity(pkg: PackageInfo): Severity | null {
@@ -247,7 +224,7 @@ export function createTool(): Tool {
   return {
     name: TOOL_NAME,
     description:
-      'Scan dependency trees and validate licenses against plain-English policies',
+      'Scan dependency trees and validate licenses against an allow/deny/warn policy',
     async scan(opts?: CoreScanOptions): Promise<CoreScanResult> {
       const startedAt = new Date().toISOString();
       const start = Date.now();
@@ -268,11 +245,7 @@ export function createTool(): Tool {
       let check: CheckResult | null = null;
       let policySourceFile: string | null = null;
       try {
-        const loaded = await loadPolicyIfPresent(
-          projectPath,
-          policyMode,
-          passthrough.apiKey,
-        );
+        const loaded = await loadPolicyIfPresent(projectPath, policyMode);
         if (loaded) {
           const fileIgnores = await loadIgnoreFile(projectPath);
           const ignorePatterns = [...fileIgnores, ...(passthrough.ignore ?? [])];

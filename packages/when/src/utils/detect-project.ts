@@ -100,10 +100,3 @@ export function detectProjectWithStack(cwd?: string): ProjectInfo {
   }
   return { name, stack: detectProjectStack(dir) };
 }
-
-/**
- * @deprecated Prefer `detectProjectName`. Kept for pre-existing callers.
- */
-export function detectProject(): string | null {
-  return detectProjectName();
-}

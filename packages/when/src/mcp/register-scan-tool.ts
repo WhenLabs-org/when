@@ -1,7 +1,8 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { ScanOptions, Tool } from '@whenlabs/core';
 import { z } from 'zod';
-import { writeCache, deriveProject, checkTriggers } from './run-cli.js';
+import { writeCache } from './run-cli.js';
+import { detectProjectDirName } from '../utils/detect-project.js';
 import { formatScanResult } from './format-scan.js';
 
 export interface ScanToolSpec {
@@ -42,8 +43,7 @@ export function registerScanTool(server: McpServer, spec: ScanToolSpec): void {
     const scan = await spec.tool.scan(scanOpts);
     const output = formatScanResult(scan, renderFormat);
     const code = scan.ok ? 0 : 1;
-    writeCache(spec.cacheName ?? spec.name, deriveProject(path), output, code);
-    const extras = await checkTriggers(spec.name, { stdout: output, stderr: '', code }, path);
-    return { content: [{ type: 'text' as const, text: output + extras.join('') }] };
+    writeCache(spec.cacheName ?? spec.name, detectProjectDirName(path), output, code);
+    return { content: [{ type: 'text' as const, text: output }] };
   });
 }

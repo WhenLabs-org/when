@@ -1,4 +1,5 @@
 import * as path from "node:path";
+import { realpathSync } from "node:fs";
 import { createRequire } from "node:module";
 import { pathToFileURL } from "node:url";
 import { registerFragmentModule } from "../fragments/index.js";
@@ -170,6 +171,17 @@ export function resetLoadedPlugins(): void {
   loadedResolved.clear();
 }
 
+function toFileUrl(abs: string): string {
+  // On Windows, tmp dirs can come through as 8.3 short paths (RUNNER~1);
+  // pathToFileURL percent-encodes the `~` and ESM loaders can't find the
+  // file. realpath expands the short name to the long form.
+  try {
+    return pathToFileURL(realpathSync(abs)).href;
+  } catch {
+    return pathToFileURL(abs).href;
+  }
+}
+
 function resolveSpecifier(specifier: string, projectRoot: string): string {
   // Local path: resolve against projectRoot, convert to file:// URL so
   // Node's ESM loader accepts it cross-platform.
@@ -181,7 +193,7 @@ function resolveSpecifier(specifier: string, projectRoot: string): string {
     const abs = path.isAbsolute(specifier)
       ? specifier
       : path.resolve(projectRoot, specifier);
-    return pathToFileURL(abs).href;
+    return toFileUrl(abs);
   }
 
   // Bare npm specifier. When aware is installed globally, `import()` in
@@ -190,7 +202,7 @@ function resolveSpecifier(specifier: string, projectRoot: string): string {
   const req = createRequire(path.join(projectRoot, "package.json"));
   try {
     const abs = req.resolve(specifier);
-    return pathToFileURL(abs).href;
+    return toFileUrl(abs);
   } catch (err) {
     if (
       specifier.endsWith(".ts") ||

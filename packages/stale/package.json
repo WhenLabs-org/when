@@ -1,6 +1,6 @@
 {
   "name": "@whenlabs/stale",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Detect documentation drift in your codebase",
   "type": "module",
   "main": "./dist/src/index.js",

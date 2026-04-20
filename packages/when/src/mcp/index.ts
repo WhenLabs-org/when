@@ -7,15 +7,11 @@ import { fileURLToPath } from 'node:url';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const { version } = JSON.parse(readFileSync(resolve(__dirname, '..', 'package.json'), 'utf8'));
 
-// Velocity — embedded directly (no separate MCP server needed)
 import {
   initDb,
   TaskQueries,
   registerStartTask,
   registerEndTask,
-  registerEstimate,
-  registerStats,
-  registerHistory,
 } from '@whenlabs/velocity-mcp/lib';
 
 import { registerStaleTools } from './stale.js';
@@ -23,16 +19,11 @@ import { registerEnvalidTools } from './envalid.js';
 import { registerBerthTools } from './berth.js';
 import { registerAwareTools } from './aware.js';
 import { registerVowTools } from './vow.js';
-import { registerVelocityDashboard } from './velocity-dashboard.js';
 
 const server = new McpServer({
   name: 'whenlabs',
   version,
 });
-
-// =====================================================================
-// VELOCITY — Task timing & estimation (embedded, uses SQLite)
-// =====================================================================
 
 const velocityDb = initDb();
 const velocityQueries = new TaskQueries(velocityDb);
@@ -42,24 +33,12 @@ const velocityQueries = new TaskQueries(velocityDb);
 const s = server as Parameters<typeof registerStartTask>[0];
 registerStartTask(s, velocityQueries);
 registerEndTask(s, velocityQueries);
-registerEstimate(s, velocityQueries);
-registerStats(s, velocityQueries);
-registerHistory(s, velocityQueries);
-
-// =====================================================================
-// TOOL MODULES
-// =====================================================================
 
 registerStaleTools(server);
 registerEnvalidTools(server);
 registerBerthTools(server);
 registerAwareTools(server);
 registerVowTools(server);
-registerVelocityDashboard(server);
-
-// =====================================================================
-// GRACEFUL SHUTDOWN
-// =====================================================================
 
 process.on('SIGINT', () => {
   velocityDb.close();

@@ -43,7 +43,6 @@
     "@whenlabs/velocity-mcp": "workspace:^",
     "@whenlabs/vow": "workspace:^",
     "commander": "^12.0.0",
-    "yaml": "^2.8.3",
     "zod": "^4.3.6"
   },
   "devDependencies": {
@@ -53,9 +52,7 @@
     "vitest": "^3.0.0"
   },
   "files": [
-    "dist",
-    "templates",
-    "action.yml"
+    "dist"
   ],
   "homepage": "https://github.com/WhenLabs-org/when/tree/main/packages/when"
 }

@@ -10,7 +10,7 @@
     "dev": "pnpm -r --parallel dev",
     "changeset": "changeset",
     "version-packages": "changeset version",
-    "release": "pnpm -r build && changeset publish"
+    "release": "pnpm -r build && pnpm publish -r --access public --no-git-checks"
   },
   "engines": {
     "node": ">=20.12",

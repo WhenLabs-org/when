@@ -1,7 +1,8 @@
 import { describe, it, expect } from "vitest";
+import { fileURLToPath } from "node:url";
 import { detectDeployment } from "../../src/detectors/deployment.js";
 
-const fixtures = new URL("../fixtures", import.meta.url).pathname;
+const fixtures = fileURLToPath(new URL("../fixtures", import.meta.url));
 
 describe("detectDeployment", () => {
   it("detects vercel in nextjs-app", async () => {

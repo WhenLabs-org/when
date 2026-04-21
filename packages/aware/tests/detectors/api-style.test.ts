@@ -1,7 +1,8 @@
 import { describe, it, expect } from "vitest";
+import { fileURLToPath } from "node:url";
 import { detectApiStyle } from "../../src/detectors/api-style.js";
 
-const fixtures = new URL("../fixtures", import.meta.url).pathname;
+const fixtures = fileURLToPath(new URL("../fixtures", import.meta.url));
 
 describe("detectApiStyle", () => {
   it("detects trpc in nextjs-app", async () => {

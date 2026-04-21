@@ -1,7 +1,8 @@
 import { describe, it, expect } from "vitest";
+import { fileURLToPath } from "node:url";
 import { detectOrm } from "../../src/detectors/orm.js";
 
-const fixtures = new URL("../fixtures", import.meta.url).pathname;
+const fixtures = fileURLToPath(new URL("../fixtures", import.meta.url));
 
 describe("detectOrm", () => {
   it("detects drizzle in nextjs-app", async () => {

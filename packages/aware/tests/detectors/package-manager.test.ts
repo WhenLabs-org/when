@@ -1,7 +1,8 @@
 import { describe, it, expect } from "vitest";
+import { fileURLToPath } from "node:url";
 import { detectPackageManager } from "../../src/detectors/package-manager.js";
 
-const fixtures = new URL("../fixtures", import.meta.url).pathname;
+const fixtures = fileURLToPath(new URL("../fixtures", import.meta.url));
 
 describe("detectPackageManager", () => {
   it("detects pnpm in nextjs-app (pnpm-lock.yaml)", async () => {

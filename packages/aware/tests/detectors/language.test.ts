@@ -1,7 +1,8 @@
 import { describe, it, expect } from "vitest";
+import { fileURLToPath } from "node:url";
 import { detectLanguage } from "../../src/detectors/language.js";
 
-const fixtures = new URL("../fixtures", import.meta.url).pathname;
+const fixtures = fileURLToPath(new URL("../fixtures", import.meta.url));
 
 describe("detectLanguage", () => {
   it("detects typescript in nextjs-app", async () => {

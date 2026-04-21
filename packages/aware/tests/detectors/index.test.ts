@@ -1,7 +1,8 @@
 import { describe, it, expect } from "vitest";
+import { fileURLToPath } from "node:url";
 import { detectStack, stackToConfig, formatStackSummary } from "../../src/detectors/index.js";
 
-const fixtures = new URL("../fixtures", import.meta.url).pathname;
+const fixtures = fileURLToPath(new URL("../fixtures", import.meta.url));
 
 describe("detectStack", () => {
   it("detects full stack for nextjs-app with all 12 fields", async () => {

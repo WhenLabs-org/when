@@ -6,12 +6,12 @@
     "url": "https://github.com/WhenLabs-org/when",
     "source": "github"
   },
-  "version": "0.12.2",
+  "version": "0.12.3",
   "packages": [
     {
       "registryType": "npm",
       "identifier": "@whenlabs/when",
-      "version": "0.12.2",
+      "version": "0.12.3",
       "transport": {
         "type": "stdio"
       },

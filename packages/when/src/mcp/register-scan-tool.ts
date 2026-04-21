@@ -23,11 +23,11 @@ export interface ScanToolSpec {
 
 export function registerScanTool(server: McpServer, spec: ScanToolSpec): void {
   const baseSchema: Record<string, z.ZodTypeAny> = {
-    path: z.string().optional().describe('Project directory (defaults to cwd)'),
+    path: z.string().optional().describe('Absolute or relative path to the project root to scan. Defaults to the current working directory.'),
     format: z
       .enum(spec.formatValues ?? ['terminal', 'json'])
       .optional()
-      .describe('Output format'),
+      .describe('Response format: "terminal" for human-readable ANSI-colored output, "json" for machine-parseable structured data, "markdown" for rendered tables (where supported). Defaults to "terminal".'),
     ...(spec.extraSchema ?? {}),
   };
 

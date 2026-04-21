@@ -10,18 +10,26 @@ import { getDefaultEmbedder, taskEmbeddingText, tryEmbed } from '../matching/emb
 export function registerStartTask(server: McpServer, queries: TaskQueries): void {
   server.tool(
     'velocity_start_task',
-    'Begin timing a coding task. Call this before starting any discrete unit of work.',
+    [
+      'Start a timer for a discrete coding task and, when historical data is available, return a duration estimate derived from similar past tasks.',
+      '',
+      'When to use: before starting any distinct unit of work — a bug fix, a feature, a refactor, a test-writing pass. Use one task per logical unit; do not batch unrelated changes under a single task. Always pair with `velocity_end_task` so the task row is closed and the dataset stays clean.',
+      '',
+      'Side effects: inserts a new row into the local SQLite database at ~/.velocity-mcp/tasks.db (override via HOME). Computes a best-effort duration prediction by querying historical rows of the same category/tags; predictions run locally and are cached per-task. Federated upload is disabled unless the user has explicitly opted in via `velocity-mcp federation enable`.',
+      '',
+      'Returns: JSON with `task_id` (pass this to `velocity_end_task`), `started_at` ISO timestamp, `message`, and — when enough historical data exists — a `prediction` block containing point estimate in seconds, p25/p75 range, confidence (low/medium/high), whether the estimate was calibrated, and whether it drew on federated data.',
+    ].join('\n'),
     {
-      task_id: z.string().optional().describe('Unique task ID (auto-generated if omitted)'),
-      category: z.enum(CATEGORIES).describe('Task category'),
-      description: z.string().describe('Short description of the task'),
-      tags: z.array(z.string()).optional().describe('Free-form tags for matching (e.g. typescript, react)'),
-      estimated_files: z.number().int().positive().optional().describe('Expected number of files to touch'),
-      project: z.string().optional().describe('Project identifier'),
-      model_id: z.string().optional().describe('The model running this task (e.g. claude-opus-4-7)'),
-      context_tokens: z.number().int().nonnegative().optional().describe('Approximate context window size at task start'),
-      parent_task_id: z.string().optional().describe('ID of a parent task this is a sub-task of'),
-      parent_plan_id: z.string().optional().describe('ID of the plan run this task belongs to'),
+      task_id: z.string().optional().describe('Stable unique identifier for this task. Pass the same id later to `velocity_end_task`. Omit to have one auto-generated (UUID v4).'),
+      category: z.enum(CATEGORIES).describe('High-level category of the work: scaffold, implement, refactor, debug, test, config, docs, or deploy. Used for historical matching — pick the closest fit rather than inventing new categories.'),
+      description: z.string().describe('One-sentence description of the task, specific enough that semantic-similarity matching can find comparable historical tasks (e.g. "wire sqlite migrations into the startup path" beats "db work").'),
+      tags: z.array(z.string()).optional().describe('Free-form tags that describe the technical surface area (e.g. ["typescript", "react", "sqlite"]). Reuse tags across sessions — consistency improves the quality of historical-similarity matches.'),
+      estimated_files: z.number().int().positive().optional().describe('Your a-priori guess for how many files you expect to touch. Used both as a similarity signal and to compute an accuracy residual when `velocity_end_task` supplies `actual_files`.'),
+      project: z.string().optional().describe('Project identifier (typically the repo name or directory basename). Auto-detected from the git remote or cwd if omitted.'),
+      model_id: z.string().optional().describe('Identifier of the model running this task (e.g. "claude-opus-4-7"). Used to segment calibration residuals by model so predictions adapt to model-specific pacing.'),
+      context_tokens: z.number().int().nonnegative().optional().describe('Approximate tokens already in the context window at task start. Stored as telemetry to correlate context pressure with task duration.'),
+      parent_task_id: z.string().optional().describe('If this task is a sub-task spawned from another, pass the parent task\'s id here so the hierarchy is preserved.'),
+      parent_plan_id: z.string().optional().describe('If this task is part of a larger plan being tracked as a unit, pass the plan run id so plan-level metrics can be sealed when the last task in the plan completes.'),
     },
     async (args) => {
       const taskId = args.task_id ?? uuidv4();

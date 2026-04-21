@@ -13,7 +13,7 @@ export function registerVowTools(server: McpServer): void {
       '',
       'When to use: before shipping a release, when adding a new dependency, during compliance or legal review, or as a CI gate. Set `production: true` to skip devDependencies and audit only what actually ships.',
       '',
-      'Side effects: reads package.json and lockfiles (pnpm-lock.yaml, yarn.lock, package-lock.json), plus language-specific manifests (requirements.txt, pyproject.toml, Cargo.toml, go.sum). Resolves license strings from the lockfile first and falls back to node_modules manifests. Read-only; no network requests.',
+      'Side effects: reads supported lockfiles (package-lock.json or npm-shrinkwrap.json for Node; Cargo.lock for Rust; requirements.txt with hashes, uv.lock, or poetry.lock for Python) plus local node_modules / vendor manifests to resolve license strings. Pnpm, yarn, and go are not yet supported — vow exits with a clear error when only those lockfiles are present. Read-only; no network requests.',
       '',
       'Returns: plain-text, JSON, or markdown summary of package → license mapping grouped by license family (MIT/Apache/BSD/GPL/unknown), with per-package links. Exit 1 if any dependency violates the policy or has an unknown license, 0 otherwise.',
     ].join('\n'),

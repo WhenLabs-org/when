@@ -1,6 +1,6 @@
 {
   "name": "@whenlabs/vow",
-  "version": "0.3.0",
+  "version": "1.0.0",
   "description": "Scan dependency trees and validate licenses against an allow/deny/warn policy",
   "type": "module",
   "bin": {

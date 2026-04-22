@@ -1,11 +1,13 @@
-# Terminal Demo
+# Terminal Demos
 
-This directory contains the demo recording for `@whenlabs/when`.
+This directory contains the terminal recordings for `@whenlabs/when`.
 
 ## Files
 
-- `demo.tape` — VHS tape file covering install, init, doctor, and status
-- `demo.gif` — output GIF (generated after recording)
+- `install.tape` — VHS tape for `npx @whenlabs/when install`
+- `init.tape` — VHS tape for `when init`
+- `doctor.tape` — VHS tape for `when doctor`
+- `*.gif` — output GIFs written alongside each tape (generated after recording)
 
 ## Recording with VHS
 
@@ -27,11 +29,13 @@ go install github.com/charmbracelet/vhs@latest
 **Record:**
 
 ```bash
-# From the repo root
-vhs demo/demo.tape
+# From the repo root, record each tape individually
+vhs demos/install.tape
+vhs demos/init.tape
+vhs demos/doctor.tape
 ```
 
-Output is written to `demo/demo.gif`.
+Each tape writes its own GIF next to itself (`demos/install.gif`, `demos/init.gif`, `demos/doctor.gif`).
 
 **Requirements:** VHS requires `ffmpeg` and `ttyd`. Install them first:
 
@@ -54,10 +58,12 @@ If you prefer [asciinema](https://asciinema.org) for a lighter-weight recording:
 # Install
 pip install asciinema
 
-# Record
-asciinema rec demo/demo.cast
+# Record (one cast per flow)
+asciinema rec demos/install.cast
+asciinema rec demos/init.cast
+asciinema rec demos/doctor.cast
 
-# Then manually run:
+# While recording each cast, run the matching command:
 #   npx @whenlabs/when install
 #   when init
 #   when doctor
@@ -66,11 +72,13 @@ asciinema rec demo/demo.cast
 # Ctrl-D or exit
 
 # Convert to GIF with agg (https://github.com/asciinema/agg)
-agg demo/demo.cast demo/demo.gif
+agg demos/install.cast demos/install.gif
+agg demos/init.cast demos/init.gif
+agg demos/doctor.cast demos/doctor.gif
 ```
 
-## Customizing the tape
+## Customizing the tapes
 
-The tape uses the **Catppuccin Mocha** theme at 900x500. To change the theme, edit the `Set Theme` line in `demo.tape`. VHS supports any theme from the [Chroma](https://github.com/alecthomas/chroma) library as well as named presets like `"Dracula"`, `"Nord"`, `"Tokyo Night"`, and `"One Dark"`.
+The tapes use the **Catppuccin Mocha** theme at 800x400. To change the theme, edit the `Set Theme` line in the tape you care about. VHS supports any theme from the [Chroma](https://github.com/alecthomas/chroma) library as well as named presets like `"Dracula"`, `"Nord"`, `"Tokyo Night"`, and `"One Dark"`.
 
-Sleep durations are tuned to match realistic command latency for `when init` (which runs parallel scans). If your machine is faster or slower, adjust the `Sleep` values after `Enter`.
+Sleep durations are tuned to match realistic command latency (especially for `when init`, which runs parallel scans). If your machine is faster or slower, adjust the `Sleep` values after each `Enter`.

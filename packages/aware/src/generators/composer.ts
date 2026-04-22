@@ -203,6 +203,7 @@ function buildConventionsSection(conventions: ConventionsConfig): string {
 
   for (const [groupKey, groupValue] of Object.entries(conventions)) {
     if (groupValue === undefined || groupValue === null) continue;
+    if (groupKey === "extracted" || groupKey.startsWith("_")) continue;
 
     const heading =
       groupKey.charAt(0).toUpperCase() + groupKey.slice(1);

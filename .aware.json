@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "project": {
     "name": "@whenlabs/when",
     "description": "The WhenLabs developer toolkit — 6 tools, one install",
@@ -15,8 +15,8 @@
       "vitest@3.0"
     ],
     "linting": [],
-    "packageManager": "npm",
-    "monorepo": null,
+    "packageManager": "pnpm",
+    "monorepo": "pnpm-workspaces",
     "deployment": "docker",
     "auth": null,
     "apiStyle": null,
@@ -37,6 +37,20 @@
         "local",
         "types"
       ]
+    },
+    "extracted": {
+      "_sampleSize": 200,
+      "_confidence": {
+        "naming": 1,
+        "tests": 1,
+        "layout": 0
+      },
+      "naming": {
+        "files": "kebab-case"
+      },
+      "tests": {
+        "layout": "colocated"
+      }
     }
   },
   "rules": [],
@@ -45,14 +59,22 @@
   },
   "targets": {
     "claude": true,
-    "cursor": true,
+    "cursor": false,
     "copilot": true,
     "agents": true
   },
   "_meta": {
     "createdAt": "2026-04-15T09:35:54.738Z",
-    "lastSyncedAt": "2026-04-19T21:46:40.530Z",
-    "lastDetectionHash": "23e563c24a368fb588bc23804bfa088f",
-    "awareVersion": "0.1.0"
+    "lastSyncedAt": "2026-04-22T01:05:45.933Z",
+    "lastDetectionHash": "6c037b5b9f9fd83ab36304196af34eaf",
+    "awareVersion": "0.1.0",
+    "fileHashes": {
+      "": {
+        "claude": "9e9434138a315893",
+        "copilot": "1fed917853782b3f",
+        "agents": "9af7f30b5490ff10"
+      }
+    },
+    "fragmentVersions": {}
   }
 }

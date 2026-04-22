@@ -5,12 +5,15 @@ import { BaseGenerator } from "./base.js";
 /**
  * Trim markdown content to the first `maxLines` bullet points / lines.
  * Non-bullet lines (headings, blank) pass through freely; only "- " lines are counted.
+ * After the bullet cap, any ### subsection heading whose body was fully trimmed
+ * (no bullets remain under it before the next heading or EOF) is also dropped,
+ * so the output doesn't end up with naked headings followed by empty space.
  */
 export function trimFragment(content: string, maxLines: number): string {
   if (!content) return "";
 
   const lines = content.split("\n");
-  const result: string[] = [];
+  const capped: string[] = [];
   let bulletCount = 0;
 
   for (const line of lines) {
@@ -18,6 +21,24 @@ export function trimFragment(content: string, maxLines: number): string {
     if (isBullet) {
       if (bulletCount >= maxLines) continue;
       bulletCount++;
+    }
+    capped.push(line);
+  }
+
+  const result: string[] = [];
+  for (let i = 0; i < capped.length; i++) {
+    const line = capped[i];
+    if (line.startsWith("### ")) {
+      let hasBullet = false;
+      for (let j = i + 1; j < capped.length; j++) {
+        const next = capped[j];
+        if (next.startsWith("## ") || next.startsWith("### ")) break;
+        if (next.trimStart().startsWith("- ")) {
+          hasBullet = true;
+          break;
+        }
+      }
+      if (!hasBullet) continue;
     }
     result.push(line);
   }

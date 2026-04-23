@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
 
 // Mock spawn to avoid real CLI calls
 vi.mock('node:child_process', () => ({
@@ -100,7 +100,7 @@ describe('when init — project detection', () => {
     // All tool spawns return exit code 127 (not found) — avoids hanging
     mockSpawn.mockImplementation(() => fakeChild('', 127) as ReturnType<typeof spawn>);
 
-    const dirName = tmpDir.split('/').filter(Boolean).pop()!;
+    const dirName = basename(tmpDir);
     const logs: string[] = [];
     const orig = console.log;
     console.log = (...args: unknown[]) => logs.push(args.join(' '));

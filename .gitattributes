@@ -1,0 +1,4 @@
+# Keep golden-file fixtures byte-identical across OSes. Without this,
+# git's autocrlf on Windows checks them out with \r\n and the generator,
+# which always writes \n, fails the byte-for-byte equality test.
+*.golden.md text eol=lf

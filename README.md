@@ -4,6 +4,10 @@
 
 A single installable toolkit that brings six WhenLabs developer tools into your Claude Code workflow. After install, the tools are exposed over a single MCP server and Claude calls them automatically when relevant.
 
+<p align="center">
+  <img src="demos/hero.gif" alt="when doctor — six tools, one unified health report" width="820" />
+</p>
+
 ## Install
 
 ```bash

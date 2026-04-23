@@ -4,9 +4,11 @@ This directory contains the terminal recordings for `@whenlabs/when`.
 
 ## Files
 
+- `hero.tape` — VHS tape used in the top-level README (`when doctor` against `sample/`)
 - `install.tape` — VHS tape for `npx @whenlabs/when install`
 - `init.tape` — VHS tape for `when init`
 - `doctor.tape` — VHS tape for `when doctor`
+- `sample/` — fixture project the `hero.tape` runs against (package.json, .env/.env.schema, src/)
 - `*.gif` — output GIFs written alongside each tape (generated after recording)
 
 ## Recording with VHS
@@ -30,12 +32,19 @@ go install github.com/charmbracelet/vhs@latest
 
 ```bash
 # From the repo root, record each tape individually
+vhs demos/hero.tape      # README hero — requires `pnpm build` first
 vhs demos/install.tape
 vhs demos/init.tape
 vhs demos/doctor.tape
 ```
 
-Each tape writes its own GIF next to itself (`demos/install.gif`, `demos/init.gif`, `demos/doctor.gif`).
+Each tape writes its own GIF next to itself (`demos/hero.gif`, `demos/install.gif`, `demos/init.gif`, `demos/doctor.gif`).
+
+`hero.tape` shells out to `packages/when/dist/index.js` directly (via a hidden
+`when()` function) so it doesn't require a global install — just make sure the
+toolkit is built first (`pnpm build`). It also `cd`s into `demos/sample/`,
+which is a minimal fixture project with a package-lock, `.env`/`.env.schema`,
+and a tiny `src/` so every check has something real to report.
 
 **Requirements:** VHS requires `ffmpeg` and `ttyd`. Install them first:
 
@@ -79,6 +88,6 @@ agg demos/doctor.cast demos/doctor.gif
 
 ## Customizing the tapes
 
-The tapes use the **Catppuccin Mocha** theme at 800x400. To change the theme, edit the `Set Theme` line in the tape you care about. VHS supports any theme from the [Chroma](https://github.com/alecthomas/chroma) library as well as named presets like `"Dracula"`, `"Nord"`, `"Tokyo Night"`, and `"One Dark"`.
+The tapes use the **Catppuccin Mocha** theme. `hero.tape` renders at 1440x340 with Menlo; the other three render at 800x400 with JetBrains Mono (install JetBrains Mono first, or edit `Set FontFamily` to a font you have). VHS supports any theme from the [Chroma](https://github.com/alecthomas/chroma) library as well as named presets like `"Dracula"`, `"Nord"`, `"Tokyo Night"`, and `"One Dark"`.
 
 Sleep durations are tuned to match realistic command latency (especially for `when init`, which runs parallel scans). If your machine is faster or slower, adjust the `Sleep` values after each `Enter`.

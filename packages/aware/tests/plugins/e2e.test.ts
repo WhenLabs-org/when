@@ -71,8 +71,11 @@ describe("plugin end-to-end via scan()", () => {
       },
       plugins: [absPluginPath],
     });
-    // Sanity: config saved
-    expect(await fs.readFile(configPath, "utf8")).toContain(absPluginPath);
+    // Sanity: config saved. Compare against the parsed value, not the raw
+    // file contents — JSON escapes Windows backslashes (C:\foo → "C:\\foo")
+    // and a toContain(absPluginPath) would miss on windows-latest runners.
+    const saved = JSON.parse(await fs.readFile(configPath, "utf8"));
+    expect(saved.plugins).toContain(absPluginPath);
 
     const result = await scan({ projectRoot: tmp, detect: true });
     const pluginFragment = result.fragments.find(

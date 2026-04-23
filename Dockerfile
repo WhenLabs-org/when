@@ -17,6 +17,10 @@ FROM node:20-slim
 
 WORKDIR /app
 
-COPY --from=builder /deploy ./
+RUN useradd --system --no-create-home --home-dir /app appuser
+
+COPY --from=builder --chown=appuser:appuser /deploy ./
+
+USER appuser
 
 ENTRYPOINT ["node", "dist/mcp.js"]

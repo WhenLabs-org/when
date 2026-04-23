@@ -35,7 +35,7 @@
     "spdx-expression-parse": "^4.0.0",
     "spdx-license-ids": "^3.0.20",
     "spdx-license-list": "^6.9.0",
-    "spdx-satisfies": "^5.0.1",
+    "spdx-satisfies": "^6.0.0",
     "yaml": "^2.6.1"
   },
   "devDependencies": {

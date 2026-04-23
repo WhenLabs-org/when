@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { mkdtempSync, rmSync, writeFileSync, mkdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
 
 vi.mock('node:child_process', () => ({
   execSync: vi.fn(),
@@ -115,14 +115,14 @@ describe('detectProjectWithStack', () => {
   it('falls back to basename when package.json has no name', () => {
     writeFileSync(join(tmpDir, 'package.json'), '{}');
     const info = detectProjectWithStack(tmpDir);
-    expect(info.name).toBe(tmpDir.split('/').filter(Boolean).pop());
+    expect(info.name).toBe(basename(tmpDir));
     expect(info.stack).toBe('node');
   });
 
   it('tolerates malformed package.json', () => {
     writeFileSync(join(tmpDir, 'package.json'), 'not json');
     const info = detectProjectWithStack(tmpDir);
-    expect(info.name).toBe(tmpDir.split('/').filter(Boolean).pop());
+    expect(info.name).toBe(basename(tmpDir));
   });
 });
 

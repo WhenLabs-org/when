@@ -42,7 +42,7 @@
     "@whenlabs/stale": "workspace:^",
     "@whenlabs/velocity-mcp": "workspace:^",
     "@whenlabs/vow": "workspace:^",
-    "commander": "^12.0.0",
+    "commander": "^14.0.3",
     "zod": "^4.3.6"
   },
   "devDependencies": {

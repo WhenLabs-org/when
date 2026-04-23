@@ -45,7 +45,7 @@
     "@whenlabs/core": "workspace:^",
     "boxen": "^8.0.1",
     "chalk": "^5.4.1",
-    "commander": "^14.0.0",
+    "commander": "^14.0.3",
     "fast-glob": "^3.3.3",
     "fastest-levenshtein": "^1.0.16",
     "mdast-util-to-string": "^4.0.0",

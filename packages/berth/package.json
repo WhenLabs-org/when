@@ -54,7 +54,7 @@
     "@whenlabs/core": "workspace:^",
     "chalk": "^5.3.0",
     "cli-table3": "^0.6.5",
-    "commander": "^12.1.0",
+    "commander": "^14.0.3",
     "dotenv": "^16.4.5",
     "jsonc-parser": "^3.3.1",
     "yaml": "^2.5.0",

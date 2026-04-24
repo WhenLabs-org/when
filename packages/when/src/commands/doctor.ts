@@ -81,7 +81,21 @@ export function createDoctorCommand(): Command {
       process.stdout.write(colorize('  Running health checks\u2026', c.dim) + '\n');
     }
 
+    // --brief is meant to be piped into a UserPromptSubmit hook where every
+    // byte on stdout is injected into agent context. The child scanners
+    // (notably aware's convention extractor) print a dim "Sampling source
+    // files\u2026" line to stdout while running \u2014 harmless in a TTY, noisy in
+    // a hook. Mute process.stdout for the duration of the scan; restore
+    // before we write the brief itself. Stderr (ora spinners etc.) is left
+    // alone since Claude Code only captures stdout from hooks.
+    const originalWrite = process.stdout.write.bind(process.stdout);
+    if (options.brief) {
+      process.stdout.write = (() => true) as typeof process.stdout.write;
+    }
     const results = await runAllScans(cwd);
+    if (options.brief) {
+      process.stdout.write = originalWrite;
+    }
 
     const hasIssues = results.some(r => r.status === 'issues' || r.status === 'error');
 

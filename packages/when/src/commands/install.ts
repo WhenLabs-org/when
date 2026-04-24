@@ -2,12 +2,16 @@ import { execFileSync } from 'node:child_process';
 import { registerMcpServer } from '../utils/mcp-config.js';
 import { injectBlock, CLAUDE_MD_PATH } from '../utils/claude-md.js';
 import { writeSkillFile, SKILL_MD_PATH } from '../utils/skill-file.js';
+import { addWhenlabsHook, SETTINGS_PATH } from '../utils/settings-hook.js';
 import { CLAUDE_MD_CONTENT } from '../templates/claude-md-content.js';
 import { SKILL_MD_CONTENT } from '../templates/skill-md-content.js';
 
 export interface InstallOptions {
   /** When false, skip writing the whenlabs SKILL.md (Commander `--no-skill`). */
   skill?: boolean;
+  /** When true, add a UserPromptSubmit hook to ~/.claude/settings.json that
+   *  runs `when doctor --brief` on every turn (Commander `--hooks`). */
+  hooks?: boolean;
 }
 
 export async function install(opts: InstallOptions = {}): Promise<void> {
@@ -24,6 +28,11 @@ export async function install(opts: InstallOptions = {}): Promise<void> {
     console.log(`  ✓ Skill file written to ${SKILL_MD_PATH}`);
   } else {
     console.log('  - Skipped skill file (--no-skill)');
+  }
+
+  if (opts.hooks) {
+    addWhenlabsHook();
+    console.log(`  ✓ UserPromptSubmit hook added to ${SETTINGS_PATH}`);
   }
 
   try {

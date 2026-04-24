@@ -1,9 +1,16 @@
 import { execFileSync } from 'node:child_process';
 import { registerMcpServer } from '../utils/mcp-config.js';
 import { injectBlock, CLAUDE_MD_PATH } from '../utils/claude-md.js';
+import { writeSkillFile, SKILL_MD_PATH } from '../utils/skill-file.js';
 import { CLAUDE_MD_CONTENT } from '../templates/claude-md-content.js';
+import { SKILL_MD_CONTENT } from '../templates/skill-md-content.js';
 
-export async function install(): Promise<void> {
+export interface InstallOptions {
+  /** When false, skip writing the whenlabs SKILL.md (Commander `--no-skill`). */
+  skill?: boolean;
+}
+
+export async function install(opts: InstallOptions = {}): Promise<void> {
   console.log('\n🔧 WhenLabs toolkit installer\n');
 
   const mcpResult = registerMcpServer();
@@ -11,6 +18,13 @@ export async function install(): Promise<void> {
 
   injectBlock(CLAUDE_MD_PATH, CLAUDE_MD_CONTENT);
   console.log(`  ✓ CLAUDE.md instructions written to ${CLAUDE_MD_PATH}`);
+
+  if (opts.skill !== false) {
+    writeSkillFile(SKILL_MD_PATH, SKILL_MD_CONTENT);
+    console.log(`  ✓ Skill file written to ${SKILL_MD_PATH}`);
+  } else {
+    console.log('  - Skipped skill file (--no-skill)');
+  }
 
   try {
     execFileSync('npx', ['--yes', '@whenlabs/aware', 'sync'], {

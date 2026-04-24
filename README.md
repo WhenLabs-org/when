@@ -33,7 +33,7 @@ One-time setup. The installer:
 
 ## MCP tools
 
-Seven endpoints across the six tools:
+Eight endpoints across the six tools:
 
 | Endpoint | What it does |
 |---|---|
@@ -44,8 +44,9 @@ Seven endpoints across the six tools:
 | `vow_scan` | Scan licenses and validate against policy |
 | `velocity_start_task` | Start timing a coding task |
 | `velocity_end_task` | End timing and record results |
+| `whenlabs_summary` | Unified rollup across all five scanners in one call |
 
-All seven are served by the single `whenlabs` MCP server (stdio, Node 20+). Fix/init/auxiliary commands remain available via each tool's CLI (`npx @whenlabs/<tool> --help`).
+All eight are served by the single `whenlabs` MCP server (stdio, Node 20+). Fix/init/auxiliary commands remain available via each tool's CLI (`npx @whenlabs/<tool> --help`).
 
 ## CLI
 

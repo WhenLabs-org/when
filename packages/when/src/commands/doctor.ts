@@ -56,21 +56,42 @@ interface JsonOutput {
   }>;
 }
 
+/** Compact hook-friendly output: one line per non-clean tool. Empty
+ *  string when every scanner is `ok` or `skipped`. Exported for tests;
+ *  consumed by the doctor --brief path. */
+export function formatBrief(results: ScanRollup[]): string {
+  const lines: string[] = [];
+  for (const r of results) {
+    if (r.status === 'ok' || r.status === 'skipped') continue;
+    lines.push(`${r.name}: ${r.detail}`);
+  }
+  return lines.join('\n');
+}
+
 export function createDoctorCommand(): Command {
   const cmd = new Command('doctor');
   cmd.description('Run all WhenLabs tools and display a unified health report');
   cmd.option('--json', 'Output machine-readable JSON');
+  cmd.option('--brief', 'One-line summary per non-clean tool; empty when all clean. Exits 0 always (hook-safe).');
 
-  cmd.action(async (options: { json?: boolean }) => {
+  cmd.action(async (options: { json?: boolean; brief?: boolean }) => {
     const cwd = process.cwd();
 
-    if (!options.json) {
+    if (!options.json && !options.brief) {
       process.stdout.write(colorize('  Running health checks\u2026', c.dim) + '\n');
     }
 
     const results = await runAllScans(cwd);
 
     const hasIssues = results.some(r => r.status === 'issues' || r.status === 'error');
+
+    if (options.brief) {
+      // Hook-safe: print nothing when clean, never fail.
+      const brief = formatBrief(results);
+      if (brief) process.stdout.write(brief + '\n');
+      process.exit(0);
+      return;
+    }
 
     if (options.json) {
       const output: JsonOutput = {

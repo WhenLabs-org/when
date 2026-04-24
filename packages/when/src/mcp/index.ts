@@ -19,6 +19,7 @@ import { registerEnvalidTools } from './envalid.js';
 import { registerBerthTools } from './berth.js';
 import { registerAwareTools } from './aware.js';
 import { registerVowTools } from './vow.js';
+import { registerSummaryTool } from './summary.js';
 
 const server = new McpServer({
   name: 'whenlabs',
@@ -39,6 +40,7 @@ registerEnvalidTools(server);
 registerBerthTools(server);
 registerAwareTools(server);
 registerVowTools(server);
+registerSummaryTool(server);
 
 process.on('SIGINT', () => {
   velocityDb.close();

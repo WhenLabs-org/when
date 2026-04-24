@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 const MCP_ENTRY = resolve(__dirname, '..', '..', 'dist', 'mcp.js');
 
-// The 7 tools the umbrella MCP server is contracted to expose.
+// The 8 tools the umbrella MCP server is contracted to expose.
 // Adding or removing tools here is a public-API change — update deliberately.
 const EXPECTED_TOOLS = [
   'velocity_start_task',
@@ -18,6 +18,7 @@ const EXPECTED_TOOLS = [
   'berth_check',
   'aware_sync',
   'vow_scan',
+  'whenlabs_summary',
 ].sort();
 
 interface JsonRpcResponse {
@@ -77,7 +78,7 @@ function waitForResponse(
 }
 
 describe('MCP stdio smoke', () => {
-  it('starts, responds to initialize, and lists all 7 expected tools', async () => {
+  it('starts, responds to initialize, and lists all 8 expected tools', async () => {
     if (!existsSync(MCP_ENTRY)) {
       throw new Error(
         `Build output missing at ${MCP_ENTRY} — run \`pnpm -r build\` before tests.`,

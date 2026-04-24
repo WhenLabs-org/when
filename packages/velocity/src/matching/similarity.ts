@@ -138,6 +138,10 @@ export interface TaskEstimate {
   p25_seconds: number;
   median_seconds: number;
   p75_seconds: number;
+  /** The underlying matched tasks, sorted by weight desc. Populated by
+   *  {@link estimateTask}; federated mixing preserves it by spreading the
+   *  local estimate. Absent on priors-only paths that skip similarity. */
+  similar?: SimilarTask[];
 }
 
 /**
@@ -203,6 +207,7 @@ export function estimateTask(plan: PlanItem, historicalTasks: Task[]): TaskEstim
       p25_seconds: heuristic,
       median_seconds: heuristic,
       p75_seconds: heuristic,
+      similar: [],
     };
   }
 
@@ -221,5 +226,6 @@ export function estimateTask(plan: PlanItem, historicalTasks: Task[]): TaskEstim
     p25_seconds: Math.round(p25),
     median_seconds: Math.round(p50),
     p75_seconds: Math.round(p75),
+    similar,
   };
 }

@@ -252,6 +252,56 @@ describe('integration: plan flow links tasks through a plan_run and refits the m
     expect(params.n_observations).toBe(5);
   });
 
+  it('estimateTaskWithFederation surfaces SimilarTask[] alongside the estimate when local history exists', async () => {
+    // Seed 4 completed tasks of the same category so findSimilarTasks can match.
+    const BASE = Date.parse('2026-04-20T09:00:00Z');
+    const seeds = [
+      { id: 'sim-a', tags: ['typescript', 'sqlite'], desc: 'wire sqlite migration',
+        files_actual: 3, tests: 1, notes: 'ran migrations manually; fix by adding setup step',
+        dur: 420 },
+      { id: 'sim-b', tags: ['typescript', 'sqlite'], desc: 'add prepared statements for queries',
+        files_actual: 5, tests: 0, notes: 'snapshot tests broke — rebuild before asserting',
+        dur: 640 },
+      { id: 'sim-c', tags: ['typescript'], desc: 'migrate schema v2 to v3',
+        files_actual: 2, tests: 1, notes: null, dur: 300 },
+      { id: 'sim-d', tags: ['unrelated'], desc: 'refactor unrelated thing',
+        files_actual: 1, tests: null, notes: null, dur: 180 },
+    ];
+    for (let i = 0; i < seeds.length; i++) {
+      const s = seeds[i];
+      const start = new Date(BASE + i * 60_000).toISOString();
+      const end = new Date(BASE + i * 60_000 + s.dur * 1000).toISOString();
+      queries.insertTask(s.id, 'implement', s.tags, s.desc, null, start, null);
+      queries.endTask(s.id, end, s.dur, 'completed', s.files_actual, s.notes);
+      queries.updateTelemetry(s.id, {
+        testsPassedFirstTry: s.tests,
+      } as Parameters<typeof queries.updateTelemetry>[1]);
+    }
+
+    const historicalRows = queries.getCompletedByCategory('implement');
+    const historicalTasks = historicalRows.map(parseTask);
+    const out = await estimateTaskWithFederation(
+      { category: 'implement', description: 'wire sqlite migration for tasks table', tags: ['typescript', 'sqlite'] },
+      historicalTasks,
+      queries,
+      'claude-opus-4-7',
+    );
+
+    expect(out.similar).toBeDefined();
+    expect(out.similar!.length).toBeGreaterThan(0);
+    // Each similar entry must carry the underlying task with fields the
+    // start-task response will later project into recent_similar.
+    for (const s of out.similar!) {
+      expect(s.task.id).toBeTypeOf('string');
+      expect(s.task.status).toBe('completed');
+      expect(s.similarity).toBeGreaterThanOrEqual(0.3);
+    }
+    // Sorted by weight desc (first has >= weight of any later entry).
+    for (let i = 1; i < out.similar!.length; i++) {
+      expect(out.similar![i - 1].weight).toBeGreaterThanOrEqual(out.similar![i].weight);
+    }
+  });
+
   it('estimateTaskWithFederation returns a prediction even with no local history (falls back to heuristic)', async () => {
     const out = await estimateTaskWithFederation(
       { category: 'refactor', description: 'rename everything', tags: [] },
@@ -262,6 +312,8 @@ describe('integration: plan flow links tasks through a plan_run and refits the m
     expect(out.confidence).toBe('none');
     expect(out.seconds).toBeGreaterThan(0);
     expect(out.federated).toBeFalsy();
+    // No history → similar exists but is empty (start-task omits the key in that case).
+    expect(out.similar).toEqual([]);
   });
 });
 

@@ -2,10 +2,43 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { v4 as uuidv4 } from 'uuid';
 import type { TaskQueries } from '../db/queries.js';
-import { CATEGORIES, parseTask } from '../types.js';
+import { CATEGORIES, parseTask, type SimilarTask } from '../types.js';
 import { detectProject } from '../cli/detect-project.js';
 import { estimateTaskWithFederation } from '../matching/similarity.js';
 import { getDefaultEmbedder, taskEmbeddingText, tryEmbed } from '../matching/embedding.js';
+
+export const RECENT_SIMILAR_LIMIT = 5;
+
+export interface RecentSimilarEntry {
+  description: string;
+  duration_seconds: number | null;
+  files_actual: number | null;
+  tests_passed_first_try: boolean | null;
+  status: string | null;
+  notes: string | null;
+  similarity: number;
+  days_ago: number;
+}
+
+/** Map the SimilarTask[] produced by matching into the compact, agent-
+ *  readable shape exposed on `velocity_start_task`'s response. Truncated
+ *  to RECENT_SIMILAR_LIMIT; input ordering is preserved (expected: weight
+ *  desc, as returned by findSimilarTasks). */
+export function mapRecentSimilar(similar: SimilarTask[], now: number): RecentSimilarEntry[] {
+  return similar.slice(0, RECENT_SIMILAR_LIMIT).map(s => ({
+    description: s.task.description,
+    duration_seconds: s.task.duration_seconds,
+    files_actual: s.task.files_actual,
+    tests_passed_first_try:
+      s.task.tests_passed_first_try === 1 ? true
+      : s.task.tests_passed_first_try === 0 ? false
+      : null,
+    status: s.task.status,
+    notes: s.task.notes,
+    similarity: Math.round(s.similarity * 1000) / 1000,
+    days_ago: Math.round(((now - Date.parse(s.task.started_at)) / 86_400_000) * 10) / 10,
+  }));
+}
 
 export function registerStartTask(server: McpServer, queries: TaskQueries): void {
   server.tool(
@@ -114,6 +147,11 @@ export function registerStartTask(server: McpServer, queries: TaskQueries): void
           federated: Boolean(prediction.federated),
           federated_n: prediction.federated_n ?? null,
         };
+
+        const similar = prediction.similar ?? [];
+        if (similar.length > 0) {
+          result.recent_similar = mapRecentSimilar(similar, Date.now());
+        }
       }
 
       return { content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }] };

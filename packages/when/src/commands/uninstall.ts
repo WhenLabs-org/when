@@ -1,5 +1,6 @@
 import { unregisterMcpServer } from '../utils/mcp-config.js';
 import { removeBlock, CLAUDE_MD_PATH } from '../utils/claude-md.js';
+import { removeSkillFile, SKILL_MD_PATH } from '../utils/skill-file.js';
 
 export async function uninstall(): Promise<void> {
   console.log('\n🗑️  WhenLabs toolkit uninstaller\n');
@@ -9,6 +10,9 @@ export async function uninstall(): Promise<void> {
 
   removeBlock(CLAUDE_MD_PATH);
   console.log(`  ✓ Removed WhenLabs instructions from ${CLAUDE_MD_PATH}`);
+
+  removeSkillFile(SKILL_MD_PATH);
+  console.log(`  ✓ Removed skill file at ${SKILL_MD_PATH}`);
 
   console.log('\nUninstall complete.');
   console.log('  Note: task history is preserved.\n');

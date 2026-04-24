@@ -17,10 +17,11 @@ program
 
 program
   .command('install')
-  .description('Install the WhenLabs MCP server into Claude Code (~/.claude.json + CLAUDE.md)')
-  .action(async () => {
+  .description('Install the WhenLabs MCP server into Claude Code (~/.claude.json + CLAUDE.md + skill file)')
+  .option('--no-skill', 'Skip writing the whenlabs skill file to ~/.claude/skills/whenlabs/SKILL.md')
+  .action(async (options: { skill?: boolean }) => {
     const { install } = await import('./commands/install.js');
-    await install();
+    await install({ skill: options.skill });
   });
 
 program

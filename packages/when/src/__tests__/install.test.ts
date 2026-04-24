@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { mkdtempSync, rmSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, rmSync, readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, dirname } from 'node:path';
 
 // Mock execSync to avoid calling real `claude` CLI
 vi.mock('node:child_process', () => ({
@@ -10,6 +10,8 @@ vi.mock('node:child_process', () => ({
 
 // We need to import after mocking
 import { injectBlock, removeBlock, hasBlock } from '../utils/claude-md.js';
+import { writeSkillFile, removeSkillFile } from '../utils/skill-file.js';
+import { SKILL_MD_CONTENT } from '../templates/skill-md-content.js';
 
 const OLD_START = '<!-- velocity-mcp:start -->';
 const OLD_END = '<!-- velocity-mcp:end -->';
@@ -113,5 +115,67 @@ describe('hasBlock', () => {
   it('returns true after injectBlock', () => {
     injectBlock(claudeMdPath, 'content');
     expect(hasBlock(claudeMdPath)).toBe(true);
+  });
+});
+
+describe('skill file — writeSkillFile', () => {
+  let skillPath: string;
+
+  beforeEach(() => {
+    skillPath = join(tmpDir, 'skills', 'whenlabs', 'SKILL.md');
+  });
+
+  it('creates parent directories and writes the skill content', () => {
+    writeSkillFile(skillPath, SKILL_MD_CONTENT);
+    expect(existsSync(skillPath)).toBe(true);
+    const body = readFileSync(skillPath, 'utf-8');
+    expect(body).toContain('name: whenlabs');
+    expect(body).toContain('trigger: /whenlabs');
+    expect(body.startsWith('---\n')).toBe(true);
+  });
+
+  it('overwrites on second call (idempotent)', () => {
+    writeSkillFile(skillPath, 'original');
+    writeSkillFile(skillPath, 'updated');
+    expect(readFileSync(skillPath, 'utf-8')).toBe('updated');
+  });
+
+  it('writes with the real SKILL_MD_CONTENT carrying frontmatter + key sections', () => {
+    writeSkillFile(skillPath, SKILL_MD_CONTENT);
+    const body = readFileSync(skillPath, 'utf-8');
+    expect(body).toContain('When to call `velocity_start_task`');
+    expect(body).toContain('When to call `whenlabs_summary`');
+    expect(body).toContain('Interpreting `recent_similar`');
+  });
+});
+
+describe('skill file — removeSkillFile', () => {
+  let skillPath: string;
+
+  beforeEach(() => {
+    skillPath = join(tmpDir, 'skills', 'whenlabs', 'SKILL.md');
+  });
+
+  it('removes the file and the empty parent dir', () => {
+    writeSkillFile(skillPath, 'x');
+    expect(existsSync(skillPath)).toBe(true);
+    removeSkillFile(skillPath);
+    expect(existsSync(skillPath)).toBe(false);
+    expect(existsSync(dirname(skillPath))).toBe(false);
+  });
+
+  it('is a no-op when the file is already absent', () => {
+    expect(() => removeSkillFile(skillPath)).not.toThrow();
+    expect(existsSync(skillPath)).toBe(false);
+  });
+
+  it('preserves the parent dir when it still has other files', () => {
+    const skillDir = dirname(skillPath);
+    mkdirSync(skillDir, { recursive: true });
+    writeFileSync(join(skillDir, 'OTHER.md'), 'keep me', 'utf-8');
+    writeSkillFile(skillPath, 'x');
+    removeSkillFile(skillPath);
+    expect(existsSync(skillPath)).toBe(false);
+    expect(existsSync(join(skillDir, 'OTHER.md'))).toBe(true);
   });
 });

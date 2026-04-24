@@ -19,9 +19,10 @@ program
   .command('install')
   .description('Install the WhenLabs MCP server into Claude Code (~/.claude.json + CLAUDE.md + skill file)')
   .option('--no-skill', 'Skip writing the whenlabs skill file to ~/.claude/skills/whenlabs/SKILL.md')
-  .action(async (options: { skill?: boolean }) => {
+  .option('--hooks', 'Also add a UserPromptSubmit hook to ~/.claude/settings.json that runs `when doctor --brief` on every turn')
+  .action(async (options: { skill?: boolean; hooks?: boolean }) => {
     const { install } = await import('./commands/install.js');
-    await install({ skill: options.skill });
+    await install({ skill: options.skill, hooks: options.hooks });
   });
 
 program

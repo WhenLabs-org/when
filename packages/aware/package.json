@@ -1,6 +1,6 @@
 {
   "name": "@whenlabs/aware",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Auto-detect your stack, generate and sync AI context files (CLAUDE.md, .cursorrules, copilot-instructions.md, AGENTS.md)",
   "type": "module",
   "main": "./dist/index.js",
